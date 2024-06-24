@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 
-objects_path = r"/yolov5/data/obj"
+objects_path = r"D:\YOLOv5 DATASET\STEP 2\all objects for train"
 labels_map = {'dji': '0', 'wifi': '1', 'autel_lite': '2', 'autel_max': '3', 'autel_pro_v3': '4', 'fpv': '5', 'autel_tag': '6'}
 
 
@@ -47,6 +47,36 @@ def count_labels(labels, map):
     return map
 
 
+def plot_annotated_histogram(labels_counts_map):
+    x_data, y_data = [], []
+    for key, value in labels_counts_map.items():
+        x_data.append(key)
+        y_data.append(value)
+
+    plt.bar(x_data, y_data)
+    plt.grid(False)
+    plt.title('Histogram of distribution labels')
+    # Add object count annotations above bars
+    for i, (v, txt) in enumerate(zip(y_data, x_data)):
+        plt.text(i, v + 0.5, str(v), ha='center', va='bottom', fontsize=12)
+
+    plt.xticks(rotation=45, ha='right')  # Rotate class names for better readability
+    plt.tight_layout()      # для лучшего отображения
+    plt.show()
+
+
+def plot_histogram(labels_counts_map):
+    x_data, y_data = [], []
+    for key, value in labels_counts_map.items():
+        x_data.append(key)
+        y_data.append(value)
+
+    plt.bar(x_data, y_data)
+    plt.grid(True)
+    plt.title('Histogram of distribution labels')
+    plt.show()
+
+
 if __name__ == '__main__':
     annotations = get_annotation_paths(objects_path)
 
@@ -56,18 +86,4 @@ if __name__ == '__main__':
     labels_counts_map = count_labels(labels=all_labels, map=labels_map)
     print(labels_counts_map)
 
-    # Plot histogram
-    x_data, y_data = [], []
-    for key, value in labels_counts_map.items():
-        x_data.append(key)
-        y_data.append(value)
-    plt.bar(x_data, y_data)
-    plt.grid(True)
-    plt.title('Histogram of distribution labels')
-    plt.show()
-
-
-
-
-
-
+    plot_annotated_histogram(labels_counts_map)
