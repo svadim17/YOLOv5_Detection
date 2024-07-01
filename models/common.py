@@ -971,16 +971,16 @@ class Detections:
         """
         self._run(show=True, labels=labels)  # show results
 
-    def save(self, labels=True, save_dir="runs/detect/exp", exist_ok=False):
+    def save(self, labels=True, save_dir="runs/detect/exampe_1", exist_ok=False):
         """
         Saves detection results with optional labels to a specified directory.
 
-        Usage: save(labels=True, save_dir='runs/detect/exp', exist_ok=False)
+        Usage: save(labels=True, save_dir='runs/detect/exampe_1', exist_ok=False)
         """
         save_dir = increment_path(save_dir, exist_ok, mkdir=True)  # increment save_dir
         self._run(save=True, labels=labels, save_dir=save_dir)  # save results
 
-    def crop(self, save=True, save_dir="runs/detect/exp", exist_ok=False):
+    def crop(self, save=True, save_dir="runs/detect/exampe_1", exist_ok=False):
         """
         Crops detection results, optionally saves them to a directory.
 
@@ -1047,9 +1047,9 @@ class Detections:
 
 
 class Proto(nn.Module):
-    # YOLOv5 mask Proto module for segmentation models
+    # YOLOv5 example_mask Proto module for segmentation models
     def __init__(self, c1, c_=256, c2=32):
-        """Initializes YOLOv5 Proto module for segmentation with input, proto, and mask channels configuration."""
+        """Initializes YOLOv5 Proto module for segmentation with input, proto, and example_mask channels configuration."""
         super().__init__()
         self.cv1 = Conv(c1, c_, k=3)
         self.upsample = nn.Upsample(scale_factor=2, mode="nearest")

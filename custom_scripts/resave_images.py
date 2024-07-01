@@ -1,7 +1,5 @@
 from PIL import Image
 import os
-import cv2
-import numpy as np
 
 
 images_directory = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj — копия"

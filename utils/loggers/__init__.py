@@ -367,7 +367,7 @@ class GenericLogger:
 
         if wandb and "wandb" in self.include:
             self.wandb = wandb.init(
-                project=web_project_name(str(opt.project)), name=None if opt.name == "exp" else opt.name, config=opt
+                project=web_project_name(str(opt.project)), name=None if opt.name == "exampe_1" else opt.name, config=opt
             )
         else:
             self.wandb = None

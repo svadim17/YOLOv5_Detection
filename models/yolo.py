@@ -129,7 +129,7 @@ class Detect(nn.Module):
 class Segment(Detect):
     # YOLOv5 Segment head for segmentation models
     def __init__(self, nc=80, anchors=(), nm=32, npr=256, ch=(), inplace=True):
-        """Initializes YOLOv5 Segment head with options for mask count, protos, and channel adjustments."""
+        """Initializes YOLOv5 Segment head with options for example_mask count, protos, and channel adjustments."""
         super().__init__(nc, anchors, ch, inplace)
         self.nm = nm  # number of masks
         self.npr = npr  # number of protos

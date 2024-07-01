@@ -2,7 +2,7 @@ train: ../data/images/training/
 val: ../data/images/validation/
 
 # number of classes
-nc: 7
+nc: 6
 
 # class names
-names: ['dji', 'wifi', 'autel_lite', 'autel_max', 'autel_pro_v3', 'fpv', 'autel_tag']
+names: ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv']

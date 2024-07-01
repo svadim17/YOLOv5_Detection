@@ -1046,7 +1046,7 @@ def non_max_suppression(
     merge = False  # use merge-NMS
 
     t = time.time()
-    mi = 5 + nc  # mask start index
+    mi = 5 + nc  # example_mask start index
     output = [torch.zeros((0, 6 + nm), device=prediction.device)] * bs
     for xi, x in enumerate(prediction):  # image index, image inference
         # Apply constraints
@@ -1234,7 +1234,7 @@ def increment_path(path, exist_ok=False, sep="", mkdir=False):
     Generates an incremented file or directory path if it exists, with optional mkdir; args: path, exist_ok=False,
     sep="", mkdir=False.
 
-    Example: runs/exp --> runs/exp{sep}2, runs/exp{sep}3, ... etc
+    Example: runs/exampe_1 --> runs/exampe_1{sep}2, runs/exampe_1{sep}3, ... etc
     """
     path = Path(path)  # os-agnostic
     if path.exists() and not exist_ok:

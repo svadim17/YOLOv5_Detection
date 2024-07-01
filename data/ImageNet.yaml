@@ -585,7 +585,7 @@ names:
   567: frying pan
   568: fur coat
   569: garbage truck
-  570: gas mask
+  570: gas example_mask
   571: gas pump
   572: goblet
   573: go-kart
@@ -658,7 +658,7 @@ names:
   640: manhole cover
   641: maraca
   642: marimba
-  643: mask
+  643: example_mask
   644: match
   645: maypole
   646: maze
@@ -706,7 +706,7 @@ names:
   688: oscilloscope
   689: overskirt
   690: bullock cart
-  691: oxygen mask
+  691: oxygen example_mask
   692: packet
   693: paddle
   694: paddle wheel
@@ -811,7 +811,7 @@ names:
   793: shower cap
   794: shower curtain
   795: ski
-  796: ski mask
+  796: ski example_mask
   797: sleeping bag
   798: slide rule
   799: sliding door

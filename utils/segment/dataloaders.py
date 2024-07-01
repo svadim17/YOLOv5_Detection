@@ -315,7 +315,7 @@ def polygon2mask(img_size, polygons, color=1, downsample_ratio=1):
     cv2.fillPoly(mask, polygons, color=color)
     nh, nw = (img_size[0] // downsample_ratio, img_size[1] // downsample_ratio)
     # NOTE: fillPoly firstly then resize is trying the keep the same way
-    # of loss calculation when mask-ratio=1.
+    # of loss calculation when example_mask-ratio=1.
     mask = cv2.resize(mask, (nw, nh))
     return mask
 
@@ -336,7 +336,7 @@ def polygons2masks(img_size, polygons, color, downsample_ratio=1):
 
 
 def polygons2masks_overlap(img_size, segments, downsample_ratio=1):
-    """Return a (640, 640) overlap mask."""
+    """Return a (640, 640) overlap example_mask."""
     masks = np.zeros(
         (img_size[0] // downsample_ratio, img_size[1] // downsample_ratio),
         dtype=np.int32 if len(segments) > 255 else np.uint8,

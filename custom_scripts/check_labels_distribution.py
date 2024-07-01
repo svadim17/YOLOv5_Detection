@@ -4,8 +4,13 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 
-objects_path = r"D:\YOLOv5 DATASET\STEP 2\all objects for train"
-labels_map = {'dji': '0', 'wifi': '1', 'autel_lite': '2', 'autel_max': '3', 'autel_pro_v3': '4', 'fpv': '5', 'autel_tag': '6'}
+objects_path = r"D:\YOLOv5 DATASET\4 steps 6 classes\obj"
+labels_map = {'dji': '0',
+              'wifi': '1',
+              'autel_lite': '2',
+              'autel_max_4n': '3',
+              'autel_tag': '4',
+              'fpv': '5'}
 
 
 def get_image_paths(directory):

@@ -286,7 +286,7 @@ def cutout(im, labels, p=0.5):
             xmax = min(w, xmin + mask_w)
             ymax = min(h, ymin + mask_h)
 
-            # apply random color mask
+            # apply random color example_mask
             im[ymin:ymax, xmin:xmax] = [random.randint(64, 191) for _ in range(3)]
 
             # return unobscured labels

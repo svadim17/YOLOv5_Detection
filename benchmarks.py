@@ -84,7 +84,7 @@ def run(
             # Validate
             if model_type == SegmentationModel:
                 result = val_seg(data, w, batch_size, imgsz, plots=False, device=device, task="speed", half=half)
-                metric = result[0][7]  # (box(p, r, map50, map), mask(p, r, map50, map), *loss(box, obj, cls))
+                metric = result[0][7]  # (box(p, r, map50, map), example_mask(p, r, map50, map), *loss(box, obj, cls))
             else:  # DetectionModel:
                 result = val_det(data, w, batch_size, imgsz, plots=False, device=device, task="speed", half=half)
                 metric = result[0][3]  # (p, r, map50, map, *loss(box, obj, cls))

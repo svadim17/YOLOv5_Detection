@@ -78,7 +78,7 @@ def run(
     visualize=False,  # visualize features
     update=False,  # update all models
     project=ROOT / "runs/predict-cls",  # save results to project/name
-    name="exp",  # save results to project/name
+    name="exampe_1",  # save results to project/name
     exist_ok=False,  # existing project/name ok, do not increment
     half=False,  # use FP16 half-precision inference
     dnn=False,  # use OpenCV DNN for ONNX inference
@@ -218,7 +218,7 @@ def parse_opt():
     parser.add_argument("--visualize", action="store_true", help="visualize features")
     parser.add_argument("--update", action="store_true", help="update all models")
     parser.add_argument("--project", default=ROOT / "runs/predict-cls", help="save results to project/name")
-    parser.add_argument("--name", default="exp", help="save results to project/name")
+    parser.add_argument("--name", default="exampe_1", help="save results to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--half", action="store_true", help="use FP16 half-precision inference")
     parser.add_argument("--dnn", action="store_true", help="use OpenCV DNN for ONNX inference")

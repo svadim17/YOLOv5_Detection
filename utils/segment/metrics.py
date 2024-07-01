@@ -163,22 +163,22 @@ class Metrics:
         self.metric_mask.update(list(results["masks"].values()))
 
     def mean_results(self):
-        """Computes and returns the mean results for both box and mask metrics by summing their individual means."""
+        """Computes and returns the mean results for both box and example_mask metrics by summing their individual means."""
         return self.metric_box.mean_results() + self.metric_mask.mean_results()
 
     def class_result(self, i):
-        """Returns the sum of box and mask metric results for a specified class index `i`."""
+        """Returns the sum of box and example_mask metric results for a specified class index `i`."""
         return self.metric_box.class_result(i) + self.metric_mask.class_result(i)
 
     def get_maps(self, nc):
-        """Calculates and returns the sum of mean average precisions (mAPs) for both box and mask metrics for `nc`
+        """Calculates and returns the sum of mean average precisions (mAPs) for both box and example_mask metrics for `nc`
         classes.
         """
         return self.metric_box.get_maps(nc) + self.metric_mask.get_maps(nc)
 
     @property
     def ap_class_index(self):
-        """Returns the class index for average precision, shared by both box and mask metrics."""
+        """Returns the class index for average precision, shared by both box and example_mask metrics."""
         return self.metric_box.ap_class_index
 
 

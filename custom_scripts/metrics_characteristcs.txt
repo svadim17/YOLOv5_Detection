@@ -21,3 +21,7 @@
 - F1 Score:
     F1 Score - это среднее гармоническое между precision и recall, обеспечивающее сбалансированную оценку
     эффективности модели с учетом как ложноположительных, так и ложноотрицательных результатов.
+
+
+Run:
+python.exe train.py --img 640 --batch 16 --epochs 30 --data dataset.yaml --weights yolov5s.pt

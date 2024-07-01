@@ -43,7 +43,7 @@ class MemoryEfficientMish(nn.Module):
         def forward(ctx, x):
             """Applies the Mish activation function, a smooth ReLU alternative, to the input tensor `x`."""
             ctx.save_for_backward(x)
-            return x.mul(torch.tanh(F.softplus(x)))  # x * tanh(ln(1 + exp(x)))
+            return x.mul(torch.tanh(F.softplus(x)))  # x * tanh(ln(1 + exampe_1(x)))
 
         @staticmethod
         def backward(ctx, grad_output):
