@@ -321,7 +321,7 @@ def parse_opt(known=False):
     parser.add_argument("--device", default="", help="cuda device, i.e. 0 or 0,1,2,3 or cpu")
     parser.add_argument("--workers", type=int, default=8, help="max dataloader workers (per RANK in DDP mode)")
     parser.add_argument("--project", default=ROOT / "runs/train-cls", help="save to project/name")
-    parser.add_argument("--name", default="exampe_1", help="save to project/name")
+    parser.add_argument("--name", default="yolov5m_7classes", help="save to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--pretrained", nargs="?", const=True, default=True, help="start from i.e. --pretrained False")
     parser.add_argument("--optimizer", choices=["SGD", "Adam", "AdamW", "RMSProp"], default="Adam", help="optimizer")

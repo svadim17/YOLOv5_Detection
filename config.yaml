@@ -1,0 +1,13 @@
+connections:
+- name: 2G4
+  weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_7classes_aftertrain_2\weights\best.pt
+  ip: 127.0.0.1
+  port: 10091
+- name: 5G8
+  weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_7classes_aftertrain_2\weights\best.pt
+  ip: 127.0.0.1
+  port: 10092
+- name: frsadfgsdfsd
+  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/aftertrain_5classes_3steps/weights/last.pt
+  ip: 127.0.0.1
+  port: 10093

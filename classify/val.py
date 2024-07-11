@@ -59,7 +59,7 @@ def run(
     workers=8,  # max dataloader workers (per RANK in DDP mode)
     verbose=False,  # verbose output
     project=ROOT / "runs/val-cls",  # save to project/name
-    name="exampe_1",  # save to project/name
+    name="yolov5m_7classes",  # save to project/name
     exist_ok=False,  # existing project/name ok, do not increment
     half=False,  # use FP16 half-precision inference
     dnn=False,  # use OpenCV DNN for ONNX inference
@@ -157,7 +157,7 @@ def parse_opt():
     parser.add_argument("--workers", type=int, default=8, help="max dataloader workers (per RANK in DDP mode)")
     parser.add_argument("--verbose", nargs="?", const=True, default=True, help="verbose output")
     parser.add_argument("--project", default=ROOT / "runs/val-cls", help="save to project/name")
-    parser.add_argument("--name", default="exampe_1", help="save to project/name")
+    parser.add_argument("--name", default="yolov5m_7classes", help="save to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--half", action="store_true", help="use FP16 half-precision inference")
     parser.add_argument("--dnn", action="store_true", help="use OpenCV DNN for ONNX inference")

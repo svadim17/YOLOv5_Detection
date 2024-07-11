@@ -1,23 +1,24 @@
 import datetime
 import socket
 import time
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 import pandas
 import torch.nn.functional as F
 import cv2
 import torch
 import numpy as np
 from loguru import logger
+import copy
 
 
 h = 2048
 w = 1024
 msg_len = h*w
-map_list = ['noise', 'autel', 'fpv', 'dji', 'wifi']
+
 
 HOST = "127.0.0.1"  # The server's hostname or IP address
 project_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
-weights_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\exampe_18\weights\best.pt"
+# weights_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_7classes_aftertrain_2\weights\best.pt"
 save_path = None
 save_result_path = None
 RETURN_MODE = 'tcp'          # None or "CUSTOM" or 'tcp'
@@ -25,7 +26,7 @@ RETURN_MODE = 'tcp'          # None or "CUSTOM" or 'tcp'
 
 class NNProcessing(object):
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, weights: str):
         super().__init__()
         # DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cuda")
@@ -33,13 +34,16 @@ class NNProcessing(object):
         logger.info(f'Using device: {self.device}')
         self.f = np.arange(80000000 / (-2), 80000000 / 2, 80000000 / 1024)
         self.t = np.arange(0, 1024*2048/80000000, 1024/80000000)
-        self.load_model()
+        self.load_model(weights)
         self.name = name
 
-    def load_model(self):
+    def load_model(self, weights):
         self.model = torch.hub.load(project_path, 'custom',
-                               path=weights_path,
-                               source='local')
+                                    path=weights,
+                                    source='local')
+        # self.model.iou = 0.1
+        # self.model.conf = 0.1
+        # self.model.augment = True
 
     def normalization2(self, data):
         tensor_data = torch.tensor(data, dtype=torch.float32).to(self.device)
@@ -71,8 +75,8 @@ class NNProcessing(object):
         norm_data_minmax = np.transpose(norm_data_minmax.astype(np.uint8))
         return norm_data_minmax
 
-    def processing(self, data):
-        norm_data = self.normalization4(data)
+    def processing(self, norm_data):
+        # norm_data = self.normalization4(data)
         # Use OpenCV to create a color image from the normalized data
         color_image = cv2.applyColorMap(norm_data, cv2.COLORMAP_RAINBOW)
         # color_image = cv2.cvtColor(norm_data, cv2.COLOR_RGB2GRAY)
@@ -85,8 +89,6 @@ class NNProcessing(object):
         # set the model use the screen
         result = self.model(screen, size=640)
 
-        cv2.imshow(self.name, result.render()[0])
-
         if save_result_path is not None:
             filename = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
             cv2.imwrite(filename=save_result_path + '\\' + filename + '.jpg', img=result.render()[0])
@@ -96,8 +98,8 @@ class NNProcessing(object):
         return result
 
     def convert_result(self, df: pandas.DataFrame):
-        labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag']
-
+        labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag', 'autel_max_4n(t)']
+        map_list = ['noise', 'autel', 'fpv', 'dji', 'wifi', '3G/4G']
         group_res = df.groupby(['name'])['confidence'].max()
 
         # Получаем значения этих меток, если они существуют, иначе None
@@ -125,10 +127,15 @@ class NNProcessing(object):
 
 
 class Client(Process):
-    def __init__(self, address):
+    def __init__(self, address, weights_path):
         super().__init__()
         self.address = address
+        self.weights_path = weights_path
         self.start_time = time.time()
+        self.q = None
+
+    def set_queue(self, q: Queue):
+       self.q = q
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -137,7 +144,7 @@ class Client(Process):
                     s.connect(self.address)
                     logger.info(f'Connected to {self.address}!')
                     nn_type = s.recv(2)
-                    self.nn = NNProcessing(name=str(self.address))
+                    self.nn = NNProcessing(name=str(self.address), weights=self.weights_path)
                     logger.info(f'NN type: {nn_type}')
 
                     res_1 = np.arange(20)
@@ -152,11 +159,16 @@ class Client(Process):
                             logger.warning(f'Packet {i} missed.')
                         np_arr = np.frombuffer(arr, dtype=np.int8)
                         if np_arr.size == msg_len:
-
-                            result = self.nn.processing(np_arr.reshape(h, w))
-
+                            img_arr = self.nn.normalization4(np_arr.reshape(h, w))
+                            result = self.nn.processing(img_arr)
                             df_result = result.pandas().xyxy[0]
-                            # print(df_result)
+
+                            if self.q is not None:
+                                self.q.put({'img_res': copy.deepcopy(result.render()[0]),
+                                            'predict_res': self.nn.convert_result(df_result),
+                                            'clear_image': copy.deepcopy(img_arr)})
+                            else:
+                                cv2.imshow(str(self.address), result.render()[0])
 
                             if RETURN_MODE == 'csv':
                                 df_result.to_csv(r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\return_example.csv')

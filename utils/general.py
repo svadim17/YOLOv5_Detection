@@ -1234,7 +1234,7 @@ def increment_path(path, exist_ok=False, sep="", mkdir=False):
     Generates an incremented file or directory path if it exists, with optional mkdir; args: path, exist_ok=False,
     sep="", mkdir=False.
 
-    Example: runs/exampe_1 --> runs/exampe_1{sep}2, runs/exampe_1{sep}3, ... etc
+    Example: runs/yolov5m_7classes --> runs/yolov5m_7classes{sep}2, runs/yolov5m_7classes{sep}3, ... etc
     """
     path = Path(path)  # os-agnostic
     if path.exists() and not exist_ok:

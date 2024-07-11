@@ -2,7 +2,7 @@ from PIL import Image
 import os
 
 
-images_directory = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj — копия"
+images_directory = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj1"
 new_images_directory = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj"
 
 

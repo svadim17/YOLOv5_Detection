@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 
-objects_path = r"D:\YOLOv5 DATASET\4 steps 6 classes\obj"
+objects_paths = [r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj"]
 labels_map = {'dji': '0',
               'wifi': '1',
               'autel_lite': '2',
               'autel_max_4n': '3',
               'autel_tag': '4',
-              'fpv': '5'}
+              'fpv': '5',
+              '3G/4G': '6'}
 
 
 def get_image_paths(directory):
@@ -70,20 +71,10 @@ def plot_annotated_histogram(labels_counts_map):
     plt.show()
 
 
-def plot_histogram(labels_counts_map):
-    x_data, y_data = [], []
-    for key, value in labels_counts_map.items():
-        x_data.append(key)
-        y_data.append(value)
-
-    plt.bar(x_data, y_data)
-    plt.grid(True)
-    plt.title('Histogram of distribution labels')
-    plt.show()
-
-
 if __name__ == '__main__':
-    annotations = get_annotation_paths(objects_path)
+    annotations = []
+    for ojb_path in objects_paths:
+        annotations += get_annotation_paths(ojb_path)
 
     all_labels = get_labels(annotations)
     print(f'Number of labels: {len(all_labels)}')

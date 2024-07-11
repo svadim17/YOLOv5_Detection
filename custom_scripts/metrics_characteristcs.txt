@@ -25,3 +25,37 @@
 
 Run:
 python.exe train.py --img 640 --batch 16 --epochs 30 --data dataset.yaml --weights yolov5s.pt
+
+
+загрузка модели и выставление ее параметров:
+Основные параметры
+
+    iou (Intersection Over Union threshold):
+        Описание: Порог для пересечения прямоугольников предсказаний и истинных значений. Используется для подавления некорректных предсказаний.
+        Пример: self.model.iou = 0.45
+
+    conf (Confidence threshold):
+        Описание: Порог для минимального уровня уверенности в предсказании, при котором оно будет считаться достоверным.
+        Пример: self.model.conf = 0.25
+
+Дополнительные параметры
+
+    agnostic (Class-agnostic NMS):
+        Описание: Использование NMS (Non-Maximum Suppression) без учета классов. Если True, то все классы будут подавляться вместе.
+        Пример: self.model.agnostic = False
+
+    augment (Augmented inference):
+        Описание: Использование аугментаций при инференсе для улучшения предсказаний.
+        Пример: self.model.augment = False
+
+    multi_label (Multi-label NMS):
+        Описание: Разрешает предсказания с несколькими метками на одном объекте.
+        Пример: self.model.multi_label = False
+
+    max_det (Maximum detections per image):
+        Описание: Максимальное количество объектов, которые модель может предсказать на одном изображении.
+        Пример: self.model.max_det = 1000
+
+    amp (Automatic Mixed Precision):
+        Описание: Использование автоматической смешанной точности для ускорения инференса и уменьшения потребления памяти.
+        Пример: self.model.amp = False

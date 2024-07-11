@@ -170,7 +170,7 @@ def run(
     save_conf=False,  # save confidences in --save-txt labels
     save_json=False,  # save a COCO-JSON results file
     project=ROOT / "runs/val-seg",  # save to project/name
-    name="exampe_1",  # save to project/name
+    name="yolov5m_7classes",  # save to project/name
     exist_ok=False,  # existing project/name ok, do not increment
     half=True,  # use FP16 half-precision inference
     dnn=False,  # use OpenCV DNN for ONNX inference
@@ -465,7 +465,7 @@ def parse_opt():
     parser.add_argument("--save-conf", action="store_true", help="save confidences in --save-txt labels")
     parser.add_argument("--save-json", action="store_true", help="save a COCO-JSON results file")
     parser.add_argument("--project", default=ROOT / "runs/val-seg", help="save results to project/name")
-    parser.add_argument("--name", default="exampe_1", help="save to project/name")
+    parser.add_argument("--name", default="yolov5m_7classes", help="save to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--half", action="store_true", help="use FP16 half-precision inference")
     parser.add_argument("--dnn", action="store_true", help="use OpenCV DNN for ONNX inference")

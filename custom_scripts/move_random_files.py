@@ -3,9 +3,9 @@ import random
 import shutil
 
 MODE = 'MOVE'       # MOVE or COPY
-FOLDER_PATH = r"D:\YOLOv5 DATASET\STEP 4\IMAGES\autel_evo_max4n_part1"
-NEW_FOLDER_PATH = r"D:\YOLOv5 DATASET\STEP 4\IMAGES\autel_evo_max4n_part2"
-NUMB_TO_MOVE = 750
+FOLDER_PATH = r"D:\YOLOv5 DATASET\STEP 5\IMAGES\3G4G_part1"
+NEW_FOLDER_PATH = r"D:\YOLOv5 DATASET\STEP 5\IMAGES\3G4G_part2"
+NUMB_TO_MOVE = 300
 
 
 def calculate_files_count(filepath):

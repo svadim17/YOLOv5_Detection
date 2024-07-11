@@ -70,7 +70,7 @@ class WandbLogger:
                 resume="allow",
                 project="YOLOv5" if opt.project == "runs/train" else Path(opt.project).stem,
                 entity=opt.entity,
-                name=opt.name if opt.name != "exampe_1" else None,
+                name=opt.name if opt.name != "yolov5m_7classes" else None,
                 job_type=job_type,
                 id=run_id,
                 allow_val_change=True,

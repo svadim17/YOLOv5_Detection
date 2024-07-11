@@ -971,16 +971,16 @@ class Detections:
         """
         self._run(show=True, labels=labels)  # show results
 
-    def save(self, labels=True, save_dir="runs/detect/exampe_1", exist_ok=False):
+    def save(self, labels=True, save_dir="runs/detect/yolov5m_7classes", exist_ok=False):
         """
         Saves detection results with optional labels to a specified directory.
 
-        Usage: save(labels=True, save_dir='runs/detect/exampe_1', exist_ok=False)
+        Usage: save(labels=True, save_dir='runs/detect/yolov5m_7classes', exist_ok=False)
         """
         save_dir = increment_path(save_dir, exist_ok, mkdir=True)  # increment save_dir
         self._run(save=True, labels=labels, save_dir=save_dir)  # save results
 
-    def crop(self, save=True, save_dir="runs/detect/exampe_1", exist_ok=False):
+    def crop(self, save=True, save_dir="runs/detect/yolov5m_7classes", exist_ok=False):
         """
         Crops detection results, optionally saves them to a directory.
 
