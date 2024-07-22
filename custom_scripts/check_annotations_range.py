@@ -38,5 +38,5 @@ def check_annotation(path):
 
 
 if __name__ == '__main__':
-    annotations_path = r"D:\YOLOv5 DATASET\STEP 5\ImgLab MARKED\fpv\labels"
+    annotations_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj"
     open_all_files(annotations_path)

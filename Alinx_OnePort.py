@@ -145,32 +145,37 @@ class Client(Process):
                     s.connect(self.address)
                     logger.info(f'Connected to {self.address}!')
                     self.nn = NNProcessing(name=str(self.address), weights=self.weights_path)
+                    channels = [b'\x30', b'\x31']
                     while True:
-                        s.send(b'\x30')     # send for start
-                        arr = s.recv(msg_len)
-                        i = 0
-                        while msg_len > len(arr) and i < 50:
-                            i += 1
-                            time.sleep(0.010)
-                            arr += s.recv(msg_len - len(arr))
-                            logger.warning(f'Packet {i} missed. len = {len(arr)}')
+                        res = []
+                        for ch in range(len(channels)):
+                            s.send(channels[ch])
+                            arr = s.recv(msg_len)
+                            i = 0
+                            while msg_len > len(arr) and i < 50:
+                                i += 1
+                                time.sleep(0.010)
+                                arr += s.recv(msg_len - len(arr))
+                                logger.warning(f'Packet {i} missed. len = {len(arr)}')
 
-                        if len(arr) == msg_len:
-                            header = arr[:16]
-                            np_arr = np.frombuffer(arr[16:], dtype=np.int32)
-                            mag = (np_arr * 1.900165802481979E-9)**2 * 20
-                            log_mag = np.log10(mag) * 10
-                            img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
-                            result = self.nn.processing(img_arr)
-                            df_result = result.pandas().xyxy[0]
+                            if len(arr) == msg_len:
+                                header = arr[:16]
+                                np_arr = np.frombuffer(arr[16:], dtype=np.int32)
+                                mag = (np_arr * 1.900165802481979E-9)**2 * 20
+                                log_mag = np.log10(mag) * 10
+                                img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
+                                result = self.nn.processing(img_arr)
+                                df_result = result.pandas().xyxy[0]
+                                res.append(result)
 
-                        if self.q is not None:
-                            self.q.put({'img_res': copy.deepcopy(result.render()[0]),
-                                        'predict_res': self.nn.convert_result(df_result),
-                                        'clear_image': copy.deepcopy(img_arr),
-                                        'predict_df': df_result})
-                        else:
-                            cv2.imshow(f"{self.address}", result.render()[0])
+                        for i in range(len(res)):
+                            if self.q is not None:
+                                self.q.put({'img_res': copy.deepcopy(res[i].render()[0]),
+                                            'predict_res': self.nn.convert_result(df_result),
+                                            'clear_image': copy.deepcopy(img_arr),
+                                            'predict_df': df_result})
+                            else:
+                                cv2.imshow(f"{self.address} ch = {i}", res[i].render()[0])
 
                             if RETURN_MODE == 'csv':
                                 df_result.to_csv(r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\return_example.csv')

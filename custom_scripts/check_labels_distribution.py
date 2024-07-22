@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 
-objects_paths = [r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj"]
+objects_paths = [r"D:\YOLOv5 DATASET\6 steps 6 classes\obj"]
 labels_map = {'dji': '0',
               'wifi': '1',
               'autel_lite': '2',

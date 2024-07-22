@@ -3,7 +3,9 @@ import cv2
 import pyqtgraph
 import yaml
 from PyQt5 import QtWidgets, Qt, QtCore
-from PyQt5.QtWidgets import QApplication, QToolBar, QAction, QDockWidget, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QPushButton, QDialog, QLineEdit, QFileDialog
+from PyQt5.QtWidgets import (QApplication, QToolBar, QAction, QDockWidget, QWidget, QLabel,
+                             QVBoxLayout, QHBoxLayout, QSplitter, QPushButton, QDialog,
+                             QLineEdit, QFileDialog, QSpinBox)
 from PyQt5.QtGui import QPixmap, QImage
 from loguru import logger
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QSize
@@ -12,9 +14,22 @@ import numpy as np
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
 import pandas as pd
-import LV_to_Python as nn
+import Alinx_DualPort as nn
 import datetime
 import yaml
+from collections import deque
+
+
+GLOBAL_COLORS = {'noise': [220, 138, 221],
+                 'dji': [255, 163, 72],
+                 'wifi': [0, 255, 12],
+                 'autel': [165, 29, 45],
+                 'autel_lite': [129, 61, 156],
+                 'autel_max_4n(t)': [198, 70, 0],
+                 'autel_tag': [26, 95, 180],
+                 'fpv': [98, 160, 234],
+                 '3G/4G': [255, 255, 255],
+                 }
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -26,7 +41,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.addDockWidget(Qt.Qt.RightDockWidgetArea, self.recogn_widget)
         # self.connections.append(self.recogn_widget)
 
-        self.config_path = 'config.yaml'
+        self.config_path = None
+
+        self.histogram_dock_widget = None
         self.adding_window = AddingConnectionWindow()
         self.create_toolbar_actions()
         self.init_toolbar()
@@ -47,19 +64,22 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def init_toolbar(self):
         self.toolbar = QToolBar('Main')
-        self.addToolBar(Qt.Qt.ToolBarArea.LeftToolBarArea, self.toolbar)
+        self.addToolBar(Qt.Qt.ToolBarArea.TopToolBarArea, self.toolbar)
         self.toolbar.addAction(self.add_action)
         self.toolbar.addAction(self.save_config_action)
         self.toolbar.addAction(self.load_config_action)
         self.toolbar.addAction(self.exit_action)
 
     def open_adding_window(self):
+        self.adding_window.btn_add_connection.setDisabled(True)
         self.adding_window.show()
 
     def add_new_connection(self, info: dict):
-        new_connection = RecognitionViewerWidget(ip=info['ip'], port=info['port'],
+        new_connection = RecognitionViewerWidget(ip=info['ip'],
+                                                 port=info['port'],
                                                  window_name=info['name'],
                                                  weights_path=info['weights_path'])
+
         # new_connection.visibilityChanged.connect(lambda: self.handle_visibility_change(new_connection))
         self.addDockWidget(Qt.Qt.LeftDockWidgetArea, new_connection)
         try:
@@ -67,7 +87,16 @@ class MainWindow(QtWidgets.QMainWindow):
         except: pass
         self.connections.append(new_connection)
 
+        if self.histogram_dock_widget is None:
+            self.histogram_dock_widget = HistogramViewerWidget(new_connection.name)
+            self.addDockWidget(Qt.Qt.LeftDockWidgetArea, self.histogram_dock_widget)
+            self.tabifyDockWidget(self.connections[0], self.histogram_dock_widget)
+        else:
+            self.histogram_dock_widget.create_histogram(new_connection.name)
+        new_connection.dataThread.signal_recogn_df.connect(self.histogram_dock_widget.update_data)
+
     def load_config(self):
+        self.config_path, _ = QFileDialog.getOpenFileName(filter='*.yaml')
         try:
             with open(self.config_path, encoding='utf-8') as f:
                 self.config = dict(yaml.load(f, Loader=yaml.SafeLoader))
@@ -78,6 +107,7 @@ class MainWindow(QtWidgets.QMainWindow):
             logger.error(f'Error with loading config: {e}')
 
     def save_config(self):
+        self.config_path, _ = QFileDialog.getSaveFileName(filter='*.yaml')
         try:
             connections_config = []
             for conn in self.connections:
@@ -86,7 +116,7 @@ class MainWindow(QtWidgets.QMainWindow):
                              'ip': conn.ip,
                              'port': conn.port}
                 connections_config.append(temp_dict)
-            with open('config.yaml', 'w') as f:
+            with open(self.config_path, 'w') as f:
                 yaml.dump({'connections': connections_config}, f, sort_keys=False)
             logger.success(f'Config saved successfully!')
         except Exception as e:
@@ -127,9 +157,15 @@ class AddingConnectionWindow(QDialog):
         self.le_ip_address.setText('127.0.0.1')
         self.le_ip_address.setFixedWidth(180)
         self.l_port_numb = QLabel('Port number')
-        self.le_port_numb = QLineEdit()
-        self.le_port_numb.setText('10091')
-        self.le_port_numb.setFixedWidth(180)
+        # self.le_port_numb = QLineEdit()
+        # self.le_port_numb.setText('10091')
+        # self.le_port_numb.setFixedWidth(180)
+        self.spb_port_numb = QSpinBox()
+        self.spb_port_numb.setMaximum(66666)
+        self.spb_port_numb.setValue(10091)
+        self.spb_port_numb.setFixedWidth(180)
+        self.spb_port_numb.setSingleStep(1)
+
         self.btn_add_connection = QPushButton('Add connection')
         self.btn_add_connection.setDisabled(True)
 
@@ -157,7 +193,7 @@ class AddingConnectionWindow(QDialog):
 
         port_layout = QVBoxLayout()
         port_layout.addWidget(self.l_port_numb)
-        port_layout.addWidget(self.le_port_numb)
+        port_layout.addWidget(self.spb_port_numb)
         port_layout.addStretch(0)
 
         cntrls_layout = QHBoxLayout()
@@ -173,11 +209,11 @@ class AddingConnectionWindow(QDialog):
         self.signal_new_connection.emit({'name': self.le_name.text(),
                                          'weights_path': self.weights_path,
                                          'ip': self.le_ip_address.text(),
-                                         'port': int(self.le_port_numb.text())})
+                                         'port': int(self.spb_port_numb.text())})
         self.close()
 
     def open_weights_file(self):
-        self.weights_path, _ = QFileDialog.getOpenFileName()
+        self.weights_path, _ = QFileDialog.getOpenFileName(filter='*.pt')
         if self.weights_path[-3:] == '.pt':
             self.btn_add_connection.setEnabled(True)
             logger.success(f'Weights path is {self.weights_path}')
@@ -189,44 +225,48 @@ class DataThread(QThread):
     signal_image = pyqtSignal(np.ndarray)
     signal_recogn_values = pyqtSignal(np.ndarray)
     signal_clear_image = pyqtSignal(np.ndarray)
+    signal_recogn_df = pyqtSignal(str, pd.DataFrame)
 
-    def __init__(self, q):
+    def __init__(self, q, window_name: str):
         QThread.__init__(self)
         self.q = q
+        self.window_name = window_name
         self.start()
         self.save_status = False
 
     def run(self):
         while True:
             recogn_res = self.q.get()
+
             self.signal_image.emit(recogn_res['img_res'])
             self.signal_recogn_values.emit(recogn_res['predict_res'])
 
             if self.save_status:
                 self.signal_clear_image.emit(recogn_res['clear_image'])
 
+            self.signal_recogn_df.emit(self.window_name, recogn_res['predict_df'])
+
 
 class RecognitionViewerWidget(QDockWidget, QWidget):
     def __init__(self, ip: str, port: int, window_name: str, weights_path: str):
         super().__init__('Recognition')
 
-        self.name = window_name
+        self.name = window_name + f' ({str(port)})'
         self.ip = ip
         self.port = port
         self.weights_path = weights_path
+        self.classes = nn.map_list
         self.create_ui()
         self.q = Queue()
         self.process = None
         self.save_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images"
 
-        if window_name:
-            self.setWindowTitle(f"{self.name} ({str(self.port)})")
-        else:
-            self.setWindowTitle(f"{str(self.port)}")
+        self.setWindowTitle(f"{self.name}")
 
-        self.dataThread = DataThread(self.q)
+        self.dataThread = DataThread(self.q, self.name)
         self.dataThread.signal_image.connect(self.update_image)
         self.dataThread.signal_recogn_values.connect(self.chart_widget.set_data)
+
         self.dataThread.signal_clear_image.connect(self.save_image)
 
         self.last_time = time.time()
@@ -239,7 +279,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.label_fps = QLabel()
         self.label_fps.setFixedHeight(14)
         self.image_frame = QLabel()
-        self.chart_widget = Plot(400, 6)
+        self.chart_widget = Plot(400, nn.map_list)
         self.btn_start = QPushButton('Start')
         self.btn_start.setCheckable(True)
         self.btn_save = QPushButton('Save images')
@@ -275,7 +315,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         # create the label that holds the image
         self.image_frame.setMinimumSize(640, 640)  # Allow resizing to smaller sizes
         self.image_frame.setSizePolicy(Qt.QSizePolicy.Expanding, Qt.QSizePolicy.Expanding)
-        self.chart_widget.setMinimumSize(100, 100)  # Allow resizing to smaller sizes
+        self.chart_widget.setMinimumSize(100, 180)  # Allow resizing to smaller sizes
         self.image_frame.setSizePolicy(Qt.QSizePolicy.Expanding, Qt.QSizePolicy.Expanding)
 
     @pyqtSlot(np.ndarray)
@@ -350,24 +390,39 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
 
 
 class Plot(pyqtgraph.PlotWidget):
-    def __init__(self, max_history_size, numb_of_classes):
+    def __init__(self, max_history_size, classes):
         super().__init__()
-        self.numb_of_classes = numb_of_classes
+        self.classes = classes
+        self.colors = []
+        for name in self.classes:
+            self.colors.append(GLOBAL_COLORS[name])
         self.conf = {}
         self.max_history_size = max_history_size
         self.counter = 0
         self.history_size = 0
-        self.buffer = np.zeros(shape=(numb_of_classes, max_history_size), dtype=np.float64)
+        self.buffer = np.zeros(shape=(len(self.classes), max_history_size), dtype=np.float64)
         self.curves = None
         self.create_curves()
 
     def create_curves(self):
         self.curves = []
-        colors = [[255, 163, 72], [198, 70, 0], [129, 61, 156], [0, 255, 12], [26, 95, 180], [245, 194, 17]]
-        for i in range(self.numb_of_classes):
-            curve = self.plot(name=str(i), pen=colors[i])
-            curve.setPen(colors[i])
+
+        legend = pyqtgraph.LegendItem((20, 0), offset=(25, 1))
+        legend.setParentItem(self.getPlotItem())
+        legend.setBrush(pyqtgraph.mkBrush((50, 50, 50, 150)))  # Прозрачность фона
+
+        for i in range(len(self.classes)):
+            curve = self.plot(name=str(i), pen=self.colors[i])
+            curve.setPen(self.colors[i])
             self.curves.append(curve)
+            legend.addItem(curve, self.classes[i])
+
+        for sample, label in legend.items:
+            # Установить стиль шрифта
+            font = pyqtgraph.QtGui.QFont()
+            font.setPointSize(5)  # Размер шрифта
+            label.setFont(font)
+            label.setAttr('color', 'white')  # Цвет шрифта
 
     def append(self, data):
         self.counter += 1
@@ -385,6 +440,74 @@ class Plot(pyqtgraph.PlotWidget):
             data_view = self.buffer
         for i in range(len(self.curves)):
             self.curves[i].setData(y=data_view[i])
+
+
+class HistogramViewerWidget(QDockWidget, QWidget):
+
+    def __init__(self, window_name: str):
+        super().__init__('Histograms')
+        self.classes = nn.all_classes
+        self.numb_of_classes = (len(self.classes))
+        self.docks = {}
+
+        self.area = DockArea()
+        self.setWidget(self.area)
+        self.create_histogram(window_name)
+
+    def create_histogram(self, window_name: str):
+        dock = DockGraph(window_name, self.classes)
+
+        self.docks[window_name] = dock
+        self.area.addDock(dock, 'bottom')
+
+    def update_data(self, window_name, df):
+        group_res = df.groupby(['name'])['confidence'].max()
+        values = [group_res.get(label) for label in self.classes]
+        for i in range(len(values)):
+            if values[i] is None:
+                values[i] = 0
+
+        self.docks[window_name].update_plot(values)
+
+
+class DockGraph(Dock):
+    def __init__(self, window_name: str, classes):
+        super().__init__(window_name)
+
+        self.accum_size = 50
+        self.classes = classes
+        self.colors = []
+        for name in self.classes:
+            self.colors.append(GLOBAL_COLORS[name])
+        self.plot = pyqtgraph.plot()
+        self.plot.setYRange(0, self.accum_size, 0)
+        self.plot.showAxis('left', True)
+
+        # Set names om X axis
+        ticks = []
+        for i in range(len(self.classes)):
+            ticks.append((i, self.classes[i]))
+        ticks = [ticks]
+        ax = self.plot.getAxis('bottom')
+        ax.setTicks(ticks)
+        self.addWidget(self.plot)
+
+        self.deques = [deque(maxlen=self.accum_size) for i in range(len(self.classes))]
+
+    def update_plot(self, values):
+        for i in range(len(values)):
+            self.deques[i].appendleft(values[i])
+
+        accumed_val = [sum(deq) for deq in self.deques]
+
+        # Clear plot
+        for item in self.plot.items():
+            self.plot.removeItem(item)
+
+        # Draw bars
+        bar_item = pyqtgraph.BarGraphItem(x=np.arange(len(self.classes)), height=accumed_val,
+                                          width=0.7, brushes=self.colors)
+        self.plot.addItem(bar_item)
 
 
 def main_gui():

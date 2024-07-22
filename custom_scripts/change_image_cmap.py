@@ -2,8 +2,8 @@ import cv2
 import os
 
 
-img_folder_path = r"/yolov5/data/obj"
-new_folder_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj_bone"
+img_folder_path = r"C:\Users\v.stecko\Documents\rainbow"
+new_folder_path = r"C:\Users\v.stecko\Documents\jet"
 
 
 for file in os.listdir(img_folder_path):
@@ -14,7 +14,7 @@ for file in os.listdir(img_folder_path):
         name, extension = os.path.splitext(tail_path)
 
         image = cv2.imread(img_filepath)
-        new_image = cv2.applyColorMap(image, cv2.COLORMAP_BONE)
+        new_image = cv2.applyColorMap(image, cv2.COLORMAP_TURBO)
         # new_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         cv2.imwrite(filename=new_folder_path + '\\' + tail_path, img=new_image)
 

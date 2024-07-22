@@ -19,7 +19,7 @@ all_classes = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv
 map_list = ['noise', 'autel', 'fpv', 'dji', 'wifi', '3G/4G']
 HOST = "192.168.1.3"  # The server's hostname or IP address
 project_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
-weights_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_aftertrain\weights\best.pt"
+weights_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_aftertrain_2\weights\best.pt"
 save_path = None
 save_result_path = None
 RETURN_MODE = None         # None or "CUSTOM" or 'tcp'
@@ -60,8 +60,8 @@ class NNProcessing(object):
 
     def normalization4(self, data):
         data = np.transpose(data)
-        z_min = -120
-        z_max = -25
+        z_min = -110
+        z_max = -15
         norm_data = 255 * (data - z_min) / (z_max - z_min)
         norm_data = norm_data.astype(np.uint8)
         return norm_data
@@ -149,18 +149,24 @@ class Client(Process):
                         s.send(b'\x30')     # send for start
                         arr = s.recv(msg_len)
                         i = 0
-                        while msg_len > len(arr) and i < 50:
+                        while msg_len > len(arr) and i < 200:
                             i += 1
-                            time.sleep(0.010)
+                            time.sleep(0.005)
                             arr += s.recv(msg_len - len(arr))
                             logger.warning(f'Packet {i} missed. len = {len(arr)}')
 
                         if len(arr) == msg_len:
-                            header = arr[:16]
+
+                            logger.info(f'Header: {arr[:16].hex()}')
                             np_arr = np.frombuffer(arr[16:], dtype=np.int32)
-                            mag = (np_arr * 1.900165802481979E-9)**2 * 20
-                            log_mag = np.log10(mag) * 10
-                            img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
+                            # mag = (np_arr * 1.900165802481979E-9)**2 * 20
+                            mag = (np_arr * 3.29272254144689E-14)**2 * 20
+                            with np.errstate(divide='ignore'):
+                                log_mag = np.log10(mag) * 10
+                            # img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
+                            print(max(enumerate(log_mag), key=lambda _ : _ [1]))
+                            img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w), axes=(1,)))
+
                             result = self.nn.processing(img_arr)
                             df_result = result.pandas().xyxy[0]
 

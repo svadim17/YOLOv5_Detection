@@ -5,4 +5,4 @@ val: ../data/images/validation/
 nc: 6
 
 # class names
-names: ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv', '3G/4G']
+names: ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv']

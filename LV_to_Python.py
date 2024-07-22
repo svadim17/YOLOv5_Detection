@@ -15,7 +15,8 @@ h = 2048
 w = 1024
 msg_len = h*w
 
-
+all_classes = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv', '3G/4G']
+map_list = ['noise', 'autel', 'fpv', 'dji', 'wifi', '3G/4G']
 HOST = "127.0.0.1"  # The server's hostname or IP address
 project_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
 # weights_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_7classes_aftertrain_2\weights\best.pt"
@@ -99,7 +100,7 @@ class NNProcessing(object):
 
     def convert_result(self, df: pandas.DataFrame):
         labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag', 'autel_max_4n(t)']
-        map_list = ['noise', 'autel', 'fpv', 'dji', 'wifi', '3G/4G']
+
         group_res = df.groupby(['name'])['confidence'].max()
 
         # Получаем значения этих меток, если они существуют, иначе None
@@ -135,7 +136,7 @@ class Client(Process):
         self.q = None
 
     def set_queue(self, q: Queue):
-       self.q = q
+        self.q = q
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -147,7 +148,7 @@ class Client(Process):
                     self.nn = NNProcessing(name=str(self.address), weights=self.weights_path)
                     logger.info(f'NN type: {nn_type}')
 
-                    res_1 = np.arange(20)
+                    res_1 = np.arange(len(map_list) * 4)      # array of bytes to send (4 bytes for one class (float32)
                     while True:
                         s.send(res_1.tobytes())
                         arr = s.recv(msg_len)
@@ -166,7 +167,8 @@ class Client(Process):
                             if self.q is not None:
                                 self.q.put({'img_res': copy.deepcopy(result.render()[0]),
                                             'predict_res': self.nn.convert_result(df_result),
-                                            'clear_image': copy.deepcopy(img_arr)})
+                                            'clear_image': copy.deepcopy(img_arr),
+                                            'predict_df': df_result})
                             else:
                                 cv2.imshow(str(self.address), result.render()[0])
 
@@ -178,9 +180,9 @@ class Client(Process):
                                 # print(f"{self.nn.name} |Recogn res: {res_1}")
 
                             to_print = df_result[['name', 'confidence']]
-                            logger.info(f'Process {self.address}\n'
-                                        f'{to_print}\n'
-                                        f'--------------- Time:{time.time() - self.start_time} ----------------\n')
+                            # logger.info(f'Process {self.address}\n'
+                            #             f'{to_print}\n'
+                            #             f'--------------- Time:{time.time() - self.start_time} ----------------\n')
                             self.start_time = time.time()
 
                 except Exception as e:
