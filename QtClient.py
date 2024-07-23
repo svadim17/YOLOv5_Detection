@@ -1,11 +1,12 @@
 import time
 import cv2
+import pandas
 import pyqtgraph
 import yaml
 from PyQt5 import QtWidgets, Qt, QtCore
 from PyQt5.QtWidgets import (QApplication, QToolBar, QAction, QDockWidget, QWidget, QLabel,
                              QVBoxLayout, QHBoxLayout, QSplitter, QPushButton, QDialog,
-                             QLineEdit, QFileDialog, QSpinBox)
+                             QLineEdit, QFileDialog, QSpinBox, QCheckBox, QComboBox)
 from PyQt5.QtGui import QPixmap, QImage
 from loguru import logger
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QSize
@@ -14,7 +15,8 @@ import numpy as np
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
 import pandas as pd
-import Alinx_DualPort as nn
+# import Alinx_DualPort as nn
+import LV_to_Python as nn
 import datetime
 import yaml
 from collections import deque
@@ -50,6 +52,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.adding_window.signal_new_connection.connect(self.add_new_connection)
 
     def create_toolbar_actions(self):
+        self.start_action = QAction('Start all')
+        self.start_action.triggered.connect(self.start_all)
+
         self.add_action = QAction('Add connection')
         self.add_action.triggered.connect(self.open_adding_window)
 
@@ -65,6 +70,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def init_toolbar(self):
         self.toolbar = QToolBar('Main')
         self.addToolBar(Qt.Qt.ToolBarArea.TopToolBarArea, self.toolbar)
+        self.toolbar.addAction(self.start_action)
         self.toolbar.addAction(self.add_action)
         self.toolbar.addAction(self.save_config_action)
         self.toolbar.addAction(self.load_config_action)
@@ -131,6 +137,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.dock_widget.setFloating(False)
             self.dock_widget.setVisible(True)
             self.addDockWidget(Qt.Qt.RightDockWidgetArea, self.dock_widget)
+
+    def start_all(self):
+        for connection in self.connections:
+            connection.init_client()
 
 
 class AddingConnectionWindow(QDialog):
@@ -224,8 +234,8 @@ class AddingConnectionWindow(QDialog):
 class DataThread(QThread):
     signal_image = pyqtSignal(np.ndarray)
     signal_recogn_values = pyqtSignal(np.ndarray)
-    signal_clear_image = pyqtSignal(np.ndarray)
-    signal_recogn_df = pyqtSignal(str, pd.DataFrame)
+    signal_clear_image = pyqtSignal(np.ndarray, dict)
+    signal_recogn_df = pyqtSignal(str, dict)
 
     def __init__(self, q, window_name: str):
         QThread.__init__(self)
@@ -233,6 +243,22 @@ class DataThread(QThread):
         self.window_name = window_name
         self.start()
         self.save_status = False
+        self.trigger_status = False
+
+    def processing_results(self, df: pd.DataFrame):
+        group_res = df.groupby(['name'])['confidence'].max()
+        result_dict = {}
+
+        # values = [group_res.get(label) for label in nn.all_classes]
+
+        for label in nn.all_classes:
+            result_dict[label] = group_res.get(label)
+
+        for key, value in result_dict.items():
+            if value is None:
+                result_dict[key] = 0
+
+        return result_dict
 
     def run(self):
         while True:
@@ -241,10 +267,12 @@ class DataThread(QThread):
             self.signal_image.emit(recogn_res['img_res'])
             self.signal_recogn_values.emit(recogn_res['predict_res'])
 
-            if self.save_status:
-                self.signal_clear_image.emit(recogn_res['clear_image'])
+            processed_dict = self.processing_results(df=recogn_res['predict_df'])
 
-            self.signal_recogn_df.emit(self.window_name, recogn_res['predict_df'])
+            if self.save_status:
+                self.signal_clear_image.emit(recogn_res['clear_image'], processed_dict)
+
+            self.signal_recogn_df.emit(self.window_name, processed_dict)
 
 
 class RecognitionViewerWidget(QDockWidget, QWidget):
@@ -259,7 +287,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.create_ui()
         self.q = Queue()
         self.process = None
-        self.save_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images"
+        self.save_path = r"C:\Users\v.stecko\Desk5top\YOLOv5 Project\yolov5\saved_images"
 
         self.setWindowTitle(f"{self.name}")
 
@@ -267,12 +295,14 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.dataThread.signal_image.connect(self.update_image)
         self.dataThread.signal_recogn_values.connect(self.chart_widget.set_data)
 
-        self.dataThread.signal_clear_image.connect(self.save_image)
+        self.dataThread.signal_clear_image.connect(self.check_trigger)
 
         self.last_time = time.time()
+        self.fps_deque = deque(maxlen=10)
 
         self.btn_start.clicked.connect(self.start_button_pressed)
         self.btn_save.clicked.connect(self.change_save_status)
+
 
     def create_ui(self):
         self.pixmap = QPixmap()
@@ -281,16 +311,30 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.image_frame = QLabel()
         self.chart_widget = Plot(400, nn.map_list)
         self.btn_start = QPushButton('Start')
+        self.btn_start.setFixedWidth(60)
         self.btn_start.setCheckable(True)
         self.btn_save = QPushButton('Save images')
+        self.btn_save.setFixedWidth(100)
         self.btn_save.setCheckable(True)
+        self.l_cb_trigger_class = QLabel('Class for trigger')
+        self.cb_trigger_class = QComboBox()
+        for name in nn.all_classes:
+            self.cb_trigger_class.addItem(name)
+        self.cb_trigger_class.addItem('Any')
 
         self.main_layout = QVBoxLayout()
+
+        cb_trigger_layout = QVBoxLayout()
+        cb_trigger_layout.addWidget(self.l_cb_trigger_class)
+        cb_trigger_layout.addWidget(self.cb_trigger_class)
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.label_fps)
         header_layout.addWidget(self.btn_start)
         header_layout.addWidget(self.btn_save)
+        header_layout.addSpacing(40)
+        header_layout.addLayout(cb_trigger_layout)
+
         image_layout = QHBoxLayout()
         image_layout.addWidget(self.image_frame)
         chart_layout = QHBoxLayout()
@@ -324,7 +368,8 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         qt_img = self.convert_cv_qt(cv_img)
         self.image_frame.setPixmap(qt_img)
         time_now = time.time()
-        self.label_fps.setText(f'FPS = {1 / (time_now - self.last_time):.2f}')
+        self.fps_deque.appendleft(1 / (time_now - self.last_time))
+        self.label_fps.setText(f'FPS = {(sum(self.fps_deque) / len(self.fps_deque)):.2f}')
         self.last_time = time_now
 
     def convert_cv_qt(self, cv_img):
@@ -349,20 +394,22 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
             self.process = nn.Client((self.ip, self.port), weights_path=self.weights_path)
             self.process.set_queue(self.q)
             self.process.start()
+            self.btn_start.setText('Stop')
+            self.btn_start.setChecked(True)
 
     def kill_client(self):
         if self.process is not None:
             self.process.kill()
             self.process = None
+            self.btn_start.setText('Start')
+            self.btn_start.setChecked(False)
 
     def start_button_pressed(self):
         try:
             if self.btn_start.isChecked():
-                self.btn_start.setText('Stop')
                 self.init_client()
 
             if not self.btn_start.isChecked():
-                self.btn_start.setText('Start')
                 self.kill_client()
                 logger.info('All processes were killed.')
         except Exception as e:
@@ -382,11 +429,21 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         except Exception as e:
             logger.error(e)
 
+    def check_trigger(self, arr, result_dict):
+        try:
+            if self.cb_trigger_class.currentText() == 'Any':
+                self.save_image(arr)
+            elif result_dict[self.cb_trigger_class.currentText()] > 0.2:
+                self.save_image(arr)
+        except KeyError as e:
+            logger.error(e)
+
     def save_image(self, arr):
         color_image = cv2.applyColorMap(arr, cv2.COLORMAP_RAINBOW)
         screen = cv2.resize(color_image, (640, 640))
         filename = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
-        cv2.imwrite(filename=self.save_path + '\\' + filename + '.jpg', img=screen)
+        if not cv2.imwrite(filename=self.save_path + '\\' + filename + '.jpg', img=screen):
+            logger.error('Error with saving images!')
 
 
 class Plot(pyqtgraph.PlotWidget):
@@ -460,14 +517,8 @@ class HistogramViewerWidget(QDockWidget, QWidget):
         self.docks[window_name] = dock
         self.area.addDock(dock, 'bottom')
 
-    def update_data(self, window_name, df):
-        group_res = df.groupby(['name'])['confidence'].max()
-        values = [group_res.get(label) for label in self.classes]
-        for i in range(len(values)):
-            if values[i] is None:
-                values[i] = 0
-
-        self.docks[window_name].update_plot(values)
+    def update_data(self, window_name, result_dict: dict):
+        self.docks[window_name].update_plot(list(result_dict.values()))
 
 
 class DockGraph(Dock):

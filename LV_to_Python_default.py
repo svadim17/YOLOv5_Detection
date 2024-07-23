@@ -9,16 +9,12 @@ import torch
 import numpy as np
 from loguru import logger
 
-
-h = 2048
-w = 1024
-msg_len = h*w
 map_list = ['noise', 'autel', 'fpv', 'dji', 'wifi']
 
 HOST = "127.0.0.1"  # The server's hostname or IP address
-project_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
-weights_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\exampe_18\weights\best.pt"
-save_path = None
+project_path = r"D:\YOLOv5 Project"
+weights_path = r"D:\YOLOv5 Project\runs\train\yolov5m_6classes_aftertrain\weights\best.pt"
+save_path = r'C:\Users\User\Documents\photo'
 save_result_path = None
 RETURN_MODE = 'tcp'          # None or "CUSTOM" or 'tcp'
 
@@ -42,7 +38,7 @@ class NNProcessing(object):
                                source='local')
 
     def normalization(self, data):
-        data = np.transpose(data + 122)
+        data = np.transpose(data + 130)
         z_min = -45
         z_max = 35
         norm_data = 255 * (data - z_min) / (z_max - z_min)
@@ -50,6 +46,7 @@ class NNProcessing(object):
         return norm_data
 
     def processing(self, data):
+
         norm_data = self.normalization(data)
         # Use OpenCV to create a color image from the normalized data
         color_image = cv2.applyColorMap(norm_data, cv2.COLORMAP_RAINBOW)
@@ -63,7 +60,7 @@ class NNProcessing(object):
         # set the model use the screen
         result = self.model(screen, size=640)
 
-        cv2.imshow(self.name, result.render()[0])
+        # cv2.imshow(self.name, result.render()[0])
 
         if save_result_path is not None:
             filename = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
@@ -74,7 +71,7 @@ class NNProcessing(object):
         return result
 
     def convert_result(self, df: pandas.DataFrame):
-        labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag']
+        labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag', 'autel_max_4n(t)']
 
         group_res = df.groupby(['name'])['confidence'].max()
 
@@ -114,13 +111,21 @@ class Client(Process):
                 try:
                     s.connect(self.address)
                     logger.success(f'Connected to {self.address}!')
-                    nn_type = s.recv(2)
+                    nn_type = int.from_bytes(s.recv(2), byteorder = 'big')
                     self.nn = NNProcessing(name=str(self.address))
                     logger.info(f'NN type: {nn_type}')
-
+                    if nn_type == 80:
+                        h = 2048
+                    elif nn_type == 160:
+                        h = 4096
+                    else:
+                        h = 2048
+                    w = 1024
+                    msg_len = h*w + 8
                     res_1 = np.arange(len(map_list) * 4)
+                    freq = np.arange(8)
                     while True:
-                        s.send(res_1.tobytes())
+                        s.send(freq.tobytes() + res_1.tobytes())
                         arr = s.recv(msg_len)
                         i = 0
                         while msg_len > len(arr) and i < 10:
@@ -130,11 +135,11 @@ class Client(Process):
                             logger.warning(f'Packet {i} missed.')
                         np_arr = np.frombuffer(arr, dtype=np.int8)
                         if np_arr.size == msg_len:
+                            freq = np_arr[0:8]
+                            data = np_arr[8:].reshape(h, w)
 
-                            result = self.nn.processing(np_arr.reshape(h, w))
-
+                            result= self.nn.processing(data)
                             df_result = result.pandas().xyxy[0]
-                            # print(df_result)
 
                             if RETURN_MODE == 'csv':
                                 df_result.to_csv(r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\return_example.csv')
@@ -144,7 +149,7 @@ class Client(Process):
                                 # print(f"{self.nn.name} |Recogn res: {res_1}")
 
                             to_print = df_result[['name', 'confidence']]
-                            logger.info(f'Process {self.address}\n'
+                            logger.info(f'Process {self.address} __ data size: {data.shape} \n'
                                         f'{to_print}\n'
                                         f'--------------- Time:{time.time() - self.start_time} ----------------\n')
                             self.start_time = time.time()
