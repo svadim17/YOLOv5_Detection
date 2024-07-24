@@ -287,7 +287,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.create_ui()
         self.q = Queue()
         self.process = None
-        self.save_path = r"C:\Users\v.stecko\Desk5top\YOLOv5 Project\yolov5\saved_images"
+        self.save_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images"
 
         self.setWindowTitle(f"{self.name}")
 
@@ -303,7 +303,6 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.btn_start.clicked.connect(self.start_button_pressed)
         self.btn_save.clicked.connect(self.change_save_status)
 
-
     def create_ui(self):
         self.pixmap = QPixmap()
         self.label_fps = QLabel()
@@ -318,21 +317,27 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.btn_save.setCheckable(True)
         self.l_cb_trigger_class = QLabel('Class for trigger')
         self.cb_trigger_class = QComboBox()
+        self.cb_trigger_class.setFixedWidth(120)
         for name in nn.all_classes:
             self.cb_trigger_class.addItem(name)
         self.cb_trigger_class.addItem('Any')
 
         self.main_layout = QVBoxLayout()
 
+        start_btn_layout = QVBoxLayout()
+        start_btn_layout.addWidget(QLabel())
+        start_btn_layout.addWidget(self.btn_start)
+        save_img_layout = QVBoxLayout()
+        save_img_layout.addWidget(QLabel())
+        save_img_layout.addWidget(self.btn_save)
         cb_trigger_layout = QVBoxLayout()
         cb_trigger_layout.addWidget(self.l_cb_trigger_class)
         cb_trigger_layout.addWidget(self.cb_trigger_class)
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.label_fps)
-        header_layout.addWidget(self.btn_start)
-        header_layout.addWidget(self.btn_save)
-        header_layout.addSpacing(40)
+        header_layout.addLayout(start_btn_layout)
+        header_layout.addLayout(save_img_layout)
         header_layout.addLayout(cb_trigger_layout)
 
         image_layout = QHBoxLayout()

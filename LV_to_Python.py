@@ -60,8 +60,8 @@ class NNProcessing(object):
 
     def normalization4(self, data):
         data = np.transpose(data + 122)
-        z_min = -45
-        z_max = 35
+        z_min = -40
+        z_max = 40
         norm_data = 255 * (data - z_min) / (z_max - z_min)
         norm_data = norm_data.astype(np.uint8)
         return norm_data
@@ -187,6 +187,7 @@ class Client(Process):
 
                 except Exception as e:
                     # print(f'Connection failed\n{e}')
+                    s.close()
                     logger.error(e)
                     time.sleep(1)
             # print(f'Port №{self.address} finished work')

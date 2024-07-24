@@ -27,8 +27,8 @@ def get_annotation_paths(directory):
     annotation_paths = []
     for file in os.listdir(directory):
         if file.endswith('.txt'):
-            img_filepath = os.path.join(directory, file)    # get full path for signal
-            annotation_paths.append(img_filepath)
+            annotation_filepath = os.path.join(directory, file)    # get full path for annotation
+            annotation_paths.append(annotation_filepath)
     return annotation_paths
 
 

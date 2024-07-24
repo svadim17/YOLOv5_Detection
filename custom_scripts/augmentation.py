@@ -1,10 +1,18 @@
+import os
+import shutil
 import albumentations as A
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
+from tqdm import tqdm
+
 
 ALL_CLASSES = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv']
 BOX_COLOR = (255, 255, 255)     # white
 TEXT_COLOR = (255, 0, 0)        # red
+OBJ_PATH = r"D:\YOLOv5 DATASET\6 steps 6 classes\obj"
+NEW_OBJ_PATH = r"D:\YOLOv5 DATASET\6 steps 6 classes\augmentated_obj"
+BBOXES_STATUS = False
 
 
 def visualize_bbox(img, bbox, class_name, thickness=2):
@@ -55,29 +63,60 @@ def sort_annotation_file(text: list):
     return classes, bboxes
 
 
+def get_image_paths(directory):
+    image_paths = []
+    for file in os.listdir(directory):
+        if file.endswith('.jpg'):
+            img_filepath = os.path.join(directory, file)    # get full path for signal
+            image_paths.append(img_filepath)
+    return image_paths
+
+
+def get_annotation_paths(directory):
+    annotation_paths = []
+    for file in os.listdir(directory):
+        if file.endswith('.txt'):
+            annotation_filepath = os.path.join(directory, file)    # get full path for annotation
+            annotation_paths.append(annotation_filepath)
+    return annotation_paths
+
+
 if __name__ == '__main__':
-    image_path = r"D:\YOLOv5 DATASET\STEP 1\ImgLab MARKED\autel_evo_lite_with_wifi\images\640_autel_lite_with_wifi_4.jpg"
-    annotation_path = r"D:\YOLOv5 DATASET\STEP 1\ImgLab MARKED\autel_evo_lite_with_wifi\labels\640_autel_lite_with_wifi_4.txt"
+    images_paths = get_image_paths(directory=OBJ_PATH)
+    annotations_paths = get_annotation_paths(directory=OBJ_PATH)
 
-    image = cv2.imread(image_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    for i in tqdm(range(len(images_paths)), desc=f'Processing files...'):
+        head_path_img, tail_path_img = os.path.split(images_paths[i])
+        head_path_txt, tail_path_txt = os.path.split(annotations_paths[i])
 
-    with open(annotation_path, 'r') as f:
-        lines = f.readlines()
+        image = cv2.imread(images_paths[i], cv2.IMREAD_COLOR)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    classes, bboxes = sort_annotation_file(lines)
+        with open(annotations_paths[i], 'r') as f:
+            lines = f.readlines()
 
-    visualize(image, bboxes, classes)
+        if BBOXES_STATUS:
+            classes, bboxes = sort_annotation_file(lines)
+            visualize(image, bboxes, classes)
+            aug = A.Compose(
+                [A.ChannelShuffle(p=1)],
+                bbox_params=A.BboxParams(format='yolo', label_fields=['classes'])
+            )
+            aug_result = aug(image=image, bboxes=bboxes, classes=classes)
+        else:
+            aug = A.Compose(
+                [A.ChannelShuffle(p=1)],
+                )
+            aug_result = aug(image=image)
 
-    transform = A.Compose(
-        [A.HorizontalFlip(p=0.5)],
-        bbox_params=A.BboxParams(format='yolo', label_fields=['classes'])
-    )
+            new_filename_img = NEW_OBJ_PATH + '\\' + 'augm_' + tail_path_img
+            new_filename_txt = NEW_OBJ_PATH + '\\' + 'augm_' + tail_path_txt
 
-    transformed = transform(image=image, bboxes=bboxes, classes=classes)
+            cv2.imwrite(filename=new_filename_img, img=aug_result['image'])
+            shutil.copy(annotations_paths[i], new_filename_txt)
 
-    visualize(transformed['image'],
-              transformed['bboxes'],
-              transformed['classes'])
 
-    plt.show()
+        # visualize(aug_result['image'],
+        #           aug_result['bboxes'],
+        #           aug_result['classes'])
+        # plt.show()

@@ -194,6 +194,7 @@ class Client(Process):
                 except Exception as e:
                     # print(f'Connection failed\n{e}')
                     logger.error(e)
+                    s.close()
                     time.sleep(1)
             # print(f'Port №{self.address} finished work')
             logger.info(f'Port №{self.address} finished work')
