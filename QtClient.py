@@ -15,22 +15,22 @@ import numpy as np
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
 import pandas as pd
-# import Alinx_DualPort as nn
-import LV_to_Python as nn
+import Alinx_DualPort as nn
+# import LV_to_Python as nn
 import datetime
 import yaml
 from collections import deque
 
 
-GLOBAL_COLORS = {'noise': [220, 138, 221],
-                 'dji': [255, 163, 72],
-                 'wifi': [0, 255, 12],
-                 'autel': [165, 29, 45],
-                 'autel_lite': [129, 61, 156],
-                 'autel_max_4n(t)': [198, 70, 0],
-                 'autel_tag': [26, 95, 180],
-                 'fpv': [98, 160, 234],
-                 '3G/4G': [255, 255, 255],
+GLOBAL_COLORS = {'noise': (220, 138, 221),
+                 'dji': (255, 163, 72),
+                 'wifi': (0, 255, 12),
+                 'autel': (165, 29, 45),
+                 'autel_lite': (129, 61, 156),
+                 'autel_max_4n(t)': (198, 70, 0),
+                 'autel_tag': (26, 95, 180),
+                 'fpv': (98, 160, 234),
+                 '3G/4G': (255, 255, 255),
                  }
 
 
@@ -308,7 +308,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.label_fps = QLabel()
         self.label_fps.setFixedHeight(14)
         self.image_frame = QLabel()
-        self.chart_widget = Plot(400, nn.map_list)
+        self.chart_widget = Plot(150, nn.map_list)
         self.btn_start = QPushButton('Start')
         self.btn_start.setFixedWidth(60)
         self.btn_start.setCheckable(True)
@@ -416,7 +416,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
 
             if not self.btn_start.isChecked():
                 self.kill_client()
-                logger.info('All processes were killed.')
+                logger.info(f'Process \'{self.name}\' was killed.')
         except Exception as e:
             logger.error(e)
 
@@ -517,10 +517,19 @@ class HistogramViewerWidget(QDockWidget, QWidget):
         self.create_histogram(window_name)
 
     def create_histogram(self, window_name: str):
+        # w1 = pyqtgraph.LayoutWidget()
         dock = DockGraph(window_name, self.classes)
-
         self.docks[window_name] = dock
         self.area.addDock(dock, 'bottom')
+        # self.create_indicators()
+
+    def create_indicators(self):
+        self.indicators = {}
+        for name in nn.all_classes:
+            self.indicators[name] = QPushButton(name)
+            self.area.ad
+
+
 
     def update_data(self, window_name, result_dict: dict):
         self.docks[window_name].update_plot(list(result_dict.values()))
@@ -546,15 +555,38 @@ class DockGraph(Dock):
         ticks = [ticks]
         ax = self.plot.getAxis('bottom')
         ax.setTicks(ticks)
-        self.addWidget(self.plot)
+        self.addWidget(self.plot, row=0, colspan=len(self.classes))
+        self.indicators = {}
+        i = 0
+        for name in nn.all_classes:
+            self.indicators[name] = QPushButton(name)
+            self.indicators[name].setCheckable(True)
+
+            self.indicators[name].setStyleSheet("QPushButton:open {"
+                                                "background-color: rgb" + str(GLOBAL_COLORS[name]) + ";"
+                                                "}")
+            self.addWidget(self.indicators[name], row=1, col=i)
+            i += 1
 
         self.deques = [deque(maxlen=self.accum_size) for i in range(len(self.classes))]
+
+    def make_decision(self, accumed_val):
+
+        for i in range(len(self.indicators)):
+            if accumed_val[i] >= 12.5:
+                state = True
+            else:
+                state = False
+            list(self.indicators.values())[i].setChecked(state)
+
+
 
     def update_plot(self, values):
         for i in range(len(values)):
             self.deques[i].appendleft(values[i])
 
         accumed_val = [sum(deq) for deq in self.deques]
+        self.make_decision(accumed_val)
 
         # Clear plot
         for item in self.plot.items():

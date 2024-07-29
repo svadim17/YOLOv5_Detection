@@ -60,8 +60,8 @@ class NNProcessing(object):
 
     def normalization4(self, data):
         data = np.transpose(data)
-        z_min = -110
-        z_max = -15
+        z_min = -75
+        z_max = 20
         norm_data = 255 * (data - z_min) / (z_max - z_min)
         norm_data = norm_data.astype(np.uint8)
         return norm_data
