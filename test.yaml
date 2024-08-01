@@ -1,13 +1,5 @@
 connections:
-- name: Default 6 classes
-  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_aftertrain_2/weights/best.pt
+- name: Augmentated 2
+  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED_3/weights/best.pt
   ip: 127.0.0.1
   port: 10091
-- name: Augmentated 1
-  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED/weights/best.pt
-  ip: 127.0.0.1
-  port: 10092
-- name: Augmentated 2
-  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED_2/weights/best.pt
-  ip: 127.0.0.1
-  port: 10093

@@ -1,17 +1,17 @@
 connections:
 - name: '1CH'
-  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_aftertrain_2/weights/best.pt
+  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED_3/weights/best.pt
   ip: 127.0.0.1
   port: 10091
 - name: '2CH'
-  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_aftertrain_2/weights/best.pt
+  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED_3/weights/best.pt
   ip: 127.0.0.1
   port: 10092
 - name: '3CH'
-  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_aftertrain_2/weights/best.pt
+  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED_3/weights/best.pt
   ip: 127.0.0.1
   port: 10093
 - name: '4CH'
-  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_aftertrain_2/weights/best.pt
+  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED_3/weights/best.pt
   ip: 127.0.0.1
   port: 10094

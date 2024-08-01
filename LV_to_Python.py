@@ -23,6 +23,8 @@ project_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
 save_path = None
 save_result_path = None
 RETURN_MODE = 'tcp'          # None or "CUSTOM" or 'tcp'
+IMG_SIZE = (640, 640)
+FREQ_SMPLS = 80000000
 
 
 class NNProcessing(object):

@@ -10,9 +10,9 @@ from tqdm import tqdm
 ALL_CLASSES = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv']
 BOX_COLOR = (255, 255, 255)     # white
 TEXT_COLOR = (255, 0, 0)        # red
-OBJ_PATH = r"D:\YOLOv5 DATASET\6 steps 6 classes\obj"
-NEW_OBJ_PATH = r"D:\YOLOv5 DATASET\6 steps 6 classes\augmentated_obj"
-SAVE_STATUS = True
+OBJ_PATH = r"D:\YOLOv5 DATASET\7 steps 6 classes\step7"
+NEW_OBJ_PATH = r"D:\YOLOv5 DATASET\7 steps 6 classes\step7_augmentated"
+SAVE_STATUS = True      # True or False
 
 
 def visualize_bbox(img, bbox, class_name, thickness=2):

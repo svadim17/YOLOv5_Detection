@@ -15,8 +15,8 @@ import numpy as np
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
 import pandas as pd
-import Alinx_DualPort as nn
-# import LV_to_Python as nn
+# import Alinx_DualPort as nn
+import LV_to_Python as nn
 import datetime
 import yaml
 from collections import deque
@@ -32,6 +32,7 @@ GLOBAL_COLORS = {'noise': (220, 138, 221),
                  'fpv': (98, 160, 234),
                  '3G/4G': (255, 255, 255),
                  }
+
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -234,7 +235,7 @@ class AddingConnectionWindow(QDialog):
 class DataThread(QThread):
     signal_image = pyqtSignal(np.ndarray)
     signal_recogn_values = pyqtSignal(np.ndarray)
-    signal_clear_image = pyqtSignal(np.ndarray, dict)
+    signal_images_for_save = pyqtSignal(np.ndarray, np.ndarray, dict)
     signal_recogn_df = pyqtSignal(str, dict)
 
     def __init__(self, q, window_name: str):
@@ -246,6 +247,8 @@ class DataThread(QThread):
         self.trigger_status = False
 
     def processing_results(self, df: pd.DataFrame):
+        self.get_object_freq(df)
+
         group_res = df.groupby(['name'])['confidence'].max()
         result_dict = {}
 
@@ -260,6 +263,23 @@ class DataThread(QThread):
 
         return result_dict
 
+    def get_object_freq(self, df: pd.DataFrame):
+        max_confidence_rows = df.loc[df.groupby('class')['confidence'].idxmax()]
+
+        # Создание объектов для каждого класса
+        objects = []
+        for _, row in max_confidence_rows.iterrows():
+            detection = RecognitionObject(
+                ymin=row['ymin'],
+                ymax=row['ymax'],
+                confidence=row['confidence'],
+                class_id=row['class'],
+                name=row['name']
+            )
+            objects.append(detection)
+            print(detection)
+
+
     def run(self):
         while True:
             recogn_res = self.q.get()
@@ -270,7 +290,7 @@ class DataThread(QThread):
             processed_dict = self.processing_results(df=recogn_res['predict_df'])
 
             if self.save_status:
-                self.signal_clear_image.emit(recogn_res['clear_image'], processed_dict)
+                self.signal_images_for_save.emit(recogn_res['clear_image'],recogn_res['img_res'], processed_dict)
 
             self.signal_recogn_df.emit(self.window_name, processed_dict)
 
@@ -295,7 +315,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.dataThread.signal_image.connect(self.update_image)
         self.dataThread.signal_recogn_values.connect(self.chart_widget.set_data)
 
-        self.dataThread.signal_clear_image.connect(self.check_trigger)
+        self.dataThread.signal_images_for_save.connect(self.check_trigger)
 
         self.last_time = time.time()
         self.fps_deque = deque(maxlen=10)
@@ -434,20 +454,25 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         except Exception as e:
             logger.error(e)
 
-    def check_trigger(self, arr, result_dict):
+    def check_trigger(self, clear_arr, detected_arr, result_dict):
         try:
             if self.cb_trigger_class.currentText() == 'Any':
-                self.save_image(arr)
+                self.save_image(clear_arr, detected_arr)
             elif result_dict[self.cb_trigger_class.currentText()] > 0.2:
-                self.save_image(arr)
+                self.save_image(clear_arr, detected_arr)
         except KeyError as e:
             logger.error(e)
 
-    def save_image(self, arr):
-        color_image = cv2.applyColorMap(arr, cv2.COLORMAP_RAINBOW)
-        screen = cv2.resize(color_image, (640, 640))
+    def save_image(self, clear_arr, detected_arr):
+        color_clear_image = cv2.applyColorMap(clear_arr, cv2.COLORMAP_RAINBOW)
+        screen = cv2.resize(color_clear_image, (640, 640))
         filename = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
         if not cv2.imwrite(filename=self.save_path + '\\' + filename + '.jpg', img=screen):
+            logger.error('Error with saving images!')
+
+        color_detected_image = cv2.applyColorMap(detected_arr, cv2.COLORMAP_RAINBOW)
+        screen = cv2.resize(color_detected_image, (640, 640))
+        if not cv2.imwrite(filename=self.save_path + '\\' + filename + '_detected.jpg', img=screen):
             logger.error('Error with saving images!')
 
 
@@ -521,15 +546,6 @@ class HistogramViewerWidget(QDockWidget, QWidget):
         dock = DockGraph(window_name, self.classes)
         self.docks[window_name] = dock
         self.area.addDock(dock, 'bottom')
-        # self.create_indicators()
-
-    def create_indicators(self):
-        self.indicators = {}
-        for name in nn.all_classes:
-            self.indicators[name] = QPushButton(name)
-            self.area.ad
-
-
 
     def update_data(self, window_name, result_dict: dict):
         self.docks[window_name].update_plot(list(result_dict.values()))
@@ -571,15 +587,12 @@ class DockGraph(Dock):
         self.deques = [deque(maxlen=self.accum_size) for i in range(len(self.classes))]
 
     def make_decision(self, accumed_val):
-
         for i in range(len(self.indicators)):
             if accumed_val[i] >= 12.5:
                 state = True
             else:
                 state = False
             list(self.indicators.values())[i].setChecked(state)
-
-
 
     def update_plot(self, values):
         for i in range(len(values)):
@@ -596,6 +609,32 @@ class DockGraph(Dock):
         bar_item = pyqtgraph.BarGraphItem(x=np.arange(len(self.classes)), height=accumed_val,
                                           width=0.7, brushes=self.colors)
         self.plot.addItem(bar_item)
+
+
+class RecognitionObject:
+    def __init__(self, ymin, ymax, confidence, class_id, name):
+        super().__init__()
+        self.center_freq, self.width_freq = self.calculate_frequency(ymin, ymax)
+        self.confidence = confidence
+        self.class_id = class_id
+        self.name = name
+
+    def calculate_frequency(self, ymin, ymax):
+        """ Функция считает частоту сигнала относительно центральной частоты (нулевой) """
+
+        f_min = (nn.FREQ_SMPLS / nn.IMG_SIZE[0]) * ymin
+        f_max = (nn.FREQ_SMPLS / nn.IMG_SIZE[0]) * ymax
+        width = f_max - f_min
+        f = width / 2 + f_min
+        f_center = nn.FREQ_SMPLS / 2 - f
+        return f_center * (-1), width
+
+    def __repr__(self):
+        return (f"Detection( name={self.name}, "
+                f"class_id={self.class_id}, "
+                f"confidence={self.confidence}, "
+                f"center_frequency={self.center_freq}, "
+                f"width_frequency={self.width_freq})")
 
 
 def main_gui():

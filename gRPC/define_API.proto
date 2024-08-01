@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dataProcessing;
+
+enum DroneTypes {
+  autel = 0;
+  fpv = 1;
+  dji = 2;
+  wifi = 3;
+}
+
+message Result {
+    DroneTypes type = 1;
+    bool state = 2;
+}
+
+// Сообщение для отправки данных
+message DataRequest {
+    int32 band = 1;
+    repeated Result results = 3;
+}
+
+
+// Сообщение для ответа сервера
+message DataResponse {
+    string message = 1; // Ответное сообщение от сервера
+}
+
+// Сервис обработки данных
+service DataProcessingService {
+    rpc SendData (DataRequest) returns (DataResponse); // RPC для отправки данных
+}

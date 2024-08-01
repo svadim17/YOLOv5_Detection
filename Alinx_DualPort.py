@@ -11,7 +11,8 @@ from loguru import logger
 import copy
 
 
-h = 2048
+Fs = 122880000
+h = 3072            # 2048 or 3072
 w = 1024
 msg_len = h*w*4+16
 
@@ -33,8 +34,8 @@ class NNProcessing(object):
         self.device = torch.device("cuda")
         self.last_time = time.time()
         logger.info(f'Using device: {self.device}')
-        self.f = np.arange(80000000 / (-2), 80000000 / 2, 80000000 / 1024)
-        self.t = np.arange(0, 1024*2048/80000000, 1024/80000000)
+        self.f = np.arange(Fs / (-2), Fs / 2, Fs / w)
+        self.t = np.arange(0, w*h/Fs, w/Fs)
         self.load_model(weights)
         self.name = name
 
