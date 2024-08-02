@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package NeuroDataProcessing;
+
+enum DroneType {
+  Autel = 0;
+  Fpv = 1;
+  Dji = 2;
+  Wifi = 3;
+}
+
+enum Band {
+  Band2p4 = 0;
+  Band5p8 = 1;
+}
+
+message UavObject {
+    DroneType type = 1;
+    bool state = 2;
+}
+
+message DataResponse {
+    Band band = 1;
+    repeated UavObject uavs = 2;
+}
+
+message VoidRequest {
+
+}
+
+// Сервис обработки данных
+service DataProcessingService {
+    rpc ProceedDataStream (VoidRequest) returns (stream DataResponse); // RPC для отправки данных
+}

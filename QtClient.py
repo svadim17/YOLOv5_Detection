@@ -1,8 +1,6 @@
 import time
 import cv2
-import pandas
 import pyqtgraph
-import yaml
 from PyQt5 import QtWidgets, Qt, QtCore
 from PyQt5.QtWidgets import (QApplication, QToolBar, QAction, QDockWidget, QWidget, QLabel,
                              QVBoxLayout, QHBoxLayout, QSplitter, QPushButton, QDialog,
@@ -15,11 +13,11 @@ import numpy as np
 from pyqtgraph.dockarea.Dock import Dock
 from pyqtgraph.dockarea.DockArea import DockArea
 import pandas as pd
-# import Alinx_DualPort as nn
-import LV_to_Python as nn
 import datetime
 import yaml
 from collections import deque
+import TwinRX_Connection as nn
+# import Alinx_DualPort_Connection as nn
 
 
 GLOBAL_COLORS = {'noise': (220, 138, 221),
@@ -32,7 +30,6 @@ GLOBAL_COLORS = {'noise': (220, 138, 221),
                  'fpv': (98, 160, 234),
                  '3G/4G': (255, 255, 255),
                  }
-
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -81,11 +78,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.adding_window.btn_add_connection.setDisabled(True)
         self.adding_window.show()
 
+    def load_config(self):
+        self.config_path, _ = QFileDialog.getOpenFileName(filter='*.yaml')
+
+        try:
+            with open(self.config_path, encoding='utf-8') as f:
+                self.config = dict(yaml.load(f, Loader=yaml.SafeLoader))
+                for conn in self.config['connections']:
+                    self.add_new_connection(info=conn)
+            logger.success(f'Config loaded successfully!')
+        except Exception as e:
+            logger.error(f'Error with loading config: {e}')
+
     def add_new_connection(self, info: dict):
-        new_connection = RecognitionViewerWidget(ip=info['ip'],
+        if info['hardware_type'] == 'alinx':
+            import Alinx_DualPort_Connection as nn
+
+        new_connection = RecognitionViewerWidget(window_name=info['name'],
+                                                 ip=info['ip'],
                                                  port=info['port'],
-                                                 window_name=info['name'],
-                                                 weights_path=info['weights_path'])
+                                                 weights_path=info['weights_path'],
+                                                 map_list=info['map_list'],
+                                                 all_classes=info['all_classes'])
 
         # new_connection.visibilityChanged.connect(lambda: self.handle_visibility_change(new_connection))
         self.addDockWidget(Qt.Qt.LeftDockWidgetArea, new_connection)
@@ -95,23 +109,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.connections.append(new_connection)
 
         if self.histogram_dock_widget is None:
-            self.histogram_dock_widget = HistogramViewerWidget(new_connection.name)
+            self.histogram_dock_widget = HistogramViewerWidget(new_connection.name,
+                                                               new_connection.all_classes)
             self.addDockWidget(Qt.Qt.LeftDockWidgetArea, self.histogram_dock_widget)
             self.tabifyDockWidget(self.connections[0], self.histogram_dock_widget)
         else:
             self.histogram_dock_widget.create_histogram(new_connection.name)
         new_connection.dataThread.signal_recogn_df.connect(self.histogram_dock_widget.update_data)
-
-    def load_config(self):
-        self.config_path, _ = QFileDialog.getOpenFileName(filter='*.yaml')
-        try:
-            with open(self.config_path, encoding='utf-8') as f:
-                self.config = dict(yaml.load(f, Loader=yaml.SafeLoader))
-                for conn in self.config['connections']:
-                    self.add_new_connection(info=conn)
-            logger.success(f'Config loaded successfully!')
-        except Exception as e:
-            logger.error(f'Error with loading config: {e}')
 
     def save_config(self):
         self.config_path, _ = QFileDialog.getSaveFileName(filter='*.yaml')
@@ -238,10 +242,13 @@ class DataThread(QThread):
     signal_images_for_save = pyqtSignal(np.ndarray, np.ndarray, dict)
     signal_recogn_df = pyqtSignal(str, dict)
 
-    def __init__(self, q, window_name: str):
+    def __init__(self, q, window_name: str, all_classes: list):
         QThread.__init__(self)
         self.q = q
         self.window_name = window_name
+        self.all_classes = all_classes
+        self.sample_rate = 0
+        self.img_size = (0, 0)
         self.start()
         self.save_status = False
         self.trigger_status = False
@@ -254,7 +261,7 @@ class DataThread(QThread):
 
         # values = [group_res.get(label) for label in nn.all_classes]
 
-        for label in nn.all_classes:
+        for label in self.all_classes:
             result_dict[label] = group_res.get(label)
 
         for key, value in result_dict.items():
@@ -274,11 +281,12 @@ class DataThread(QThread):
                 ymax=row['ymax'],
                 confidence=row['confidence'],
                 class_id=row['class'],
-                name=row['name']
+                name=row['name'],
+                sample_rate=self.sample_rate,
+                img_size=self.img_size
             )
             objects.append(detection)
-            print(detection)
-
+            # print(detection)
 
     def run(self):
         while True:
@@ -296,14 +304,15 @@ class DataThread(QThread):
 
 
 class RecognitionViewerWidget(QDockWidget, QWidget):
-    def __init__(self, ip: str, port: int, window_name: str, weights_path: str):
+    def __init__(self, window_name: str, ip: str, port: int, weights_path: str, map_list: list, all_classes: list):
         super().__init__('Recognition')
 
         self.name = window_name + f' ({str(port)})'
         self.ip = ip
         self.port = port
         self.weights_path = weights_path
-        self.classes = nn.map_list
+        self.map_list = map_list
+        self.all_classes = all_classes
         self.create_ui()
         self.q = Queue()
         self.process = None
@@ -311,7 +320,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
 
         self.setWindowTitle(f"{self.name}")
 
-        self.dataThread = DataThread(self.q, self.name)
+        self.dataThread = DataThread(self.q, self.name, self.all_classes)
         self.dataThread.signal_image.connect(self.update_image)
         self.dataThread.signal_recogn_values.connect(self.chart_widget.set_data)
 
@@ -328,7 +337,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.label_fps = QLabel()
         self.label_fps.setFixedHeight(14)
         self.image_frame = QLabel()
-        self.chart_widget = Plot(150, nn.map_list)
+        self.chart_widget = Plot(150, self.map_list)
         self.btn_start = QPushButton('Start')
         self.btn_start.setFixedWidth(60)
         self.btn_start.setCheckable(True)
@@ -338,7 +347,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.l_cb_trigger_class = QLabel('Class for trigger')
         self.cb_trigger_class = QComboBox()
         self.cb_trigger_class.setFixedWidth(120)
-        for name in nn.all_classes:
+        for name in self.all_classes:
             self.cb_trigger_class.addItem(name)
         self.cb_trigger_class.addItem('Any')
 
@@ -416,9 +425,12 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
 
     def init_client(self):
         if self.process is None:
-            self.process = nn.Client((self.ip, self.port), weights_path=self.weights_path)
+            self.process = nn.Client((self.ip, self.port), weights_path=self.weights_path, map_list=self.map_list)
             self.process.set_queue(self.q)
             self.process.start()
+            self.dataThread.sample_rate = self.process.sample_rate
+            self.dataThread.img_size = self.process.img_size
+
             self.btn_start.setText('Stop')
             self.btn_start.setChecked(True)
 
@@ -531,10 +543,10 @@ class Plot(pyqtgraph.PlotWidget):
 
 class HistogramViewerWidget(QDockWidget, QWidget):
 
-    def __init__(self, window_name: str):
+    def __init__(self, window_name: str, all_classes: list):
         super().__init__('Histograms')
-        self.classes = nn.all_classes
-        self.numb_of_classes = (len(self.classes))
+        self.all_classes = all_classes
+        self.numb_of_classes = (len(self.all_classes))
         self.docks = {}
 
         self.area = DockArea()
@@ -543,7 +555,7 @@ class HistogramViewerWidget(QDockWidget, QWidget):
 
     def create_histogram(self, window_name: str):
         # w1 = pyqtgraph.LayoutWidget()
-        dock = DockGraph(window_name, self.classes)
+        dock = DockGraph(window_name, self.all_classes)
         self.docks[window_name] = dock
         self.area.addDock(dock, 'bottom')
 
@@ -552,13 +564,13 @@ class HistogramViewerWidget(QDockWidget, QWidget):
 
 
 class DockGraph(Dock):
-    def __init__(self, window_name: str, classes):
+    def __init__(self, window_name: str, all_classes: list):
         super().__init__(window_name)
 
         self.accum_size = 50
-        self.classes = classes
+        self.all_classes = all_classes
         self.colors = []
-        for name in self.classes:
+        for name in self.all_classes:
             self.colors.append(GLOBAL_COLORS[name])
         self.plot = pyqtgraph.plot()
         self.plot.setYRange(0, self.accum_size, 0)
@@ -566,15 +578,15 @@ class DockGraph(Dock):
 
         # Set names om X axis
         ticks = []
-        for i in range(len(self.classes)):
-            ticks.append((i, self.classes[i]))
+        for i in range(len(self.all_classes)):
+            ticks.append((i, self.all_classes[i]))
         ticks = [ticks]
         ax = self.plot.getAxis('bottom')
         ax.setTicks(ticks)
-        self.addWidget(self.plot, row=0, colspan=len(self.classes))
+        self.addWidget(self.plot, row=0, colspan=len(self.all_classes))
         self.indicators = {}
         i = 0
-        for name in nn.all_classes:
+        for name in self.all_classes:
             self.indicators[name] = QPushButton(name)
             self.indicators[name].setCheckable(True)
 
@@ -584,7 +596,7 @@ class DockGraph(Dock):
             self.addWidget(self.indicators[name], row=1, col=i)
             i += 1
 
-        self.deques = [deque(maxlen=self.accum_size) for i in range(len(self.classes))]
+        self.deques = [deque(maxlen=self.accum_size) for i in range(len(self.all_classes))]
 
     def make_decision(self, accumed_val):
         for i in range(len(self.indicators)):
@@ -606,27 +618,29 @@ class DockGraph(Dock):
             self.plot.removeItem(item)
 
         # Draw bars
-        bar_item = pyqtgraph.BarGraphItem(x=np.arange(len(self.classes)), height=accumed_val,
+        bar_item = pyqtgraph.BarGraphItem(x=np.arange(len(self.all_classes)), height=accumed_val,
                                           width=0.7, brushes=self.colors)
         self.plot.addItem(bar_item)
 
 
 class RecognitionObject:
-    def __init__(self, ymin, ymax, confidence, class_id, name):
+    def __init__(self, ymin, ymax, confidence, class_id, name, sample_rate, img_size):
         super().__init__()
-        self.center_freq, self.width_freq = self.calculate_frequency(ymin, ymax)
         self.confidence = confidence
         self.class_id = class_id
         self.name = name
+        self.sample_rate = sample_rate
+        self.img_size = img_size
+        self.center_freq, self.width_freq = self.calculate_frequency(ymin, ymax)
 
     def calculate_frequency(self, ymin, ymax):
         """ Функция считает частоту сигнала относительно центральной частоты (нулевой) """
 
-        f_min = (nn.FREQ_SMPLS / nn.IMG_SIZE[0]) * ymin
-        f_max = (nn.FREQ_SMPLS / nn.IMG_SIZE[0]) * ymax
+        f_min = (self.sample_rate / self.img_size[0]) * ymin
+        f_max = (self.sample_rate / self.img_size[0]) * ymax
         width = f_max - f_min
         f = width / 2 + f_min
-        f_center = nn.FREQ_SMPLS / 2 - f
+        f_center = self.sample_rate / 2 - f
         return f_center * (-1), width
 
     def __repr__(self):

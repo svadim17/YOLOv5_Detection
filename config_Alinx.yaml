@@ -1,9 +1,18 @@
 connections:
 - name: 2G4
-  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED_3/weights/best.pt
   ip: 192.168.1.3
   port: 16024
-- name: 5G8
   weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED_3/weights/best.pt
+  img_size: (640, 640)
+  map_list: ['autel', 'fpv', 'dji', 'wifi']
+  all_classes: ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv', '3G/4G']
+  hardware_type: 'alinx'
+
+- name: 5G8
   ip: 192.168.1.3
   port: 16058
+  weights_path: C:/Users/v.stecko/Desktop/YOLOv5 Project/yolov5/runs/train/yolov5m_6classes_AUGMENTATED_3/weights/best.pt
+  img_size: (640, 640)
+  map_list: ['autel', 'fpv', 'dji', 'wifi']
+  all_classes: ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv', '3G/4G']
+  hardware_type: 'alinx'
