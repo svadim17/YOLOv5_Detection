@@ -16,8 +16,8 @@ import pandas as pd
 import datetime
 import yaml
 from collections import deque
-import TwinRX_Connection as nn
-# import Alinx_DualPort_Connection as nn
+# import TwinRX_Connection as nn
+import Alinx_DualPort_Connection as nn
 
 
 GLOBAL_COLORS = {'noise': (220, 138, 221),
@@ -91,8 +91,8 @@ class MainWindow(QtWidgets.QMainWindow):
             logger.error(f'Error with loading config: {e}')
 
     def add_new_connection(self, info: dict):
-        if info['hardware_type'] == 'alinx':
-            import Alinx_DualPort_Connection as nn
+        # if info['hardware_type'] == 'alinx':
+        #     import Alinx_DualPort_Connection as nn
 
         new_connection = RecognitionViewerWidget(window_name=info['name'],
                                                  ip=info['ip'],

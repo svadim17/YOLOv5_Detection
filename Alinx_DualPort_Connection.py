@@ -18,9 +18,9 @@ class Client(Process):
         self.start_time = time.time()
         self.q = None
         self.map_list = map_list
-        self.msg_len = 1024 * 2048 * 4 + 16
         self.w = 1024
-        self.h = 2048
+        self.h = 3072
+        self.msg_len = self.w * self.h * 4 + 16
         self.sample_rate = 122880000
         self.img_size = (640, 640)
 
@@ -46,9 +46,9 @@ class Client(Process):
                         s.send(b'\x30')     # send for start
                         arr = s.recv(self.msg_len)
                         i = 0
-                        while self.msg_len > len(arr) and i < 200:
+                        while self.msg_len > len(arr) and i < 500:
                             i += 1
-                            time.sleep(0.005)
+                            time.sleep(0.01)
                             arr += s.recv(self.msg_len - len(arr))
                             logger.warning(f'Packet {i} missed. len = {len(arr)}')
 

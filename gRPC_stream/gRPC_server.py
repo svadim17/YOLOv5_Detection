@@ -166,7 +166,6 @@ class Client(Process):
             logger.info(f'Port №{self.address} finished work')
 
 
-
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
     def __init__(self, ports):
         self.data_store = {}
@@ -180,15 +179,15 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             cl.start()
             self.processes.append(cl)
 
-    def ServerStreamingAPI(self, request, context):
+    def ProceedDataStream(self, request, context):
         while True:
             if not self.q.empty():
                 res = self.q.get()
-                print(res['results'])
-                Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.autel, state=res['results'][0]),
-                          API_pb2.UavObjectt(type=API_pb2.DroneType.fpv, state=res['results'][1]),
-                          API_pb2.UavObjectt(type=API_pb2.DroneType.dji, state=res['results'][2]),
-                          API_pb2.UavObjectt(type=API_pb2.DroneType.wifi, state=res['results'][3])
+                print(res['port'], res['results'])
+                Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0]),
+                          API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1]),
+                          API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2]),
+                          API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3])
                         ]
                 yield API_pb2.DataResponse(band=res['port']-16000, uavs=Uavs)
 
