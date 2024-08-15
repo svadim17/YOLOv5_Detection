@@ -1,6 +1,6 @@
 import grpc
-import NDD_API_pb2_grpc as API_pb2_grpc
-import NDD_API_pb2 as API_pb2
+import neuro_pb2_grpc as API_pb2_grpc
+import neuro_pb2 as API_pb2
 
 gRPC_PORT = '50051'
 
@@ -19,7 +19,6 @@ def main():
             print(f"Band: {response.band}")
             for uav in response.uavs:
                 print(f"UAV Type: {uav.type}, State: {uav.state}")
-
 
 
 if __name__ == '__main__':

@@ -74,7 +74,7 @@ class NNProcessing(object):
         result = self.model(screen, size=640)       # set the model use the screen
         return result
 
-    def convert_result(self, df: pandas.DataFrame):
+    def convert_result(self, df: pandas.DataFrame, return_data_type='list'):
         labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag', 'autel_max_4n(t)']
 
         group_res = df.groupby(['name'])['confidence'].max()
@@ -93,11 +93,21 @@ class NNProcessing(object):
         new_data = group_res.drop(labels_to_combine, errors='ignore')
         new_data['autel'] = max_value
 
-        result_list = []
-        for name in self.map_list:
-            try:
-                result_list.append(new_data[name])
-            except KeyError:
-                result_list.append(0)
+        if return_data_type == 'list':
+            result_list = []
+            for name in self.map_list:
+                try:
+                    result_list.append(new_data[name])
+                except KeyError:
+                    result_list.append(0)
+            return np.array(result_list, dtype=np.float32)
 
-        return np.array(result_list, dtype=np.float32)
+        elif return_data_type == 'dict':
+            result_dict = {}
+            for name in self.map_list:
+                try:
+                    result_dict[name] = new_data[name]
+                except KeyError:
+                    result_dict[name] = 0
+            return result_dict
+

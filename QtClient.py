@@ -1,11 +1,13 @@
 import time
 import cv2
+import PyQt5
 import pyqtgraph
 from PyQt5 import QtWidgets, Qt, QtCore
 from PyQt5.QtWidgets import (QApplication, QToolBar, QAction, QDockWidget, QWidget, QLabel,
                              QVBoxLayout, QHBoxLayout, QSplitter, QPushButton, QDialog,
-                             QLineEdit, QFileDialog, QSpinBox, QCheckBox, QComboBox)
+                             QLineEdit, QFileDialog, QSpinBox, QCheckBox, QComboBox, QGroupBox, QSpacerItem)
 from PyQt5.QtGui import QPixmap, QImage
+from PyQt5 import QtSerialPort
 from loguru import logger
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QSize
 from multiprocessing import Process, Manager, Queue
@@ -16,8 +18,11 @@ import pandas as pd
 import datetime
 import yaml
 from collections import deque
-# import TwinRX_Connection as nn
-import Alinx_DualPort_Connection as nn
+
+import Alinx_DualPort_Connection
+import TwinRX_Connection
+import TwinRX_Connection as nn
+# import Alinx_DualPort_Connection as nn
 
 
 GLOBAL_COLORS = {'noise': (220, 138, 221),
@@ -42,9 +47,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.connections.append(self.recogn_widget)
 
         self.config_path = None
-
         self.histogram_dock_widget = None
         self.adding_window = AddingConnectionWindow()
+        self.video_stream = FpvVideoSteamWidget()
         self.create_toolbar_actions()
         self.init_toolbar()
         self.adding_window.signal_new_connection.connect(self.add_new_connection)
@@ -52,6 +57,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def create_toolbar_actions(self):
         self.start_action = QAction('Start all')
         self.start_action.triggered.connect(self.start_all)
+
+        self.fpv_action = QAction('FPV')
+        self.fpv_action.triggered.connect(self.open_fpv_window)
 
         self.add_action = QAction('Add connection')
         self.add_action.triggered.connect(self.open_adding_window)
@@ -69,10 +77,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toolbar = QToolBar('Main')
         self.addToolBar(Qt.Qt.ToolBarArea.TopToolBarArea, self.toolbar)
         self.toolbar.addAction(self.start_action)
+        self.toolbar.addAction(self.fpv_action)
         self.toolbar.addAction(self.add_action)
         self.toolbar.addAction(self.save_config_action)
         self.toolbar.addAction(self.load_config_action)
         self.toolbar.addAction(self.exit_action)
+
+    def open_fpv_window(self):
+        self.addDockWidget(Qt.Qt.RightDockWidgetArea, self.video_stream)
 
     def open_adding_window(self):
         self.adding_window.btn_add_connection.setDisabled(True)
@@ -84,22 +96,28 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             with open(self.config_path, encoding='utf-8') as f:
                 self.config = dict(yaml.load(f, Loader=yaml.SafeLoader))
+                logger.success(f'Config loaded successfully!')
                 for conn in self.config['connections']:
                     self.add_new_connection(info=conn)
-            logger.success(f'Config loaded successfully!')
         except Exception as e:
             logger.error(f'Error with loading config: {e}')
 
     def add_new_connection(self, info: dict):
-        # if info['hardware_type'] == 'alinx':
-        #     import Alinx_DualPort_Connection as nn
+        logger.info(f'Create hardware client {info["hardware_type"]}')
+        if info['hardware_type'] == 'alinx':
+            client = Alinx_DualPort_Connection.Client
+        elif info['hardware_type'] == 'twinrx':
+            client = TwinRX_Connection.Client
+        else:
+            client = Alinx_DualPort_Connection.Client
 
         new_connection = RecognitionViewerWidget(window_name=info['name'],
                                                  ip=info['ip'],
                                                  port=info['port'],
                                                  weights_path=info['weights_path'],
                                                  map_list=info['map_list'],
-                                                 all_classes=info['all_classes'])
+                                                 all_classes=info['all_classes'],
+                                                 client=client)
 
         # new_connection.visibilityChanged.connect(lambda: self.handle_visibility_change(new_connection))
         self.addDockWidget(Qt.Qt.LeftDockWidgetArea, new_connection)
@@ -109,13 +127,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.connections.append(new_connection)
 
         if self.histogram_dock_widget is None:
-            self.histogram_dock_widget = HistogramViewerWidget(new_connection.name,
-                                                               new_connection.all_classes)
+            self.histogram_dock_widget = HistogramViewerWidget(new_connection.all_classes)
             self.addDockWidget(Qt.Qt.LeftDockWidgetArea, self.histogram_dock_widget)
             self.tabifyDockWidget(self.connections[0], self.histogram_dock_widget)
-        else:
-            self.histogram_dock_widget.create_histogram(new_connection.name)
+
+        dock = self.histogram_dock_widget.create_histogram(new_connection.name)
+        dock.signal_set_fpv_freq.connect(self.video_stream.set_freq_from_signal)
         new_connection.dataThread.signal_recogn_df.connect(self.histogram_dock_widget.update_data)
+        new_connection.dataThread.siganl_fpv_freq.connect(self.histogram_dock_widget.set_fpv_freq)
+
 
     def save_config(self):
         self.config_path, _ = QFileDialog.getSaveFileName(filter='*.yaml')
@@ -241,70 +261,229 @@ class DataThread(QThread):
     signal_recogn_values = pyqtSignal(np.ndarray)
     signal_images_for_save = pyqtSignal(np.ndarray, np.ndarray, dict)
     signal_recogn_df = pyqtSignal(str, dict)
+    siganl_fpv_freq = pyqtSignal(str, float)
 
-    def __init__(self, q, window_name: str, all_classes: list):
+    def __init__(self, q, window_name: str, all_classes: list, sample_rate: int, img_size: tuple):
         QThread.__init__(self)
         self.q = q
         self.window_name = window_name
         self.all_classes = all_classes
-        self.sample_rate = 0
-        self.img_size = (0, 0)
+        self.sample_rate = sample_rate
+        self.img_size = img_size
         self.start()
         self.save_status = False
         self.trigger_status = False
+        self.objects = {class_name: RecognitionObject(name=class_name,
+                                                      sample_rate=self.sample_rate,
+                                                      img_size=self.img_size,
+                                                      class_id=0,
+                                                      accum_buf_size=40)
+                        for class_name in all_classes}
 
     def processing_results(self, df: pd.DataFrame):
-        self.get_object_freq(df)
 
+        self.update_objects(df)
         group_res = df.groupby(['name'])['confidence'].max()
         result_dict = {}
 
         # values = [group_res.get(label) for label in nn.all_classes]
-
         for label in self.all_classes:
             result_dict[label] = group_res.get(label)
-
         for key, value in result_dict.items():
             if value is None:
                 result_dict[key] = 0
-
         return result_dict
 
-    def get_object_freq(self, df: pd.DataFrame):
+    def update_objects(self, df: pd.DataFrame):
         max_confidence_rows = df.loc[df.groupby('class')['confidence'].idxmax()]
-
-        # Создание объектов для каждого класса
-        objects = []
         for _, row in max_confidence_rows.iterrows():
-            detection = RecognitionObject(
-                ymin=row['ymin'],
-                ymax=row['ymax'],
-                confidence=row['confidence'],
-                class_id=row['class'],
-                name=row['name'],
-                sample_rate=self.sample_rate,
-                img_size=self.img_size
-            )
-            objects.append(detection)
-            # print(detection)
+
+            obj = self.objects[row['name']]
+            obj.update(ymin=row['ymin'], ymax=row['ymax'], confidence=row['confidence'])
+            if row['name'] == 'fpv':
+                self.siganl_fpv_freq.emit(self.window_name, obj.center_freq)
 
     def run(self):
         while True:
             recogn_res = self.q.get()
-
             self.signal_image.emit(recogn_res['img_res'])
             self.signal_recogn_values.emit(recogn_res['predict_res'])
-
             processed_dict = self.processing_results(df=recogn_res['predict_df'])
-
             if self.save_status:
-                self.signal_images_for_save.emit(recogn_res['clear_image'],recogn_res['img_res'], processed_dict)
-
+                self.signal_images_for_save.emit(recogn_res['clear_image'], recogn_res['img_res'], processed_dict)
             self.signal_recogn_df.emit(self.window_name, processed_dict)
 
 
+class VideoThread(QThread):
+    signal_image = pyqtSignal(np.ndarray)
+    signal_stream_ended = pyqtSignal()
+
+    def __init__(self):
+        QThread.__init__(self)
+        self.state = False
+
+
+    def run(self):
+        cap = cv2.VideoCapture(0)
+        while self.state:
+            ret, frame = cap.read()
+            self.signal_image.emit(frame)
+        self.signal_stream_ended.emit()
+
+
+class FpvVideoSteamWidget(QDockWidget, QWidget):
+    def __init__(self):
+        super().__init__('FPV video stream')
+        self.setMinimumSize(640, 640)
+        self.create_ui()
+        self.video_tread = VideoThread()
+        self.video_tread.signal_image.connect(self.update_image)
+        self.video_tread.signal_stream_ended.connect(self.stream_ended)
+        self.source = 0
+        self.serial = None
+
+    def create_ui(self):
+        main_widget = QWidget()
+        self.setWidget(main_widget)
+        main_layout = QVBoxLayout()
+        self.widget().setLayout(main_layout)
+
+        stream_layout = QHBoxLayout()
+        main_layout.addLayout(stream_layout)
+
+        self.control_btn = QPushButton('Start stream')
+        self.setMinimumWidth(120)
+        self.control_btn.setCheckable(True)
+        stream_layout.addWidget(self.control_btn)
+        self.control_btn.clicked.connect(self.control_strem)
+
+        stream_layout.addItem(QSpacerItem(20, 40,
+                                          hPolicy=QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+                                          vPolicy=QtWidgets.QSizePolicy.Policy.Minimum))
+
+        self.rotate_cb = QComboBox()
+        self.rotate_cb.setMinimumWidth(80)
+        self.rotate_cb.addItem('No rotate', None)
+        self.rotate_cb.addItem('Rotate 90', cv2.ROTATE_90_CLOCKWISE)
+        self.rotate_cb.addItem('Rotate 180', cv2.ROTATE_180)
+        self.rotate_cb.addItem('Rotate 270', cv2.ROTATE_90_COUNTERCLOCKWISE)
+        stream_layout.addWidget(self.rotate_cb)
+
+        self.image_frame = QLabel()
+        main_layout.addWidget(self.image_frame)
+
+        self.gb_serial = QGroupBox(self)
+        self.gb_serial.setFixedHeight(65)
+        main_layout.addWidget(self.gb_serial)
+        self.gb_serial.setTitle("Serial inteface for control video receiver")
+        self.gb_serial.setLayout(QHBoxLayout())
+
+        self.serial_port_cb = QComboBox()
+        self.gb_serial.layout().addWidget(self.serial_port_cb)
+        self.get_avaliable_serial_ports()
+        #self.serial_port_cb.highlighted.connect(self.get_avaliable_serial_ports)
+
+
+        self.serial_port_control_pb = QPushButton('Connect')
+        self.serial_port_control_pb.setCheckable(True)
+        self.gb_serial.layout().addWidget(self.serial_port_control_pb)
+        self.serial_port_control_pb.clicked.connect(self.control_serial_port)
+
+        self.freq_sb = QSpinBox()
+        self.freq_sb.setDisabled(True)
+        self.freq_sb.setMaximum(6050)
+        self.freq_sb.setValue(5800)
+        self.freq_sb.setMinimumWidth(80)
+        self.gb_serial.layout().addItem(QSpacerItem(20, 40,
+                                                    hPolicy=QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+                                                    vPolicy=QtWidgets.QSizePolicy.Policy.Minimum))
+        self.gb_serial.layout().addWidget(QLabel('Fc'))
+        self.gb_serial.layout().addWidget(self.freq_sb)
+        self.freq_sb.valueChanged.connect(lambda: self.set_freq(self.freq_sb.value()))
+
+    def set_freq(self, freq: int):
+        res = self.serial.writeData(b'\xaa\xbb\xff' + freq.to_bytes(2, byteorder='little'))
+        logger.info(f'To serial port written {res} bytes')
+
+    def set_freq_from_signal(self, freq: float):
+        print(freq)
+        freq = int(freq/1000000 + 5786.5)
+        self.freq_sb.setValue(freq)
+        res = self.serial.writeData(b'\xaa\xbb\xff' + freq.to_bytes(2, byteorder='little'))
+        logger.info(f'To serial port written {res} bytes')
+        print('ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+
+    @pyqtSlot()
+    def control_serial_port(self):
+        if self.serial_port_control_pb.isChecked():
+            port_name = self.serial_port_cb.currentText()
+            self.serial = QtSerialPort.QSerialPort(port_name,
+                                                   baudRate = QtSerialPort.QSerialPort.Baud115200)
+            if self.serial.open(QtCore.QIODevice.ReadWrite):
+                logger.info(f'Connected to port {port_name}')
+                self.serial_port_control_pb.setText('Disconnect')
+                self.freq_sb.setDisabled(False)
+            else:
+                self.serial_port_control_pb.setText('Connect')
+                self.freq_sb.setDisabled(True)
+                logger.info(f'Cant connect to port {port_name}')
+        else:
+            self.serial.close()
+            logger.info(f'Disconnected from port')
+            self.serial_port_control_pb.setText('Connect')
+            self.freq_sb.setDisabled(True)
+
+    def get_avaliable_serial_ports(self):
+        self.serial_port_cb.clear()
+        self.serial_port_cb.addItems([name.portName() for name in QtSerialPort.QSerialPortInfo.availablePorts()])
+
+    @pyqtSlot()
+    def control_strem(self):
+        if self.control_btn.isChecked():
+            self.control_btn.setText('Stop stream')
+            self.video_tread.state = True
+            self.video_tread.start()
+        else:
+            self.video_tread.state = False
+
+    @pyqtSlot()
+    def stream_ended(self):
+        self.control_btn.setChecked(False)
+        self.control_btn.setText('Start stream')
+
+    def convert_cv_qt(self, cv_img):
+        """Convert from an opencv image to QPixmap"""
+        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        rotate = self.rotate_cb.currentData()
+        if rotate is not None:
+            rgb_image = cv2.rotate(rgb_image, rotate)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        convert_to_Qt_format = QImage(rgb_image.data,
+                                      w,
+                                      h,
+                                      bytes_per_line,
+                                      QImage.Format_RGB888)
+        picture = convert_to_Qt_format.scaled(self.image_frame.width(),
+                                              self.image_frame.height(),
+                                              Qt.Qt.KeepAspectRatio)
+        return QPixmap.fromImage(picture)
+
+    @pyqtSlot(np.ndarray)
+    def update_image(self, cv_img:np.ndarray):
+        """Updates the image_frame with a new opencv image"""
+        qt_img = self.convert_cv_qt(cv_img)
+        self.image_frame.setPixmap(qt_img)
+
+
 class RecognitionViewerWidget(QDockWidget, QWidget):
-    def __init__(self, window_name: str, ip: str, port: int, weights_path: str, map_list: list, all_classes: list):
+    def __init__(self, window_name: str,
+                 ip: str,
+                 port: int,
+                 weights_path: str,
+                 map_list: list,
+                 all_classes: list,
+                 client):
         super().__init__('Recognition')
 
         self.name = window_name + f' ({str(port)})'
@@ -315,15 +494,18 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.all_classes = all_classes
         self.create_ui()
         self.q = Queue()
-        self.process = None
+        self.client_ref = client
+        self.process = self.client_ref((self.ip, self.port), weights_path=self.weights_path, map_list=self.map_list)
+        self.process.set_queue(self.q)
         self.save_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images"
-
         self.setWindowTitle(f"{self.name}")
-
-        self.dataThread = DataThread(self.q, self.name, self.all_classes)
+        self.dataThread = DataThread(self.q,
+                                     self.name,
+                                     self.all_classes,
+                                     self.process.sample_rate,
+                                     self.process.img_size)
         self.dataThread.signal_image.connect(self.update_image)
         self.dataThread.signal_recogn_values.connect(self.chart_widget.set_data)
-
         self.dataThread.signal_images_for_save.connect(self.check_trigger)
 
         self.last_time = time.time()
@@ -425,21 +607,17 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
 
     def init_client(self):
         if self.process is None:
-            self.process = nn.Client((self.ip, self.port), weights_path=self.weights_path, map_list=self.map_list)
+            self.process = self.client_ref((self.ip, self.port), weights_path=self.weights_path, map_list=self.map_list)
             self.process.set_queue(self.q)
-            self.process.start()
-            self.dataThread.sample_rate = self.process.sample_rate
-            self.dataThread.img_size = self.process.img_size
-
-            self.btn_start.setText('Stop')
-            self.btn_start.setChecked(True)
+        self.process.start()
+        self.btn_start.setText('Stop')
+        self.btn_start.setChecked(True)
 
     def kill_client(self):
-        if self.process is not None:
-            self.process.kill()
-            self.process = None
-            self.btn_start.setText('Start')
-            self.btn_start.setChecked(False)
+        self.process.kill()
+        self.process = None
+        self.btn_start.setText('Start')
+        self.btn_start.setChecked(False)
 
     def start_button_pressed(self):
         try:
@@ -543,7 +721,7 @@ class Plot(pyqtgraph.PlotWidget):
 
 class HistogramViewerWidget(QDockWidget, QWidget):
 
-    def __init__(self, window_name: str, all_classes: list):
+    def __init__(self, all_classes: list):
         super().__init__('Histograms')
         self.all_classes = all_classes
         self.numb_of_classes = (len(self.all_classes))
@@ -551,23 +729,29 @@ class HistogramViewerWidget(QDockWidget, QWidget):
 
         self.area = DockArea()
         self.setWidget(self.area)
-        self.create_histogram(window_name)
 
     def create_histogram(self, window_name: str):
         # w1 = pyqtgraph.LayoutWidget()
         dock = DockGraph(window_name, self.all_classes)
         self.docks[window_name] = dock
         self.area.addDock(dock, 'bottom')
+        return dock
 
     def update_data(self, window_name, result_dict: dict):
         self.docks[window_name].update_plot(list(result_dict.values()))
 
+    def set_fpv_freq(self, window_name, Fc):
+        self.docks[window_name].set_fpv_freq(Fc)
+
+
 
 class DockGraph(Dock):
+    signal_set_fpv_freq = pyqtSignal(float)
+
     def __init__(self, window_name: str, all_classes: list):
         super().__init__(window_name)
 
-        self.accum_size = 50
+        self.accum_size = 25
         self.all_classes = all_classes
         self.colors = []
         for name in self.all_classes:
@@ -575,6 +759,9 @@ class DockGraph(Dock):
         self.plot = pyqtgraph.plot()
         self.plot.setYRange(0, self.accum_size, 0)
         self.plot.showAxis('left', True)
+
+        self.fpv_freq = 0
+        #self.fpv_freq_action =
 
         # Set names om X axis
         ticks = []
@@ -595,12 +782,22 @@ class DockGraph(Dock):
                                                 "}")
             self.addWidget(self.indicators[name], row=1, col=i)
             i += 1
+            if name == 'fpv':
+                menu = QtWidgets.QMenu()
+                send_freq = QtWidgets.QAction(f'View FPV video', menu)
+                send_freq.triggered.connect(lambda: self.signal_set_fpv_freq.emit(self.fpv_freq))
+                menu.addAction(send_freq)
+                self.indicators[name].setMenu(menu)
 
         self.deques = [deque(maxlen=self.accum_size) for i in range(len(self.all_classes))]
 
+    def set_fpv_freq(self, Fc):
+        self.fpv_freq = Fc
+        self.indicators['fpv'].menu().actions()[0].setText(f'View FPV video Fc={Fc}')
+
     def make_decision(self, accumed_val):
         for i in range(len(self.indicators)):
-            if accumed_val[i] >= 12.5:
+            if accumed_val[i] >= 7:
                 state = True
             else:
                 state = False
@@ -624,31 +821,53 @@ class DockGraph(Dock):
 
 
 class RecognitionObject:
-    def __init__(self, ymin, ymax, confidence, class_id, name, sample_rate, img_size):
+    def __init__(self, class_id, name, sample_rate, img_size, accum_buf_size=50):
         super().__init__()
-        self.confidence = confidence
+        self.last_confidence = 0
         self.class_id = class_id
         self.name = name
         self.sample_rate = sample_rate
         self.img_size = img_size
-        self.center_freq, self.width_freq = self.calculate_frequency(ymin, ymax)
+        self.center_freq = 0
+        self.width_freq = 0
+        self.last_update = None
+        self.average_confidence = 0
+        self.buf = deque(maxlen=accum_buf_size)
+
+    def update(self,  ymin, ymax, confidence: float):
+        self.last_update = time.time()
+        self.set_confidence(confidence)
+        self.calculate_frequency(ymin, ymax)
+
+    def set_confidence(self, confidence: float):
+        self.last_confidence = confidence
+        self.buf.appendleft(confidence)
+        self.average_confidence = sum(self.buf)/len(self.buf)
+
+    def get_freq(self):
+        return self.center_freq
 
     def calculate_frequency(self, ymin, ymax):
         """ Функция считает частоту сигнала относительно центральной частоты (нулевой) """
-
         f_min = (self.sample_rate / self.img_size[0]) * ymin
         f_max = (self.sample_rate / self.img_size[0]) * ymax
-        width = f_max - f_min
-        f = width / 2 + f_min
+        self.width_freq = f_max - f_min
+        f = self.width_freq / 2 + f_min
         f_center = self.sample_rate / 2 - f
-        return f_center * (-1), width
+        self.center_freq = f_center * (-1)
+
+
 
     def __repr__(self):
-        return (f"Detection( name={self.name}, "
-                f"class_id={self.class_id}, "
-                f"confidence={self.confidence}, "
-                f"center_frequency={self.center_freq}, "
-                f"width_frequency={self.width_freq})")
+        return (f"Detection( name={self.name}, \n"
+                f"class_id={self.class_id}, \n"
+                f"last_confidence={self.last_confidence}, \n"
+                f"average_confidence={self.average_confidence}, \n"
+                f"center_frequency={self.center_freq}, \n"
+                f"width_frequency={self.width_freq}, \n"
+                f"last_update={self.last_update} \n"
+                f"img_size={self.img_size}\n"
+                f"sample_rate={self.sample_rate})")
 
 
 def main_gui():

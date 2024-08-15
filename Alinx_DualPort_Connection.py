@@ -32,7 +32,7 @@ class Client(Process):
             for _ in range(4):
                 try:
                     s.connect(self.address)
-                    logger.info(f'Connected to {self.address}!')
+                    logger.info(f'Connected to  Alinx {self.address}!')
                     self.nn = NNProcessing(name=str(self.address),
                                            weights=self.weights_path,
                                            sample_rate=self.sample_rate,
@@ -52,7 +52,8 @@ class Client(Process):
                             arr += s.recv(self.msg_len - len(arr))
                             logger.warning(f'Packet {i} missed. len = {len(arr)}')
 
-                        if len(arr) == self.msg_len:
+                        if len(arr) == self.msg_len and (arr[:16].hex() == '310000000000c0000000000000000000' or
+                                                        arr[:16].hex() == '300000000000c0000000000000000000'):
 
                             logger.info(f'Header: {arr[:16].hex()}')
                             np_arr = np.frombuffer(arr[16:], dtype=np.int32)
@@ -61,7 +62,7 @@ class Client(Process):
                             with np.errstate(divide='ignore'):
                                 log_mag = np.log10(mag) * 10
                             # img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
-                            print(max(enumerate(log_mag), key=lambda _ : _ [1]))
+                            #print(max(enumerate(log_mag), key=lambda _ : _ [1]))
                             img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(self.h, self.w), axes=(1,)))
 
                             result = self.nn.processing(img_arr)
