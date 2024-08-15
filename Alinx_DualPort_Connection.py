@@ -20,7 +20,7 @@ class Client(Process):
         self.map_list = map_list
         self.w = 1024
         self.h = 3072
-        self.msg_len = self.w * self.h * 4 + 16
+        self.msg_len = self.w * self.h * 2 + 16
         self.sample_rate = 122880000
         self.img_size = (640, 640)
 
@@ -52,17 +52,19 @@ class Client(Process):
                             arr += s.recv(self.msg_len - len(arr))
                             logger.warning(f'Packet {i} missed. len = {len(arr)}')
 
-                        if len(arr) == self.msg_len and (arr[:16].hex() == '310000000000c0000000000000000000' or
-                                                        arr[:16].hex() == '300000000000c0000000000000000000'):
+                        if len(arr) == self.msg_len and (arr[:16].hex() == '31000000000060000000000000000000' or
+                                                        arr[:16].hex() == '30000000000060000000000000000000'):
 
                             logger.info(f'Header: {arr[:16].hex()}')
-                            np_arr = np.frombuffer(arr[16:], dtype=np.int32)
+                            log_mag = np.frombuffer(arr[16:], dtype=np.float16)
+                            log_mag = log_mag.astype(np.float64)
                             # mag = (np_arr * 1.900165802481979E-9)**2 * 20
-                            mag = (np_arr * 3.29272254144689E-14)**2 * 20
-                            with np.errstate(divide='ignore'):
-                                log_mag = np.log10(mag) * 10
+                            # mag = (np_arr * 3.29272254144689E-14)**2 * 20
+                            # with np.errstate(divide='ignore'):
+                            #     log_mag = np.log10(mag) * 10
                             # img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
-                            #print(max(enumerate(log_mag), key=lambda _ : _ [1]))
+                            # print(max(enumerate(log_mag), key=lambda _ : _ [1]))
+
                             img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(self.h, self.w), axes=(1,)))
 
                             result = self.nn.processing(img_arr)

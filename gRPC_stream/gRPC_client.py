@@ -18,7 +18,7 @@ def main():
         for response in responses:
             print(f"Band: {response.band}")
             for uav in response.uavs:
-                print(f"UAV Type: {uav.type}, State: {uav.state}")
+                print(f"UAV Type: {uav.type}, State: {uav.state}, Frequency: {uav.freq}")
 
 
 if __name__ == '__main__':

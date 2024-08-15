@@ -26,7 +26,7 @@ class NNProcessing(object):
         self.map_list = map_list
         self.source_device = source_device
         self.img_size = img_size
-        msg_len = width * height * 4 + 16 if source_device == 'alinx' else width * height
+        msg_len = width * height * 2 + 16 if source_device == 'alinx' else width * height
 
         self.device = torch.device("cuda")  # = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.last_time = time.time()
@@ -56,8 +56,10 @@ class NNProcessing(object):
             z_max = 40
         elif self.source_device == 'alinx':
             data = np.transpose(data)
-            z_min = -75
-            z_max = 20
+            # z_min = -71                 # -71 with coeff 3.29
+            # z_max = 21                  # 21 with coeff 3.29
+            z_min = -20                 # -71 with coeff 3.29
+            z_max = 75                  # 21 with coeff 3.29
         else:
             data = np.transpose(data)
             z_min = -75
@@ -111,3 +113,58 @@ class NNProcessing(object):
                     result_dict[name] = 0
             return result_dict
 
+    def grpc_convert_result(self, df: pandas.DataFrame, return_data_type='dict_with_freq'):
+        """ Преобразование датафрейма в словарь с  координатами объекта на картинке """
+        labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag', 'autel_max_4n(t)']
+
+        print(df)
+        # Группировка по имени и выбор строки с максимальным confidence
+        idx = df.groupby(['name'])['confidence'].idxmax()
+        group_res = df.loc[idx]
+
+        # Получаем значения confidence для меток, которые нужно объединить
+        confidence_values = [group_res[group_res['name'] == label]['confidence'].values[0]
+                             for label in labels_to_combine if label in group_res['name'].values]
+
+        if confidence_values:
+            max_confidence = max(confidence_values)
+            max_row = group_res[group_res['confidence'] == max_confidence].iloc[0]
+            max_ymin = max_row['ymin']
+            max_ymax = max_row['ymax']
+        else:
+            max_confidence = 0
+            max_ymin = 0
+            max_ymax = 0
+
+        # Создаем новый DataFrame, исключая метки для объединения
+        filtered_data = group_res[~group_res['name'].isin(labels_to_combine)]   # отбираем только те строки, у которых name НЕ входит в labels_to_combine
+        new_data = filtered_data.copy()     # создаем копию отфильтрованных данных
+        new_data = new_data.set_index('name')       # устанавливаем столбец 'name' в качестве индекса
+        new_data.loc['autel'] = {'confidence': max_confidence, 'ymin': max_ymin, 'ymax': max_ymax}      # добавляем один скомбинированный autel
+
+        if return_data_type == 'dict_with_freq':
+            result_dict = {}
+            for name in self.map_list:
+                try:
+                    result_dict[name] = {
+                        'confidence': new_data.at[name, 'confidence'],
+                        'ymin': new_data.at[name, 'ymin'],
+                        'ymax': new_data.at[name, 'ymax']
+                    }
+                except KeyError:
+                    result_dict[name] = {'confidence': 0, 'ymin': 0, 'ymax': 0}
+            return result_dict
+
+        # elif return_data_type == 'dict_with_freq':
+        #     result_dict = {}
+        #     for name in self.map_list:
+        #         try:
+        #             result_dict[name]['ymin'] = new_data2[name]['ymin']
+        #             result_dict[name]['ymax'] = new_data2[name]['ymax']
+        #             result_dict[name]['confidence'] = new_data2[name]
+        #         except KeyError:
+        #             result_dict[name]['ymin'] = 0
+        #             result_dict[name]['ymax'] = 0
+        #             result_dict[name]['confidence'] = 0
+        #     print(result_dict)
+        #     return result_dict

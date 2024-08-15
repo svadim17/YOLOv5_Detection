@@ -273,10 +273,10 @@ class DataThread(QThread):
         self.start()
         self.save_status = False
         self.trigger_status = False
-        self.objects = {class_name: RecognitionObject(name=class_name,
+        self.objects = {class_name: RecognitionObject(class_id=0,
+                                                      name=class_name,
                                                       sample_rate=self.sample_rate,
                                                       img_size=self.img_size,
-                                                      class_id=0,
                                                       accum_buf_size=40)
                         for class_name in all_classes}
 
@@ -406,19 +406,17 @@ class FpvVideoSteamWidget(QDockWidget, QWidget):
         logger.info(f'To serial port written {res} bytes')
 
     def set_freq_from_signal(self, freq: float):
-        print(freq)
         freq = int(freq/1000000 + 5786.5)
         self.freq_sb.setValue(freq)
         res = self.serial.writeData(b'\xaa\xbb\xff' + freq.to_bytes(2, byteorder='little'))
         logger.info(f'To serial port written {res} bytes')
-        print('ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
 
     @pyqtSlot()
     def control_serial_port(self):
         if self.serial_port_control_pb.isChecked():
             port_name = self.serial_port_cb.currentText()
             self.serial = QtSerialPort.QSerialPort(port_name,
-                                                   baudRate = QtSerialPort.QSerialPort.Baud115200)
+                                                   baudRate=QtSerialPort.QSerialPort.Baud115200)
             if self.serial.open(QtCore.QIODevice.ReadWrite):
                 logger.info(f'Connected to port {port_name}')
                 self.serial_port_control_pb.setText('Disconnect')
@@ -744,7 +742,6 @@ class HistogramViewerWidget(QDockWidget, QWidget):
         self.docks[window_name].set_fpv_freq(Fc)
 
 
-
 class DockGraph(Dock):
     signal_set_fpv_freq = pyqtSignal(float)
 
@@ -761,7 +758,7 @@ class DockGraph(Dock):
         self.plot.showAxis('left', True)
 
         self.fpv_freq = 0
-        #self.fpv_freq_action =
+        # self.fpv_freq_action =
 
         # Set names om X axis
         ticks = []
@@ -793,7 +790,8 @@ class DockGraph(Dock):
 
     def set_fpv_freq(self, Fc):
         self.fpv_freq = Fc
-        self.indicators['fpv'].menu().actions()[0].setText(f'View FPV video Fc={Fc}')
+        f = int(Fc/1000000 + 5786.5)
+        self.indicators['fpv'].menu().actions()[0].setText(f'View FPV video Fc={f}')
 
     def make_decision(self, accumed_val):
         for i in range(len(self.indicators)):
@@ -855,8 +853,6 @@ class RecognitionObject:
         f = self.width_freq / 2 + f_min
         f_center = self.sample_rate / 2 - f
         self.center_freq = f_center * (-1)
-
-
 
     def __repr__(self):
         return (f"Detection( name={self.name}, \n"

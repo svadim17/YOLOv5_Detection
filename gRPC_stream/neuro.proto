@@ -19,6 +19,7 @@ enum Band {
 message UavObject {
     DroneType type = 1;
     bool state = 2;
+    int32 freq = 3;
 }
 
 message DataResponse {
