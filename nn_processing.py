@@ -18,7 +18,8 @@ class NNProcessing(object):
                  project_path: str,
                  map_list: list,
                  source_device='twinrx',
-                 img_size=(640, 640)):
+                 img_size=(640, 640),
+                 msg_len=0):
         super().__init__()
         self.name = name
         self.weights = weights
@@ -26,7 +27,7 @@ class NNProcessing(object):
         self.map_list = map_list
         self.source_device = source_device
         self.img_size = img_size
-        msg_len = width * height * 2 + 16 if source_device == 'alinx' else width * height
+
 
         self.device = torch.device("cuda")  # = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.last_time = time.time()
@@ -58,8 +59,8 @@ class NNProcessing(object):
             data = np.transpose(data)
             # z_min = -71                 # -71 with coeff 3.29
             # z_max = 21                  # 21 with coeff 3.29
-            z_min = -20                 # -71 with coeff 3.29
-            z_max = 75                  # 21 with coeff 3.29
+            z_min = -20
+            z_max = 75
         else:
             data = np.transpose(data)
             z_min = -75

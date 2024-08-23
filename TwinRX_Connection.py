@@ -45,7 +45,8 @@ class Client(Process):
                                        project_path= r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5",
                                        map_list=self.map_list,
                                        source_device='twinrx',
-                                       img_size=self.img_size)
+                                       img_size=self.img_size,
+                                       msg_len=self.msg_len)
 
                 logger.info(f'NN type: {nn_type}')
 

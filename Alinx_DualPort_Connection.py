@@ -6,6 +6,7 @@ from nn_processing import *
 # HOST = "192.168.1.3"  # The server's hostname or IP address
 # weights_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_AUGMENTATED_3\weights\best.pt"
 RETURN_MODE = None     # or 'csv' or 'tcp'
+CALCULATE_LOG = False
 # map_list = ['autel', 'fpv', 'dji', 'wifi']
 # all_classes = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv', '3G/4G']
 
@@ -20,7 +21,10 @@ class Client(Process):
         self.map_list = map_list
         self.w = 1024
         self.h = 3072
-        self.msg_len = self.w * self.h * 2 + 16
+        if CALCULATE_LOG:
+            self.msg_len = self.w * self.h * 4 + 16
+        else:
+            self.msg_len = self.w * self.h * 2 + 16
         self.sample_rate = 122880000
         self.img_size = (640, 640)
 
@@ -41,7 +45,8 @@ class Client(Process):
                                            project_path= r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5",
                                            map_list=self.map_list,
                                            source_device='alinx',
-                                           img_size=self.img_size)
+                                           img_size=self.img_size,
+                                           msg_len=self.msg_len)
                     while True:
                         s.send(b'\x30')     # send for start
                         arr = s.recv(self.msg_len)
@@ -52,18 +57,20 @@ class Client(Process):
                             arr += s.recv(self.msg_len - len(arr))
                             logger.warning(f'Packet {i} missed. len = {len(arr)}')
 
-                        if len(arr) == self.msg_len and (arr[:16].hex() == '31000000000060000000000000000000' or
-                                                        arr[:16].hex() == '30000000000060000000000000000000'):
-
-                            logger.info(f'Header: {arr[:16].hex()}')
-                            log_mag = np.frombuffer(arr[16:], dtype=np.float16)
-                            log_mag = log_mag.astype(np.float64)
-                            # mag = (np_arr * 1.900165802481979E-9)**2 * 20
-                            # mag = (np_arr * 3.29272254144689E-14)**2 * 20
-                            # with np.errstate(divide='ignore'):
-                            #     log_mag = np.log10(mag) * 10
-                            # img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
-                            # print(max(enumerate(log_mag), key=lambda _ : _ [1]))
+                        if len(arr) == self.msg_len:
+                            if CALCULATE_LOG:
+                                logger.info(f'Header: {arr[:16].hex()}')
+                                np_arr = np.frombuffer(arr[16:], dtype=np.int32)
+                                # mag = (np_arr * 1.900165802481979E-9)**2 * 20
+                                mag = (np_arr * 3.29272254144689E-14) ** 2 * 20
+                                with np.errstate(divide='ignore'):
+                                    log_mag = np.log10(mag) * 10
+                                # img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
+                                # print(max(enumerate(log_mag), key=lambda _ : _ [1]))  # поиск позиции с макс значением
+                            else:
+                                logger.info(f'Header: {arr[:16].hex()}')
+                                log_mag = np.frombuffer(arr[16:], dtype=np.float16)
+                                log_mag = log_mag.astype(np.float64)
 
                             img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(self.h, self.w), axes=(1,)))
 

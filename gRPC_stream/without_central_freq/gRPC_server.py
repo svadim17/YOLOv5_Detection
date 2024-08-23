@@ -1,8 +1,5 @@
 import grpc
 from concurrent import futures
-
-import pandas as pd
-
 import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
 import socket
@@ -20,20 +17,26 @@ TCP_HOST = "192.168.1.3"  # The server's hostname or IP address
 gRPC_PORT = '50051'
 
 w = 1024
-h = w * 3
+h = w * 3       # 3072
 
 sample_rate = 122880000
-msg_len = h * w * 2 + 16
+
 img_size = (640, 640)
 
 ALL_CLASSES = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv', '3G/4G']
 MAP_LIST = ['autel', 'fpv', 'dji', 'wifi']
 
 PROJECT_PATH = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
-WEIGHTS_PATH = PROJECT_PATH + r"\runs\train\yolov5m_6classes_aftertrain_2\weights\best.pt"
+WEIGHTS_PATH = PROJECT_PATH + r"\runs\train\yolov5m_6classes_AUGMENTATED_3\weights\best.pt"
 
 accumulation_size = 10
 threshold = accumulation_size * 0.5 * 0.6
+
+CALCULATE_LOG = False
+if CALCULATE_LOG:
+    msg_len = h * w * 4 + 16
+else:
+    msg_len = h * w * 2 + 16
 
 
 class Client(Process):
@@ -55,31 +58,6 @@ class Client(Process):
             accum = sum(self.accum_deques[key])
             accumed_results.append(bool(accum >= threshold))
         return accumed_results
-
-    def accumulate_and_make_decision_2(self, result_dict: dict):
-        accumed_results = []
-        frequencies = []
-        for key, key_dict in result_dict.items():
-            self.accum_deques[key].appendleft(key_dict['confidence'])
-            accum = sum(self.accum_deques[key])
-            state = bool(accum >= threshold)
-            accumed_results.append(state)
-            if state:
-                freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
-                freq = int(freq_shift/1000000 + 5786.5)
-                frequencies.append(freq)
-            else:
-                frequencies.append(0)
-        return accumed_results, frequencies
-
-    def calculate_frequency(self, ymin, ymax):
-        """ Функция считает частоту сигнала относительно центральной частоты (нулевой) """
-        freq_min = (sample_rate / img_size[0]) * ymin
-        freq_max = (sample_rate / img_size[0]) * ymax
-        freq_width = freq_max - freq_min
-        f = freq_width / 2 + freq_min
-        f_center = (sample_rate / 2 - f) * (-1)
-        return f_center
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -106,27 +84,31 @@ class Client(Process):
                             time.sleep(0.01)
                             arr += s.recv(msg_len - len(arr))
                             # logger.warning(f'Packet {i} missed. len = {len(arr)}')
-
                         if len(arr) == msg_len:
-                            logger.info(f'Header: {arr[:16].hex()}')
-                            np_arr = np.frombuffer(arr[16:], dtype=np.float16)
-                            log_mag = np_arr.astype(np.float64)
-                            # mag = (np_arr * 1.900165802481979E-9)**2 * 20
-                            # mag = (np_arr * 3.29272254144689E-14)**2 * 20
-                            # with np.errstate(divide='ignore'):
-                            #     log_mag = np.log10(mag) * 10
-                            # img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
-                            # print(max(enumerate(log_mag), key=lambda _ : _ [1]))  # поиск позиции с макс значением
+                            if CALCULATE_LOG:
+                                logger.info(f'Header: {arr[:16].hex()}')
+                                np_arr = np.frombuffer(arr[16:], dtype=np.int32)
+                                # mag = (np_arr * 1.900165802481979E-9)**2 * 20
+                                mag = (np_arr * 3.29272254144689E-14)**2 * 20
+                                with np.errstate(divide='ignore'):
+                                    log_mag = np.log10(mag) * 10
+                                # img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
+                                # print(max(enumerate(log_mag), key=lambda _ : _ [1]))  # поиск позиции с макс значением
+                            else:
+                                logger.info(f'Header: {arr[:16].hex()}')
+                                log_mag = np.frombuffer(arr[16:], dtype=np.float16)
+                                log_mag = log_mag.astype(np.float64)
+
                             img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w), axes=(1,)))
                             result = self.nn.processing(img_arr)
                             df_result = result.pandas().xyxy[0]
 
                         if self.q is not None:
-                            res, freq = self.accumulate_and_make_decision_2(
-                                self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
+                            res = self.accumulate_and_make_decision(
+                                            self.nn.convert_result(df_result, return_data_type='dict'))
+                            print(res)
                             self.q.put({'port': self.address[1],
                                         'results': res,
-                                        'frequencies': freq,
                                         'image': copy.deepcopy(result.render()[0]),
                                         'predict_df': df_result})
                         else:
@@ -159,18 +141,16 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 res = self.q.get()
                 if res['port'] == 16024:
                     band = API_pb2.Band.Band2p4
-                    res['frequencies'][1] = 0
                 elif res['port'] == 16058:
                     band = API_pb2.Band.Band5p8
                 else:
                     band = 255
-                Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0], freq=res['frequencies'][0]),
-                          API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1], freq=res['frequencies'][1]),
-                          API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2], freq=res['frequencies'][2]),
-                          API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3], freq=res['frequencies'][3])
+                Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0]),
+                          API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1]),
+                          API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2]),
+                          API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3])
                         ]
                 yield API_pb2.DataResponse(band=band, uavs=Uavs)
-
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

@@ -3,6 +3,7 @@ import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
 
 gRPC_PORT = '50051'
+MAP_LIST = ['autel', 'fpv', 'dji', 'wifi']
 
 
 def make_server_streaming_request(stub):
@@ -18,7 +19,8 @@ def main():
         for response in responses:
             print(f"Band: {response.band}")
             for uav in response.uavs:
-                print(f"UAV Type: {uav.type}, State: {uav.state}, Frequency: {uav.freq}")
+                drone_name = MAP_LIST[uav.type]
+                print(f"UAV Type: {drone_name}, State: {uav.state}")
 
 
 if __name__ == '__main__':
