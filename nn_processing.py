@@ -28,7 +28,6 @@ class NNProcessing(object):
         self.source_device = source_device
         self.img_size = img_size
 
-
         self.device = torch.device("cuda")  # = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.last_time = time.time()
         logger.info(f'Using device: {self.device}')

@@ -60,7 +60,13 @@ class Client(Process):
             accumed_results.append(state)
             if state:
                 freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
-                freq = int(freq_shift/1000000 + 5786.5)
+                if self.address[1] == 16024:
+                    freq = int(freq_shift/1000000 + 2437)
+                elif self.address[1] == 16058:
+                    freq = int(freq_shift / 1000000 + 5786.5)
+                else:
+                    freq = 0
+                    logger.warning(f'Unknown port {self.address[1]}!')
                 frequencies.append(freq)
             else:
                 frequencies.append(0)
@@ -76,66 +82,69 @@ class Client(Process):
         return f_center
 
     def run(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            for _ in range(4):
-                try:
-                    s.connect(self.address)
-                    logger.info(f'Connected to {self.address}!')
-                    self.nn = NNProcessing(name=str(self.address),
-                                           project_path=PROJECT_PATH,
-                                           weights=WEIGHTS_PATH,
-                                           width=w,
-                                           height=h,
-                                           map_list=MAP_LIST,
-                                           source_device='alinx',
-                                           sample_rate=SAMPLE_RATE,
-                                           img_size=IMG_SIZE)
+        tcp_connection_status = False
+        while not tcp_connection_status:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                for _ in range(4):
+                    try:
+                        s.connect(self.address)
+                        tcp_connection_status = True
+                        logger.info(f'Connected to {self.address}!')
+                        self.nn = NNProcessing(name=str(self.address),
+                                               project_path=PROJECT_PATH,
+                                               weights=WEIGHTS_PATH,
+                                               width=w,
+                                               height=h,
+                                               map_list=MAP_LIST,
+                                               source_device='alinx',
+                                               sample_rate=SAMPLE_RATE,
+                                               img_size=IMG_SIZE)
 
-                    while True:
-                        s.send(b'\x30')     # send for start
-                        arr = s.recv(MSG_LEN)
-                        i = 0
-                        while MSG_LEN > len(arr) and i < 200:
-                            i += 1
-                            time.sleep(0.01)
-                            arr += s.recv(MSG_LEN - len(arr))
-                            # logger.warning(f'Packet {i} missed. len = {len(arr)}')
-                        if len(arr) == MSG_LEN:
-                            if CALCULATE_LOG:
-                                logger.info(f'Header: {arr[:16].hex()}')
-                                np_arr = np.frombuffer(arr[16:], dtype=np.int32)
-                                # mag = (np_arr * 1.900165802481979E-9)**2 * 20
-                                mag = (np_arr * 3.29272254144689E-14)**2 * 20
-                                with np.errstate(divide='ignore'):
-                                    log_mag = np.log10(mag) * 10
-                                # img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
-                                # print(max(enumerate(log_mag), key=lambda _ : _ [1]))  # поиск позиции с макс значением
+                        while True:
+                            s.send(b'\x30')     # send for start
+                            arr = s.recv(MSG_LEN)
+                            i = 0
+                            while MSG_LEN > len(arr) and i < 200:
+                                i += 1
+                                time.sleep(0.01)
+                                arr += s.recv(MSG_LEN - len(arr))
+                                # logger.warning(f'Packet {i} missed. len = {len(arr)}')
+                            if len(arr) == MSG_LEN:
+                                if CALCULATE_LOG:
+                                    logger.info(f'Header: {arr[:16].hex()}')
+                                    np_arr = np.frombuffer(arr[16:], dtype=np.int32)
+                                    # mag = (np_arr * 1.900165802481979E-9)**2 * 20
+                                    mag = (np_arr * 3.29272254144689E-14)**2 * 20
+                                    with np.errstate(divide='ignore'):
+                                        log_mag = np.log10(mag) * 10
+                                    # img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w)))
+                                    # print(max(enumerate(log_mag), key=lambda _ : _ [1]))  # поиск позиции с макс значением
+                                else:
+                                    logger.info(f'Header: {arr[:16].hex()}')
+                                    log_mag = np.frombuffer(arr[16:], dtype=np.float16)
+                                    log_mag = log_mag.astype(np.float64)
+
+                                img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w), axes=(1,)))
+                                result = self.nn.processing(img_arr)
+                                df_result = result.pandas().xyxy[0]
+
+                            if self.q is not None:
+                                res, freq = self.accumulate_and_make_decision(
+                                    self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
+                                self.q.put({'port': self.address[1],
+                                            'results': res,
+                                            'frequencies': freq,
+                                            'image': copy.deepcopy(result.render()[0]),
+                                            'predict_df': df_result})
                             else:
-                                logger.info(f'Header: {arr[:16].hex()}')
-                                log_mag = np.frombuffer(arr[16:], dtype=np.float16)
-                                log_mag = log_mag.astype(np.float64)
+                                cv2.imshow(f"{self.address}", result.render()[0])
 
-                            img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w), axes=(1,)))
-                            result = self.nn.processing(img_arr)
-                            df_result = result.pandas().xyxy[0]
-
-                        if self.q is not None:
-                            res, freq = self.accumulate_and_make_decision(
-                                self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
-                            self.q.put({'port': self.address[1],
-                                        'results': res,
-                                        'frequencies': freq,
-                                        'image': copy.deepcopy(result.render()[0]),
-                                        'predict_df': df_result})
-                        else:
-                            cv2.imshow(f"{self.address}", result.render()[0])
-
-                except Exception as e:
-                    # print(f'Connection failed\n{e}')
-                    logger.error(e)
-                    s.close()
-                    time.sleep(1)
-            logger.info(f'Port №{self.address} finished work')
+                    except Exception as e:
+                        # print(f'Connection failed\n{e}')
+                        logger.error(e)
+                        s.close()
+                        time.sleep(1)
+                logger.info(f'Port №{self.address} finished work')
 
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
@@ -145,11 +154,14 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.processes = []
 
         for i in ports:
-            cl = Client(address=(TCP_HOST, int(i)),
-                        weights_path=WEIGHTS_PATH,
-                        q=self.q)
-            cl.start()
-            self.processes.append(cl)
+            try:
+                cl = Client(address=(TCP_HOST, int(i)),
+                            weights_path=WEIGHTS_PATH,
+                            q=self.q)
+                cl.start()
+                self.processes.append(cl)
+            except:
+                time.sleep(1)
 
     def ProceedDataStream(self, request, context):
         while True:
