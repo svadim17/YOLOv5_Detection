@@ -18,7 +18,6 @@ import pandas as pd
 import datetime
 import yaml
 from collections import deque
-
 import Alinx_DualPort_Connection
 import TwinRX_Connection
 import TwinRX_Connection as nn
@@ -117,7 +116,8 @@ class MainWindow(QtWidgets.QMainWindow):
                                                  weights_path=info['weights_path'],
                                                  map_list=info['map_list'],
                                                  all_classes=info['all_classes'],
-                                                 client=client)
+                                                 client=client,
+                                                 z_scale=info['z_scale'])
 
         # new_connection.visibilityChanged.connect(lambda: self.handle_visibility_change(new_connection))
         self.addDockWidget(Qt.Qt.LeftDockWidgetArea, new_connection)
@@ -136,16 +136,17 @@ class MainWindow(QtWidgets.QMainWindow):
         new_connection.dataThread.signal_recogn_df.connect(self.histogram_dock_widget.update_data)
         new_connection.dataThread.siganl_fpv_freq.connect(self.histogram_dock_widget.set_fpv_freq)
 
-
     def save_config(self):
         self.config_path, _ = QFileDialog.getSaveFileName(filter='*.yaml')
         try:
             connections_config = []
             for conn in self.connections:
                 temp_dict = {'name': conn.name,
-                             'weights_path': conn.weights_path,
                              'ip': conn.ip,
-                             'port': conn.port}
+                             'port': conn.port,
+                             'weights_path': conn.weights_path,
+                             'z_scale': [conn.spb_zmin.value(), conn.spb_zmax.value()]
+                             }
                 connections_config.append(temp_dict)
             with open(self.config_path, 'w') as f:
                 yaml.dump({'connections': connections_config}, f, sort_keys=False)
@@ -475,14 +476,18 @@ class FpvVideoSteamWidget(QDockWidget, QWidget):
 
 
 class RecognitionViewerWidget(QDockWidget, QWidget):
+
     def __init__(self, window_name: str,
                  ip: str,
                  port: int,
                  weights_path: str,
                  map_list: list,
                  all_classes: list,
-                 client):
+                 client,
+                 z_scale: list):
         super().__init__('Recognition')
+
+        self.z_values_queue = Queue()
 
         self.name = window_name + f' ({str(port)})'
         self.ip = ip
@@ -490,10 +495,16 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.weights_path = weights_path
         self.map_list = map_list
         self.all_classes = all_classes
+        self.z_min, self.z_max = z_scale[0], z_scale[1]
         self.create_ui()
         self.q = Queue()
         self.client_ref = client
-        self.process = self.client_ref((self.ip, self.port), weights_path=self.weights_path, map_list=self.map_list)
+        self.process = self.client_ref(address=(self.ip, self.port),
+                                       weights_path=self.weights_path,
+                                       map_list=self.map_list,
+                                       z_min=self.z_min,
+                                       z_max=self.z_max,
+                                       z_values_queue=self.z_values_queue)
         self.process.set_queue(self.q)
         self.save_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images"
         self.setWindowTitle(f"{self.name}")
@@ -513,10 +524,29 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.btn_save.clicked.connect(self.change_save_status)
 
     def create_ui(self):
-        self.pixmap = QPixmap()
+        self.l_zmin = QLabel('Z min')
+        self.spb_zmin = QSpinBox()
+        self.spb_zmin.setSingleStep(1)
+        self.spb_zmin.setMinimum(-100)
+        self.spb_zmin.setMaximum(100)
+        self.spb_zmin.setValue(self.z_min)
+        self.spb_zmin.setFixedWidth(70)
+        self.spb_zmin.setDisabled(True)
+
+        self.l_zmax = QLabel('Z max')
+        self.spb_zmax = QSpinBox()
+        self.spb_zmax.setSingleStep(1)
+        self.spb_zmax.setMinimum(-100)
+        self.spb_zmax.setMaximum(100)
+        self.spb_zmax.setValue(self.z_max)
+        self.spb_zmax.setFixedWidth(70)
+        self.spb_zmax.setDisabled(True)
+
         self.label_fps = QLabel()
         self.label_fps.setFixedHeight(14)
         self.image_frame = QLabel()
+        self.colormap_frame = QLabel()
+        self.create_colormap_widget()
         self.chart_widget = Plot(150, self.map_list)
         self.btn_start = QPushButton('Start')
         self.btn_start.setFixedWidth(60)
@@ -533,6 +563,14 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
 
         self.main_layout = QVBoxLayout()
 
+
+        spb_zmin_layout = QVBoxLayout()
+        spb_zmin_layout.addWidget(self.l_zmin)
+        spb_zmin_layout.addWidget(self.spb_zmin)
+        spb_zmax_layout = QVBoxLayout()
+        spb_zmax_layout.addWidget(self.l_zmax)
+        spb_zmax_layout.addWidget(self.spb_zmax)
+
         start_btn_layout = QVBoxLayout()
         start_btn_layout.addWidget(QLabel())
         start_btn_layout.addWidget(self.btn_start)
@@ -545,12 +583,15 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(self.label_fps)
+        header_layout.addLayout(spb_zmin_layout)
+        header_layout.addLayout(spb_zmax_layout)
         header_layout.addLayout(start_btn_layout)
         header_layout.addLayout(save_img_layout)
         header_layout.addLayout(cb_trigger_layout)
 
         image_layout = QHBoxLayout()
         image_layout.addWidget(self.image_frame)
+        image_layout.addWidget(self.colormap_frame)
         chart_layout = QHBoxLayout()
         chart_layout.addWidget(self.chart_widget)
 
@@ -575,6 +616,18 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.image_frame.setSizePolicy(Qt.QSizePolicy.Expanding, Qt.QSizePolicy.Expanding)
         self.chart_widget.setMinimumSize(100, 180)  # Allow resizing to smaller sizes
         self.image_frame.setSizePolicy(Qt.QSizePolicy.Expanding, Qt.QSizePolicy.Expanding)
+
+    def create_colormap_widget(self):
+        height = 640
+        width = 20
+        gradient = np.linspace(0, 255, height, dtype=np.uint8)        # создание линейного градиента
+        gradient = np.repeat(gradient[:, np.newaxis], width, axis=1)            # преобразование в двумерный массив
+        gradient = cv2.applyColorMap(gradient, cv2.COLORMAP_RAINBOW)            # применение цветовой карты
+
+        height, width, channel = gradient.shape
+        bytes_per_line = 3 * width
+        img = QImage(gradient.data, width, height, bytes_per_line, QImage.Format_RGB888)
+        self.colormap_frame.setPixmap(QPixmap.fromImage(img))
 
     @pyqtSlot(np.ndarray)
     def update_image(self, cv_img):
@@ -607,7 +660,23 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         if self.process is None:
             self.process = self.client_ref((self.ip, self.port), weights_path=self.weights_path, map_list=self.map_list)
             self.process.set_queue(self.q)
+
         self.process.start()
+        self.spb_zmin.setEnabled(True)
+        self.spb_zmax.setEnabled(True)
+
+        self.spb_zmin.valueChanged.connect(self.send_z_min_value)
+        self.spb_zmax.valueChanged.connect(self.send_z_max_value)
+
+        # try:
+        #     time.sleep(10)
+        #     if self.process.nn is not None:
+        #         self.spb_zmin.valueChanged.connect(self.process.nn.z_min_value_changed)
+        #         self.spb_zmax.valueChanged.connect(self.process.nn.z_max_value_changed)
+        #     else:
+        #         print("NNProcessing object is None, cannot connect signals.")
+        # except Exception as e:
+        #     print(e)
         self.btn_start.setText('Stop')
         self.btn_start.setChecked(True)
 
@@ -616,6 +685,12 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.process = None
         self.btn_start.setText('Start')
         self.btn_start.setChecked(False)
+
+    def send_z_min_value(self, value):
+        self.z_values_queue.put(('z_min', value))
+
+    def send_z_max_value(self, value):
+        self.z_values_queue.put(('z_max', value))
 
     def start_button_pressed(self):
         try:

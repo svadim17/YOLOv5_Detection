@@ -2,8 +2,8 @@ from PIL import Image
 import os
 
 
-images_directory = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj1"
-new_images_directory = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\obj"
+images_directory = r"D:\YOLOv5 DATASET\8 steps 6 classes\obj"
+new_images_directory = r"D:\YOLOv5 DATASET\8 steps 6 classes\obj1"
 
 
 def get_image_paths(directory):

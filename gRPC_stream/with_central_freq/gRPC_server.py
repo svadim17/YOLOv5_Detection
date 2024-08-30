@@ -37,14 +37,21 @@ if CALCULATE_LOG:
 else:
     MSG_LEN = h * w * 2 + 16
 
+Z_MIN_2G4 = -20
+Z_MAX_2G4 = 75
+Z_MIN_5G8 = -24
+Z_MAX_5G8 = 77
+
 
 class Client(Process):
-    def __init__(self, address: tuple, weights_path, q=None):
+    def __init__(self, address: tuple, weights_path: str, z_min: int, z_max: int, q=None):
         super().__init__()
         self.address = address
         self.weights_path = weights_path
         self.start_time = time.time()
         self.q = q
+        self.z_min = z_min
+        self.z_max = z_max
         self.accum_deques = {i: deque(maxlen=ACCUMULATION_SIZE) for i in MAP_LIST}
 
     def set_queue(self, q: Queue):
@@ -91,14 +98,17 @@ class Client(Process):
                         tcp_connection_status = True
                         logger.info(f'Connected to {self.address}!')
                         self.nn = NNProcessing(name=str(self.address),
-                                               project_path=PROJECT_PATH,
                                                weights=WEIGHTS_PATH,
+                                               sample_rate=SAMPLE_RATE,
                                                width=w,
                                                height=h,
+                                               project_path=PROJECT_PATH,
                                                map_list=MAP_LIST,
                                                source_device='alinx',
-                                               sample_rate=SAMPLE_RATE,
-                                               img_size=IMG_SIZE)
+                                               img_size=IMG_SIZE,
+                                               msg_len=MSG_LEN,
+                                               z_min=self.z_min,
+                                               z_max=self.z_max)
 
                         while True:
                             s.send(b'\x30')     # send for start
@@ -153,14 +163,27 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.q = Queue()
         self.processes = []
 
-        for i in ports:
+        for port in ports:
             try:
-                cl = Client(address=(TCP_HOST, int(i)),
-                            weights_path=WEIGHTS_PATH,
-                            q=self.q)
+                if port == 16024:
+                    cl = Client(address=(TCP_HOST, int(port)),
+                                weights_path=WEIGHTS_PATH,
+                                z_min=Z_MIN_2G4,
+                                z_max=Z_MAX_2G4,
+                                q=self.q)
+                elif port == 16058:
+                    cl = Client(address=(TCP_HOST, int(port)),
+                                weights_path=WEIGHTS_PATH,
+                                z_min=Z_MIN_5G8,
+                                z_max=Z_MAX_5G8,
+                                q=self.q)
+                else:
+                    logger.error(f'Unknown port {port}')
+
                 cl.start()
                 self.processes.append(cl)
-            except:
+            except Exception as e:
+                print(e)
                 time.sleep(1)
 
     def ProceedDataStream(self, request, context):

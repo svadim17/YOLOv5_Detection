@@ -7,12 +7,52 @@ import numpy as np
 from tqdm import tqdm
 
 
+OBJ_PATH = r"D:\YOLOv5 DATASET\8 steps 6 classes\orig"
+NEW_OBJ_PATH = r"D:\YOLOv5 DATASET\8 steps 6 classes\ojb_augm_color"
 ALL_CLASSES = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv']
 BOX_COLOR = (255, 255, 255)     # white
 TEXT_COLOR = (255, 0, 0)        # red
-OBJ_PATH = r"D:\YOLOv5 DATASET\8 steps 6 classes\obj_VerticalFlip"
-NEW_OBJ_PATH = r"D:\YOLOv5 DATASET\8 steps 6 classes\obj_VerticalFlip_ChanShuffle"
-SAVE_STATUS = True      # True or False
+
+
+def get_image_paths(directory):
+    image_paths = []
+    for file in os.listdir(directory):
+        if file.endswith('.jpg'):
+            img_filepath = os.path.join(directory, file)    # get full path for signal
+            image_paths.append(img_filepath)
+    return image_paths
+
+
+def get_annotation_paths(directory):
+    annotation_paths = []
+    for file in os.listdir(directory):
+        if file.endswith('.txt'):
+            annotation_filepath = os.path.join(directory, file)    # get full path for annotation
+            annotation_paths.append(annotation_filepath)
+    return annotation_paths
+
+
+def sort_annotation_file(text: list):
+    classes = []
+    bboxes = []
+    for line in text:
+        elements = line.split(' ', 1)                       # разделение номера класса от координат
+        classes.append(int(elements[0]))                    # номер класса в int
+        bbox_temp = list(elements[1].split(' '))            # разделение чисел внутри координат
+        bboxes.append([eval(numb) for numb in bbox_temp])   # перевод координат в int
+
+    return classes, bboxes
+
+
+def visualize(image, bboxes, classes):
+    """ This function show image with all boxes on this image """
+    img = image.copy()
+    for bbox, clas in zip(bboxes, classes):
+        class_name = ALL_CLASSES[clas]
+        img = visualize_bbox(img, bbox, class_name)
+    plt.figure(figsize=(12, 12))
+    plt.axis('off')
+    plt.imshow(img)
 
 
 def visualize_bbox(img, bbox, class_name, thickness=2):
@@ -40,47 +80,6 @@ def visualize_bbox(img, bbox, class_name, thickness=2):
     return img
 
 
-def visualize(image, bboxes, classes):
-    """ This function show image with all boxes on this image """
-    img = image.copy()
-    for bbox, clas in zip(bboxes, classes):
-        class_name = ALL_CLASSES[clas]
-        img = visualize_bbox(img, bbox, class_name)
-    plt.figure(figsize=(12, 12))
-    plt.axis('off')
-    plt.imshow(img)
-
-
-def sort_annotation_file(text: list):
-    classes = []
-    bboxes = []
-    for line in text:
-        elements = line.split(' ', 1)                       # разделение номера класса от координат
-        classes.append(int(elements[0]))                    # номер класса в int
-        bbox_temp = list(elements[1].split(' '))            # разделение чисел внутри координат
-        bboxes.append([eval(numb) for numb in bbox_temp])   # перевод координат в int
-
-    return classes, bboxes
-
-
-def get_image_paths(directory):
-    image_paths = []
-    for file in os.listdir(directory):
-        if file.endswith('.jpg'):
-            img_filepath = os.path.join(directory, file)    # get full path for signal
-            image_paths.append(img_filepath)
-    return image_paths
-
-
-def get_annotation_paths(directory):
-    annotation_paths = []
-    for file in os.listdir(directory):
-        if file.endswith('.txt'):
-            annotation_filepath = os.path.join(directory, file)    # get full path for annotation
-            annotation_paths.append(annotation_filepath)
-    return annotation_paths
-
-
 if __name__ == '__main__':
     images_paths = get_image_paths(directory=OBJ_PATH)
     annotations_paths = get_annotation_paths(directory=OBJ_PATH)
@@ -98,16 +97,13 @@ if __name__ == '__main__':
         classes, bboxes = sort_annotation_file(lines)
 
         aug = A.Compose(
-            [A.ChannelShuffle(p=1)],        # A.ChannelShuffle(p=1), A.HorizontalFlip(p=1), A.VerticalFlip(p=1), A.ChannelDropout(p=1)
+            [A.ChannelDropout(p=1)],
             bbox_params=A.BboxParams(format='yolo', label_fields=['classes'])
         )
         try:
             aug_result = aug(image=image, bboxes=bboxes, classes=classes)
-        except Exception as e:
-            print(e)
-            print(f'Error with image {tail_path_img}')
 
-        if SAVE_STATUS:
+            # Save augmentated images and annotations
             new_filename_img = NEW_OBJ_PATH + '\\' + 'augm_' + tail_path_img
             new_filename_txt = NEW_OBJ_PATH + '\\' + 'augm_' + tail_path_txt
 
@@ -117,22 +113,17 @@ if __name__ == '__main__':
             # Save augmented annotation
             text = []
             for i in range(len(aug_result['classes'])):
-                clas = aug_result['classes'][i]         # get class
+                clas = aug_result['classes'][i]  # get class
                 box = ''
                 for num in aug_result['bboxes'][i]:
-                    box += ' ' + str(num)               # get coordinates of box
-                new_line = str(clas) + box + '\n'       # get full annotation for object on image
+                    box += ' ' + str(num)  # get coordinates of box
+                new_line = str(clas) + box + '\n'  # get full annotation for object on image
                 text.append(new_line)
             with open(new_filename_txt, 'w') as f:
                 f.writelines(text)
-        else:
-            visualize(image, bboxes, classes)       # visualize original image
 
-            visualize(aug_result['image'],          # visualize augmented image
-                      aug_result['bboxes'],
-                      aug_result['classes'])
-            plt.show()
-
-
+        except Exception as e:
+            print(e)
+            print(f'Error with image {tail_path_img}')
 
 

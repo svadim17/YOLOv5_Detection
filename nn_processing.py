@@ -19,7 +19,9 @@ class NNProcessing(object):
                  map_list: list,
                  source_device='twinrx',
                  img_size=(640, 640),
-                 msg_len=0):
+                 msg_len=0,
+                 z_min=-20,
+                 z_max=75):
         super().__init__()
         self.name = name
         self.weights = weights
@@ -27,6 +29,8 @@ class NNProcessing(object):
         self.map_list = map_list
         self.source_device = source_device
         self.img_size = img_size
+        self.z_min = z_min
+        self.z_max = z_max
 
         self.device = torch.device("cuda")  # = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.last_time = time.time()
@@ -52,21 +56,27 @@ class NNProcessing(object):
     def normalization4(self, data):
         if self.source_device == 'twinrx':
             data = np.transpose(data + 122)
-            z_min = -40
-            z_max = 40
+            # self.z_min = -40
+            # self.z_max = 40
         elif self.source_device == 'alinx':
             data = np.transpose(data)
             # z_min = -71                 # -71 with coeff 3.29
             # z_max = 21                  # 21 with coeff 3.29
-            z_min = -20
-            z_max = 75
+            # self.z_min = -20
+            # self.z_max = 75
         else:
             data = np.transpose(data)
-            z_min = -75
-            z_max = 20
-        norm_data = 255 * (data - z_min) / (z_max - z_min)
+            self.z_min = -75
+            self.z_max = 20
+        norm_data = 255 * (data - self.z_min) / (self.z_max - self.z_min)
         norm_data = norm_data.astype(np.uint8)
         return norm_data
+
+    def z_min_value_changed(self, value):
+        self.z_min = value
+
+    def z_max_value_changed(self, value):
+        self.z_max = value
 
     def processing(self, norm_data):
         # Use OpenCV to create a color image from the normalized data

@@ -80,5 +80,5 @@ def check_annotation(path):
 
 
 if __name__ == '__main__':
-    annotations_path = r"D:\YOLOv5 DATASET\7 steps 6 classes\step7"
+    annotations_path = r"D:\YOLOv5 DATASET\STEP 8\ImgLab MARKED\autel_lite\labels"
     open_all_files(annotations_path)

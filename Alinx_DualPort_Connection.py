@@ -12,13 +12,16 @@ CALCULATE_LOG = False
 
 
 class Client(Process):
-    def __init__(self, address, weights_path, map_list):
+    def __init__(self, address, weights_path, map_list, z_min, z_max, z_values_queue):
         super().__init__()
         self.address = address
         self.weights_path = weights_path
         self.start_time = time.time()
         self.q = None
         self.map_list = map_list
+        self.z_min = z_min
+        self.z_max = z_max
+        self.z_values_queue = z_values_queue
         self.w = 1024
         self.h = 3072
         if CALCULATE_LOG:
@@ -46,8 +49,19 @@ class Client(Process):
                                            map_list=self.map_list,
                                            source_device='alinx',
                                            img_size=self.img_size,
-                                           msg_len=self.msg_len)
+                                           msg_len=self.msg_len,
+                                           z_min=self.z_min,
+                                           z_max=self.z_max)
                     while True:
+
+                        # Проверка обновлений в z_min и z_max
+                        while not self.z_values_queue.empty():
+                            key, value = self.z_values_queue.get()
+                            if key == 'z_min':
+                                self.nn.z_min = value
+                            elif key == 'z_max':
+                                self.nn.z_max = value
+
                         s.send(b'\x30')     # send for start
                         arr = s.recv(self.msg_len)
                         i = 0
