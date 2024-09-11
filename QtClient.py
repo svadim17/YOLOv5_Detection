@@ -24,6 +24,7 @@ import TwinRX_Connection as nn
 # import Alinx_DualPort_Connection as nn
 
 
+SAVE_IMAGES_PATH = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images"
 GLOBAL_COLORS = {'noise': (220, 138, 221),
                  'dji': (255, 163, 72),
                  'wifi': (0, 255, 12),
@@ -57,6 +58,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.start_action = QAction('Start all')
         self.start_action.triggered.connect(self.start_all)
 
+        self.stop_action = QAction('Stop all')
+        self.stop_action.triggered.connect(self.stop_all)
+
         self.fpv_action = QAction('FPV')
         self.fpv_action.triggered.connect(self.open_fpv_window)
 
@@ -76,6 +80,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toolbar = QToolBar('Main')
         self.addToolBar(Qt.Qt.ToolBarArea.TopToolBarArea, self.toolbar)
         self.toolbar.addAction(self.start_action)
+        self.toolbar.addAction(self.stop_action)
         self.toolbar.addAction(self.fpv_action)
         self.toolbar.addAction(self.add_action)
         self.toolbar.addAction(self.save_config_action)
@@ -167,6 +172,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def start_all(self):
         for connection in self.connections:
             connection.init_client()
+
+    def stop_all(self):
+        for connection in self.connections:
+            try:
+                connection.kill_client()
+            except:
+                logger.info('Can not kill client, it is already killed.')
 
 
 class AddingConnectionWindow(QDialog):
@@ -506,7 +518,7 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
                                        z_max=self.z_max,
                                        z_values_queue=self.z_values_queue)
         self.process.set_queue(self.q)
-        self.save_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images"
+        self.save_path = SAVE_IMAGES_PATH
         self.setWindowTitle(f"{self.name}")
         self.dataThread = DataThread(self.q,
                                      self.name,
@@ -658,7 +670,12 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
 
     def init_client(self):
         if self.process is None:
-            self.process = self.client_ref((self.ip, self.port), weights_path=self.weights_path, map_list=self.map_list)
+            self.process = self.client_ref((self.ip, self.port),
+                                           weights_path=self.weights_path,
+                                           map_list=self.map_list,
+                                           z_min=self.z_min,
+                                           z_max=self.z_max,
+                                           z_values_queue=self.z_values_queue)
             self.process.set_queue(self.q)
 
         self.process.start()
@@ -685,6 +702,8 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.process = None
         self.btn_start.setText('Start')
         self.btn_start.setChecked(False)
+        self.spb_zmin.setDisabled(True)
+        self.spb_zmax.setDisabled(True)
 
     def send_z_min_value(self, value):
         self.z_values_queue.put(('z_min', value))

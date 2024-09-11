@@ -31,7 +31,7 @@ class NNProcessing(object):
         self.img_size = img_size
         self.z_min = z_min
         self.z_max = z_max
-
+        torch.cuda.empty_cache()
         self.device = torch.device("cuda")  # = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.last_time = time.time()
         logger.info(f'Using device: {self.device}')
@@ -127,7 +127,6 @@ class NNProcessing(object):
         """ Преобразование датафрейма в словарь с  координатами объекта на картинке """
         labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag', 'autel_max_4n(t)']
 
-        print(df)
         # Группировка по имени и выбор строки с максимальным confidence
         idx = df.groupby(['name'])['confidence'].idxmax()
         group_res = df.loc[idx]

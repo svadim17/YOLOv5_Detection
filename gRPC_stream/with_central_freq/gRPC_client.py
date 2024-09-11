@@ -1,3 +1,5 @@
+import time
+
 import grpc
 import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
@@ -13,10 +15,15 @@ def make_server_streaming_request(stub):
 
 
 def main():
-    with grpc.insecure_channel(f'localhost:{gRPC_PORT}') as grpc_channel:
+    start_time = 0
+    with grpc.insecure_channel(f'192.168.1.1:{gRPC_PORT}') as grpc_channel:
         stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
         responses = stub.ProceedDataStream(API_pb2.VoidRequest())
         for response in responses:
+            print('------------------')
+            print(f'Processing time = {time.time() - start_time}')
+            print('------------------')
+            start_time = time.time()
             print(f"Band: {response.band}")
             for uav in response.uavs:
                 drone_name = MAP_LIST[uav.type]

@@ -108,8 +108,8 @@ if __name__ == '__main__':
             print(f'Error with image {tail_path_img}')
 
         if SAVE_STATUS:
-            new_filename_img = NEW_OBJ_PATH + '\\' + 'augm_' + tail_path_img
-            new_filename_txt = NEW_OBJ_PATH + '\\' + 'augm_' + tail_path_txt
+            new_filename_img = NEW_OBJ_PATH + '\\' + 'vert_flip_chan_shuffle_' + tail_path_img
+            new_filename_txt = NEW_OBJ_PATH + '\\' + 'vert_flip_chan_shuffle_' + tail_path_txt
 
             # Save augmented image
             cv2.imwrite(filename=new_filename_img, img=aug_result['image'])

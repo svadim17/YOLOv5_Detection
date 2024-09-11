@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+option csharp_namespace = "NeuroProtos";
+
+package NeuroDataProcessing;
+
+enum DroneType {
+  Autel = 0;
+  Fpv = 1;
+  Dji = 2;
+  Wifi = 3;
+}
+
+enum Band {
+  Band2p4 = 0;
+  Band5p8 = 1;
+}
+
+message UavObject {
+    DroneType type = 1;
+    bool state = 2;
+    int32 freq = 3;
+}
+
+message DataResponse {
+    Band band = 1;
+    repeated UavObject uavs = 2;
+}
+
+message VoidRequest {
+
+}
+
+message ImageResponse {
+    Band band = 1;
+    bytes data = 2;
+    int32 height = 3;
+    int32 width = 4;
+}
+
+message ImageRequest {
+    Band band = 1;
+}
+
+// Сервис обработки данных
+service DataProcessingService {
+    rpc ProceedDataStream (VoidRequest) returns (stream DataResponse); // RPC для отправки данных
+    rpc SpectrogramImageStream (ImageRequest) returns (stream ImageResponse); // RPC для отправки изображений
+}

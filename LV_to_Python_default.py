@@ -12,8 +12,8 @@ from loguru import logger
 map_list = ['noise', 'autel', 'fpv', 'dji', 'wifi']
 
 HOST = "127.0.0.1"  # The server's hostname or IP address
-project_path = r"D:\YOLOv5 Project"
-weights_path = r"D:\YOLOv5 Project\runs\train\yolov5m_6classes_aftertrain\weights\best.pt"
+project_path = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
+weights_path = project_path + r"\runs\train\yolov5m_6classes_aftertrain\weights\best.pt"
 save_path = r'C:\Users\User\Documents\photo'
 save_result_path = None
 RETURN_MODE = 'tcp'          # None or "CUSTOM" or 'tcp'
@@ -140,6 +140,12 @@ class Client(Process):
 
                             result= self.nn.processing(data)
                             df_result = result.pandas().xyxy[0]
+
+                            img_arr = np.frombuffer(result.render()[0].tobytes(), dtype=np.uint8).reshape((640, 640, 3))
+                            color_image = cv2.applyColorMap(img_arr, cv2.COLORMAP_RAINBOW)
+                            screen = cv2.resize(color_image, (640, 640))
+
+                            cv2.imshow(str(self.address), screen)
 
                             if RETURN_MODE == 'csv':
                                 df_result.to_csv(r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\return_example.csv')

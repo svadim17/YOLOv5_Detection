@@ -2,7 +2,7 @@ import os
 import random
 import shutil
 
-MODE = 'MOVE'       # MOVE or COPY
+MODE = 'COPY'       # MOVE or COPY
 FOLDER_PATH = r"D:\YOLOv5 DATASET\STEP 5\IMAGES\3G4G_part1"
 NEW_FOLDER_PATH = r"D:\YOLOv5 DATASET\STEP 5\IMAGES\3G4G_part2"
 NUMB_TO_MOVE = 300
