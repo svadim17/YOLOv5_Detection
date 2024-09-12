@@ -32,7 +32,8 @@ def imageStream(channel):
         size = (img_response.height, img_response.width, 3)  # (640, 640, 3)
         img_arr = np.frombuffer(img_response.data, dtype=np.uint8).reshape(size)
         color_image = cv2.applyColorMap(img_arr, cv2.COLORMAP_RAINBOW)
-        cv2.imshow(f"{band}", color_image)
+        resized_img = cv2.resize(color_image, (320, 320))
+        cv2.imshow(f"{band}", resized_img)
         cv2.waitKey(1)  # Required to render the image properly
 
 

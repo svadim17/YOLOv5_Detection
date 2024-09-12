@@ -26,7 +26,7 @@ ALL_CLASSES = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv
 MAP_LIST = ['autel', 'fpv', 'dji', 'wifi']
 
 PROJECT_PATH = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
-WEIGHTS_PATH = PROJECT_PATH + r"\runs\train\yolov5m_6classes_AUGMENTATED_3\weights\best.pt"
+WEIGHTS_PATH = PROJECT_PATH + r"\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt"
 
 ACCUMULATION_SIZE = 10
 THRESHOLD = ACCUMULATION_SIZE * 0.5 * 0.6
