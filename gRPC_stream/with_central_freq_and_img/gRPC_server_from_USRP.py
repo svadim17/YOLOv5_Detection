@@ -28,8 +28,8 @@ MAP_LIST = ['autel', 'fpv', 'dji', 'wifi']
 PROJECT_PATH = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
 WEIGHTS_PATH = PROJECT_PATH + r"\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt"
 
-ACCUMULATION_SIZE = 10
-THRESHOLD = ACCUMULATION_SIZE * 0.5 * 0.6
+ACCUMULATION_SIZE = 25
+THRESHOLD = ACCUMULATION_SIZE * 0.6 * 0.6
 
 CALCULATE_LOG = False
 if CALCULATE_LOG:
@@ -158,8 +158,8 @@ class Client(Process):
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
     def __init__(self, ports):
         self.data_store = {}
-        self.data_q = Queue()
-        self.img_q = Queue()
+        self.data_q = Queue(maxsize=20)
+        self.img_q = Queue(maxsize=20)
         self.processes = []
 
         for port in ports:

@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from yolov5.gRPC_stream.with_central_freq_and_img import neuro_pb2 as yolov5_dot_gRPC__stream_dot_with__central__freq__and__img_dot_neuro__pb2
+import neuro_pb2 as yolov5_dot_gRPC__stream_dot_with__central__freq__and__img_dot_neuro__pb2
 
 GRPC_GENERATED_VERSION = '1.65.1'
 GRPC_VERSION = grpc.__version__

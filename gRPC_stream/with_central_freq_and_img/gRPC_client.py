@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 gRPC_PORT = '50051'
 MAP_LIST = ['autel', 'fpv', 'dji', 'wifi']
 
+
 def dataStream(channel):
     stub = API_pb2_grpc.DataProcessingServiceStub(channel)
     responses = stub.ProceedDataStream(API_pb2.VoidRequest())
@@ -23,6 +24,7 @@ def dataStream(channel):
         for uav in response.uavs:
             drone_name = MAP_LIST[uav.type]
             print(f"UAV Type: {drone_name}, State: {uav.state}, Frequency: {uav.freq}")
+
 
 def imageStream(channel):
     stub = API_pb2_grpc.DataProcessingServiceStub(channel)
