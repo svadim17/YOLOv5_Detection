@@ -11,55 +11,84 @@ from loguru import logger
 import copy
 from collections import deque
 from yolov5.nn_processing import NNProcessing
+import yaml
+
 # from nn_processing import NNProcessing
 
-TCP_HOST = "127.0.0.1"  # The server's hostname or IP address
-gRPC_PORT = '50051'
 
-w = 1024
-h = 2048       # 3072
+def load_conf(config_path: str):
+    try:
+        with open(config_path, encoding='utf-8') as f:
+            config_str = str(yaml.load(f, Loader=yaml.SafeLoader))
+            config = dict(yaml.load(config_str, Loader=yaml.SafeLoader))
+            logger.success(f'Config loaded successfully!')
+            return config
+    except Exception as e:
+        logger.error(f'Error with loading config: {e}')
 
-SAMPLE_RATE = 80000000
-IMG_SIZE = (640, 640)
 
-ALL_CLASSES = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv', '3G/4G']
-MAP_LIST = ['autel', 'fpv', 'dji', 'wifi']
-
-PROJECT_PATH = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
-WEIGHTS_PATH = PROJECT_PATH + r"\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt"
-
-ACCUMULATION_SIZE = 25
-THRESHOLD = ACCUMULATION_SIZE * 0.6 * 0.6
-
-CALCULATE_LOG = False
-if CALCULATE_LOG:
-    MSG_LEN = w * h
-else:
-    MSG_LEN = w * h
-
-Z_MIN_2G4 = -40
-Z_MAX_2G4 = 40
-Z_MIN_5G8 = -40
-Z_MAX_5G8 = 40
-PORT_2G4 = 10091
-PORT_5G8 = 10093
+def dump_conf(config_path:str, config: dict):
+    with open(config_path, 'w') as f:
+        yaml.dump(config, f, sort_keys=False)
 
 
 class Client(Process):
-    def __init__(self, address: tuple, weights_path: str, z_min: int, z_max: int, data_queue=None, img_queue=None):
+    def __init__(self,
+                 name: str,
+                 address: tuple,
+                 weights_path: str,
+                 project_path: str,
+                 sample_rate: int,
+                 signal_width: int,
+                 signal_height: int,
+                 img_size: tuple,
+                 all_classes: tuple,
+                 map_list: tuple,
+                 z_min: int,
+                 z_max: int,
+                 threshold: int,
+                 accumulation_size: int,
+                 data_queue=None,
+                 img_queue=None):
         super().__init__()
+        self.q_control = Queue()
+        self.nn = None
+        self.name = name
         self.address = address
         self.weights_path = weights_path
+        self.project_path = project_path
+        self.sample_rate = sample_rate
+        self.signal_width = signal_width
+        self.signal_height = signal_height
+        self.img_size = img_size
+        self.all_classes = all_classes
+        self.map_list = map_list
         self.start_time = time.time()
-        self.data_q = data_queue
-        self.img_q = img_queue
         self.z_min = z_min
         self.z_max = z_max
-        self.accum_deques = {i: deque(maxlen=ACCUMULATION_SIZE) for i in MAP_LIST}
+        self.threshold = threshold
+        self.accumulation_size = accumulation_size
+        self.data_q = data_queue
+        self.img_q = img_queue
+        self.msg_len = self.signal_width * self.signal_height
+        self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
+
+
+
 
     def set_queue(self, data_queue: Queue, img_queue: Queue):
         self.data_q = data_queue
         self.img_q = img_queue
+
+    def change_zscale(self, z_min: int, z_max: int):
+        self.z_min = z_min
+        self.z_max = z_max
+        logger.info(f'New z: {z_min} {z_max}')
+        try:
+            self.nn.z_min_value_changed(value=z_min)
+            self.nn.z_max_value_changed(value=z_max)
+        except Exception as e:
+            logger.error(e)
 
     def accumulate_and_make_decision(self, result_dict: dict):
         accumed_results = []
@@ -67,17 +96,17 @@ class Client(Process):
         for key, key_dict in result_dict.items():
             self.accum_deques[key].appendleft(key_dict['confidence'])
             accum = sum(self.accum_deques[key])
-            state = bool(accum >= THRESHOLD)
+            state = bool(accum >= self.threshold)
             accumed_results.append(state)
             if state:
                 freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
-                if self.address[1] == PORT_2G4:
+                if self.name == '2G4':
                     freq = int(freq_shift/1000000 + 2437)
-                elif self.address[1] == PORT_5G8:
+                elif self.name == '5G8':
                     freq = int(freq_shift / 1000000 + 5786.5)
                 else:
                     freq = 0
-                    logger.warning(f'Unknown port {self.address[1]}!')
+                    logger.warning(f'Unknown connection name {self.name}!')
                 frequencies.append(freq)
             else:
                 frequencies.append(0)
@@ -85,11 +114,11 @@ class Client(Process):
 
     def calculate_frequency(self, ymin, ymax):
         """ Функция считает частоту сигнала относительно центральной частоты (нулевой) и возвращает смещение """
-        freq_min = (SAMPLE_RATE / IMG_SIZE[0]) * ymin
-        freq_max = (SAMPLE_RATE / IMG_SIZE[0]) * ymax
+        freq_min = (self.sample_rate / self.img_size[0]) * ymin
+        freq_max = (self.sample_rate / self.img_size[0]) * ymax
         freq_width = freq_max - freq_min
         f = freq_width / 2 + freq_min
-        f_center = (SAMPLE_RATE / 2 - f) * (-1)
+        f_center = (self.sample_rate / 2 - f) * (-1)
         return f_center
 
     def run(self):
@@ -100,52 +129,54 @@ class Client(Process):
                     try:
                         s.connect(self.address)
                         tcp_connection_status = True
-                        logger.info(f'Connected to {self.address}!')
+                        logger.success(f'Connected to {self.address}!')
                         nn_type = s.recv(2)
-
-                        self.nn = NNProcessing(name=str(self.address),
-                                               weights=WEIGHTS_PATH,
-                                               sample_rate=SAMPLE_RATE,
-                                               width=w,
-                                               height=h,
-                                               project_path=PROJECT_PATH,
-                                               map_list=MAP_LIST,
-                                               source_device='twinrx',
-                                               img_size=IMG_SIZE,
-                                               msg_len=MSG_LEN,
+                        logger.info(f'NN type: {nn_type}')
+                        self.nn = NNProcessing(name=self.name,
+                                               weights=self.weights_path,
+                                               sample_rate=self.sample_rate,
+                                               width=self.signal_width,
+                                               height=self.signal_height,
+                                               project_path=self.project_path,
+                                               map_list=self.map_list,
+                                               img_size=self.img_size,
+                                               msg_len=self.msg_len,
                                                z_min=self.z_min,
                                                z_max=self.z_max)
-
-                        logger.info(f'NN type: {nn_type}')
-
-                        res_1 = np.arange(len(MAP_LIST) * 4)  # array of bytes to send (4 bytes for one class (float32)
+                        res_1 = np.arange(len(self.map_list) * 4)  # array of bytes to send (4 bytes for one class (float32)
 
                         while True:
                             s.send(res_1.tobytes())
-                            arr = s.recv(MSG_LEN)
+                            arr = s.recv(self.msg_len)
                             i = 0
-                            while MSG_LEN > len(arr) and i < 200:
+                            while self.msg_len > len(arr) and i < 200:
                                 i += 1
                                 time.sleep(0.005)
-                                arr += s.recv(MSG_LEN - len(arr))
+                                arr += s.recv(self.msg_len - len(arr))
                                 logger.warning(f'Packet {i} missed.')
                             np_arr = np.frombuffer(arr, dtype=np.int8)
-                            if np_arr.size == MSG_LEN:
-                                img_arr = self.nn.normalization4(np_arr.reshape(h, w))
+                            if np_arr.size == self.msg_len:
+                                img_arr = self.nn.normalization4(np_arr.reshape(self.signal_height, self.signal_width))
                                 result = self.nn.processing(img_arr)
                                 df_result = result.pandas().xyxy[0]
 
                             if self.data_q is not None:
                                 res, freq = self.accumulate_and_make_decision(
                                     self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
-                                self.data_q.put({'port': self.address[1],
-                                            'results': res,
-                                            'frequencies': freq,
-                                            'predict_df': df_result})
+                                self.data_q.put({'name': self.name,
+                                                 'results': res,
+                                                 'frequencies': freq,
+                                                 'predict_df': df_result})
                             if self.img_q is not None:
                                self.img_q.put({'image': copy.deepcopy(result.render()[0]),
-                                                'img_size': IMG_SIZE,
-                                                'port': self.address[1]})
+                                                'img_size': self.img_size,
+                                                'name': self.name})
+
+                            if not self.q_control.empty():
+                                cmd_dict = self.q_control.get()
+                                args = cmd_dict['args']
+                                func = getattr(self, cmd_dict['func'])
+                                func(*args)
 
                     except Exception as e:
                         # print(f'Connection failed\n{e}')
@@ -156,76 +187,112 @@ class Client(Process):
 
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
-    def __init__(self, ports):
+    def __init__(self, config_path):
+        self.config_path = config_path
+        self.config = load_conf(config_path=self.config_path)
         self.data_store = {}
-        self.data_q = Queue(maxsize=20)
-        self.img_q = Queue(maxsize=20)
-        self.processes = []
-
-        for port in ports:
-            try:
-                if port == PORT_2G4:
-                    cl = Client(address=(TCP_HOST, int(port)),
-                                weights_path=WEIGHTS_PATH,
-                                z_min=Z_MIN_2G4,
-                                z_max=Z_MAX_2G4,
-                                data_queue=self.data_q,
-                                img_queue=self.img_q)
-                elif port == PORT_5G8:
-                    cl = Client(address=(TCP_HOST, int(port)),
-                                weights_path=WEIGHTS_PATH,
-                                z_min=Z_MIN_5G8,
-                                z_max=Z_MAX_5G8,
-                                data_queue=self.data_q,
-                                img_queue=self.img_q)
-                else:
-                    logger.error(f'Unknown port {port}')
-
-                cl.start()
-                self.processes.append(cl)
-            except Exception as e:
-                print(e)
-                time.sleep(1)
+        self.data_q = Queue(maxsize=9)
+        self.img_q = Queue(maxsize=5)
+        self.processes = {}
+        self.connections = self.config['connections']
 
     def ProceedDataStream(self, request, context):
+        logger.info(f'Start data stream')
         while True:
             if not self.data_q.empty():
                 res = self.data_q.get()
-                if res['port'] == PORT_2G4:
-                    band = API_pb2.Band.Band2p4
-                    res['frequencies'][1] = 0
-                elif res['port'] == PORT_5G8:
-                    band = API_pb2.Band.Band5p8
-                else:
-                    band = 255
+                band_name = res['name']
                 Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0], freq=res['frequencies'][0]),
                           API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1], freq=res['frequencies'][1]),
                           API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2], freq=res['frequencies'][2]),
                           API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3], freq=res['frequencies'][3])
                         ]
-                yield API_pb2.DataResponse(band=band, uavs=Uavs)
+                # logger.info(f'Data was send from band {band_name}')
+                yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs)
 
     def SpectrogramImageStream(self, request, context):
+        logger.info(f'Start image stream request: {request.band_name}')
         while True:
             if not self.img_q.empty():
                 res = self.img_q.get()
-                if res['port'] == PORT_2G4:
-                    band = API_pb2.Band.Band2p4
-
-                elif res['port'] == PORT_5G8:
-                    band = API_pb2.Band.Band5p8
-                else:
-                    band = 255
-                yield API_pb2.ImageResponse(band=band,
+                band_name = res['name']
+                yield API_pb2.ImageResponse(band_name=band_name,
                                             data=res['image'].tobytes(),
                                             height=res['img_size'][0],
                                             width=res['img_size'][1])
 
+    def GetAvailableChannels(self, request, context):
+        available_channels = tuple(self.connections.keys())
+        return API_pb2.ChannelsResponse(channels=available_channels)
+
+    def StartChannel(self, request, context):
+        if request.connection_name in self.connections:
+            conn_name = request.connection_name
+            connection = self.connections[conn_name]
+            try:
+                cl = Client(name=conn_name,
+                            address=(str(connection['ip']), int(connection['port'])),
+                            weights_path=connection['neural_network_settings']['weights_path'],
+                            project_path=connection['neural_network_settings']['project_path'],
+                            sample_rate=int(connection['signal_settings']['sample_rate']),
+                            signal_width=int(connection['signal_settings']['signal_width']),
+                            signal_height=int(connection['signal_settings']['signal_height']),
+                            img_size=tuple(connection['neural_network_settings']['img_size']),
+                            all_classes=tuple(connection['detection_settings']['all_classes']),
+                            map_list=tuple(connection['detection_settings']['map_list']),
+                            z_min=int(connection['neural_network_settings']['z_min']),
+                            z_max=int(connection['neural_network_settings']['z_max']),
+                            threshold=int(connection['detection_settings']['threshold']),
+                            accumulation_size=int(connection['detection_settings']['accumulation_size']),
+                            data_queue=self.data_q,
+                            img_queue=self.img_q)
+
+                cl.start()
+                self.processes[conn_name] = cl
+                logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
+                return API_pb2.StartChannelResponse(
+                    connection_status=f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
+            except Exception as e:
+                logger.error(f'Connection error: {e}')
+                return API_pb2.StartChannelResponse(
+                    connection_status=f'Error with connecting to {str(connection["ip"])}:{str(connection["port"])}')
+        else:
+            logger.error(f'Unknown name {request.connection_name}')
+            return API_pb2.StartChannelResponse(connection_status=f'Unknown channel: {request.connection_name}!')
+
+    def ZScaleChanging(self, request, context):
+        name = request.band_name
+        if name in self.processes:
+            self.processes[name].q_control.put({'func': 'change_zscale', 'args': (request.z_min, request.z_max)})
+            #self.processes[name].change_zscale(z_min=request.z_min, z_max=request.z_max)
+            logger.info(f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')
+            return API_pb2.ZScaleResponse(status=f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')
+        else:
+            logger.error(f'Unknown channel {name}')
+            return API_pb2.ZScaleResponse(status=f'Unknown channel: {name}!')
+
+    def LoadConfig(self, request, context):
+        original_hash = b'7L\x08\x8d\xe77d\xc4Z$/\x16\xe9\x96w\x9f\x15Uh\xd8\x9e\x81\xa2)\x13[\x95\xbb\xb5\xa5\x16\xa9'
+        if request.password_hash == original_hash:
+            try:
+                new_config = dict(yaml.load(request.config, Loader=yaml.SafeLoader))
+                dump_conf(config_path=self.config_path, config=new_config)
+            except Exception as e:
+                logger.error('Config did not load! Error: {e}')
+                return API_pb2.LoadConfigResponse(status=f'Config did not load! Error: {e}')
+            logger.success('Config loaded successfully!')
+            return API_pb2.LoadConfigResponse(status='Config loaded successfully!')
+        else:
+            logger.warning('Incorrect password!')
+            return API_pb2.LoadConfigResponse(status='Incorrect password!')
+
 
 def serve():
+    gRPC_PORT = 51234
+    path = r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\gRPC_stream\with_central_freq_and_img\config_twinrx_test.yaml'
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(ports=[PORT_2G4, PORT_5G8]), server)
-    server.add_insecure_port(f'[::]:{gRPC_PORT}')
+    API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(config_path=path), server)
+    server.add_insecure_port(f'localhost:{gRPC_PORT}')
     server.start()
 
     print(f"gRPC Server is running on port {gRPC_PORT}...")

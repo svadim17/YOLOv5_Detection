@@ -16,7 +16,7 @@ class NNProcessing(object):
                  width: int,
                  height: int,
                  project_path: str,
-                 map_list: list,
+                 map_list: tuple,
                  source_device='twinrx',
                  img_size=(640, 640),
                  msg_len=0,
@@ -27,7 +27,6 @@ class NNProcessing(object):
         self.weights = weights
         self.project_path = project_path
         self.map_list = map_list
-        self.source_device = source_device
         self.img_size = img_size
         self.z_min = z_min
         self.z_max = z_max
@@ -54,25 +53,15 @@ class NNProcessing(object):
         return norm_data
 
     def normalization4(self, data):
-        if self.source_device == 'twinrx':
-            data = np.transpose(data + 122)
-            # self.z_min = -40
-            # self.z_max = 40
-        elif self.source_device == 'alinx':
-            data = np.transpose(data)
-            # z_min = -71                 # -71 with coeff 3.29
-            # z_max = 21                  # 21 with coeff 3.29
-            # self.z_min = -20
-            # self.z_max = 75
-        else:
-            data = np.transpose(data)
-            self.z_min = -75
-            self.z_max = 20
+        # data = np.transpose(data + 122)
+        data = np.transpose(data)
+
         norm_data = 255 * (data - self.z_min) / (self.z_max - self.z_min)
         norm_data = norm_data.astype(np.uint8)
         return norm_data
 
     def z_min_value_changed(self, value):
+
         self.z_min = value
 
     def z_max_value_changed(self, value):
@@ -83,7 +72,7 @@ class NNProcessing(object):
         color_image = cv2.applyColorMap(norm_data, cv2.COLORMAP_RAINBOW)
         screen = cv2.resize(color_image, self.img_size)
 
-        result = self.model(screen, size=640)       # set the model use the screen
+        result = self.model(screen, size=self.img_size[0])       # set the model use the screen
         return result
 
     def convert_result(self, df: pandas.DataFrame, return_data_type='list'):
@@ -162,6 +151,7 @@ class NNProcessing(object):
                     }
                 except KeyError:
                     result_dict[name] = {'confidence': 0, 'ymin': 0, 'ymax': 0}
+
             return result_dict
 
         # elif return_data_type == 'dict_with_freq':
