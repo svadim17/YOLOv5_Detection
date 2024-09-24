@@ -97,7 +97,6 @@ class RecognitionContainer(ft.UserControl):
         self.drons_dict_btns[name].update()
         self.drons_dict_texts[name].update()
 
-
     def build(self):
         container = ft.Container(
             content=ft.Column(
@@ -120,6 +119,54 @@ class RecognitionContainer(ft.UserControl):
         )
         return container
 
+
+class BottomBarContent(ft.UserControl):
+    def __init__(self, parent_page):
+        super().__init__()
+        self.page = parent_page
+
+        self.page.theme_mode = ft.ThemeMode.DARK
+        self.menu_button = ft.IconButton(icon=ft.icons.MENU_ROUNDED, icon_size=30)
+        self.theme_button = ft.IconButton(icon=ft.icons.DARK_MODE_OUTLINED, icon_size=30, on_click=self.change_theme)
+
+    def change_theme(self, e):
+        if self.page.theme_mode == ft.ThemeMode.LIGHT:
+            self.theme_button.icon = ft.icons.DARK_MODE_OUTLINED
+            self.page.theme_mode = ft.ThemeMode.DARK
+        else:
+            self.theme_button.icon = ft.icons.WB_SUNNY_OUTLINED
+            self.page.theme_mode = ft.ThemeMode.LIGHT
+        self.page.update()
+        self.theme_button.update()
+
+    def build(self):
+        return ft.Row(controls=[
+            self.menu_button,
+            ft.Container(expand=True),
+            self.theme_button
+        ])
+
+
+class MenuContent():
+    def __init__(self, parent_page):
+        super().__init__()
+        self.page = parent_page
+
+        self.slider = ft.RangeSlider(min=-120, max=120, divisions=240, start_value=-40, end_value=40,
+                                     label='{value}', width=500)
+
+        column = ft.Column(controls=[ft.Text('Settings', size=30),
+                                   self.slider,
+                                   ],
+                         alignment=ft.MainAxisAlignment.CENTER,
+                         horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+
+        self.menu = ft.NavigationDrawer(controls=[column])
+
+    def open_menu(self, e):
+        self.menu.open = True
+        self.page.update()
 
 
 

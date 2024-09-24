@@ -23,14 +23,22 @@ async def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.update()
 
-    gRPC_channel = await gRPC_interface.connect_to_server(port=gRPC_PORT)
+    bottomBarContent = ui.BottomBarContent(parent_page=page)
+    page.bottom_appbar = ft.BottomAppBar(shape=ft.NotchShape.CIRCULAR, content=bottomBarContent)
+    menuContent = ui.MenuContent(parent_page=page)
+    page.drawer = menuContent.menu
+    bottomBarContent.menu_button.on_click = menuContent.open_menu
+
 
     gallery_row = ft.Row(scroll='always')
     page.add(gallery_row)
 
+    gRPC_channel = await gRPC_interface.connect_to_server(port=gRPC_PORT)
+
     async def create_gallery(channels_names: list):
         global gallery
         gallery = {}
+
         for name in channels_names:
             container = ui.RecognitionContainer(grpc_channel=gRPC_channel,
                                                 image64_background=utils.image_to_base64("spectrum-analysis.png"),
@@ -39,13 +47,12 @@ async def main(page: ft.Page):
             gallery[name] = container
             gallery_row.controls.append(container)
         gallery_row.update()
+        await gRPC_interface.start_gRPC_streams(grpc_channel=gRPC_channel,
+                                                map_list=MAP_LIST,
+                                                gallery=gallery)
 
-        image_stream_task, data_stream_task = await gRPC_interface.start_gRPC_streams(grpc_channel=gRPC_channel,
-                                                                                   map_list=MAP_LIST,
-                                                                                gallery=gallery)
-
-    startDialog = ui.StartDialog(grpc_channel=gRPC_channel, callback_func=create_gallery)  # Создаем диалоговое окно и добавляем его на страницу
-
+    # Создаем диалоговое окно и добавляем его на страницу
+    startDialog = ui.StartDialog(grpc_channel=gRPC_channel, callback_func=create_gallery)
     page.overlay.append(startDialog)
     page.update()
     startDialog.update()

@@ -226,7 +226,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         return API_pb2.ChannelsResponse(channels=available_channels)
 
     def StartChannel(self, request, context):
-        if request.connection_name in self.connections:
+        if request.connection_name in self.connections and request.connection_name not in self.processes:
             conn_name = request.connection_name
             connection = self.connections[conn_name]
             try:
@@ -257,8 +257,9 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 return API_pb2.StartChannelResponse(
                     connection_status=f'Error with connecting to {str(connection["ip"])}:{str(connection["port"])}')
         else:
-            logger.error(f'Unknown name {request.connection_name}')
-            return API_pb2.StartChannelResponse(connection_status=f'Unknown channel: {request.connection_name}!')
+            logger.warning(f'Unknown name {request.connection_name} or already exists')
+            return API_pb2.StartChannelResponse(connection_status=f'Unknown channel: {request.connection_name} '
+                                                                  f'or already exists!')
 
     def ZScaleChanging(self, request, context):
         name = request.band_name
