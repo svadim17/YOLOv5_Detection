@@ -1,0 +1,35 @@
+default:
+  project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+  weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt
+  save_img_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images
+  map_list: [ 'noise', 'autel', 'fpv', 'dji', 'wifi' ]
+  z_min: -20
+  z_max: 75
+10091:
+  project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+  weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt
+  save_img_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images
+  map_list : ['noise', 'autel', 'fpv', 'dji', 'wifi']
+  z_min : -20
+  z_max : 50
+10092:
+  project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+  weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt
+  save_img_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images
+  map_list : ['noise', 'autel', 'fpv', 'dji', 'wifi']
+  z_min : -20
+  z_max : 80
+10093:
+  project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+  weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt
+  save_img_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images
+  map_list : ['noise', 'autel', 'fpv', 'dji', 'wifi']
+  z_min : -20
+  z_max : 13
+10094:
+  project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+  weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt
+  save_img_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\saved_images
+  map_list : ['noise', 'autel', 'fpv', 'dji', 'wifi']
+  z_min : -20
+  z_max : 20
