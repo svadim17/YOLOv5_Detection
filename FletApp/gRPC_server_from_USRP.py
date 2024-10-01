@@ -17,9 +17,15 @@ import sys
 
 logger.remove(0)
 log_level = "TRACE"
-log_format = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b> | {extra}"
-logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
-# logger.add("file.log", level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True, rotation='1 MB')
+log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | {extra} | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
+# logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
+logger.add("logs/file_{time}.log", level=log_level,
+           format=log_format,
+           colorize=False,
+           backtrace=True,
+           diagnose=True,
+           rotation='1 MB',
+           enqueue=True)
 
 
 def load_conf(config_path: str):
@@ -32,7 +38,7 @@ def load_conf(config_path: str):
         logger.error(f'Error with loading config: {e}')
 
 
-def dump_conf(config_path:str, config: dict):
+def dump_conf(config_path: str, config: dict):
     with open(config_path, 'w') as f:
         yaml.dump(config, f, sort_keys=False)
 
@@ -55,9 +61,9 @@ class Client(Process):
                  accumulation_size: int,
                  data_queue=None,
                  img_queue=None,
-                 custom_logger=None):
+                 logger_=None):
         super().__init__()
-        self.custom_logger = custom_logger
+        self.logger_ = logger_
         self.q_control = Queue()
         self.nn = None
         self.name = name
@@ -91,9 +97,9 @@ class Client(Process):
         try:
             self.nn.z_min_value_changed(value=z_min)
             self.nn.z_max_value_changed(value=z_max)
-            self.custom_logger.success('succccccc')
+            self.logger_.success('succccccc')
         except Exception as e:
-            self.custom_logger.error(e)
+            self.logger_.error(e)
 
     def change_recognition_settings(self, accumulation_size: int, threshold: float):
         self.accumulation_size = accumulation_size
@@ -241,7 +247,6 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             conn_name = request.connection_name
             connection = self.connections[conn_name]
             try:
-                custom_logger = logger.bind(logger_name=conn_name)
                 cl = Client(name=conn_name,
                             address=(str(connection['ip']), int(connection['port'])),
                             weights_path=connection['neural_network_settings']['weights_path'],
@@ -258,7 +263,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                             accumulation_size=int(connection['detection_settings']['accumulation_size']),
                             data_queue=self.data_q,
                             img_queue=self.img_q,
-                            custom_logger=custom_logger)
+                            logger_=logger.bind(logger_name=conn_name))
 
                 cl.start()
                 self.processes[conn_name] = cl

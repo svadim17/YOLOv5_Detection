@@ -16,7 +16,7 @@ logger.remove(0)
 log_level = "TRACE"
 log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | {extra} | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
 # logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
-logger.add("file_{time}.log",
+logger.add("logs/file_{time}.log",
            level=log_level,
            format=log_format,
            colorize=False,
