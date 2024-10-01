@@ -19,16 +19,19 @@ async def main(page: ft.Page):
     MAP_LIST = ['Autel', 'FPV', 'DJI', 'WiFi']
     gRPC_PORT = '51234'
     page.title = "Neural Detection"
+    #page.window.title_bar_hidden = True
+    page.window.height = 920
+    page.window.width = 1440
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.update()
 
     bottomBarContent = ui.BottomBarContent(parent_page=page)
     page.bottom_appbar = ft.BottomAppBar(shape=ft.NotchShape.CIRCULAR, content=bottomBarContent)
+    page.bottom_appbar.height = 60
     menuContent = ui.MenuContent(parent_page=page)
     page.drawer = menuContent.menu
     bottomBarContent.menu_button.on_click = menuContent.open_menu
-
 
     gallery_row = ft.Row(scroll='always')
     page.add(gallery_row)
@@ -46,6 +49,7 @@ async def main(page: ft.Page):
                                                 map_list=MAP_LIST)
             gallery[name] = container
             gallery_row.controls.append(container)
+            menuContent.add_channel_settings(gallery[name].settings_container)
         gallery_row.update()
         await gRPC_interface.start_gRPC_streams(grpc_channel=gRPC_channel,
                                                 map_list=MAP_LIST,

@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bneuro.proto\x12\x13NeuroDataProcessing\"V\n\tUavObject\x12,\n\x04type\x18\x01 \x01(\x0e\x32\x1e.NeuroDataProcessing.DroneType\x12\r\n\x05state\x18\x02 \x01(\x08\x12\x0c\n\x04\x66req\x18\x03 \x01(\x05\"O\n\x0c\x44\x61taResponse\x12\x11\n\tband_name\x18\x01 \x01(\t\x12,\n\x04uavs\x18\x02 \x03(\x0b\x32\x1e.NeuroDataProcessing.UavObject\"\r\n\x0bVoidRequest\"O\n\rImageResponse\x12\x11\n\tband_name\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\x12\x0e\n\x06height\x18\x03 \x01(\x05\x12\r\n\x05width\x18\x04 \x01(\x05\"!\n\x0cImageRequest\x12\x11\n\tband_name\x18\x01 \x01(\t\".\n\x13StartChannelRequest\x12\x17\n\x0f\x63onnection_name\x18\x01 \x01(\t\"1\n\x14StartChannelResponse\x12\x19\n\x11\x63onnection_status\x18\x01 \x01(\t\"@\n\rZScaleRequest\x12\x11\n\tband_name\x18\x01 \x01(\t\x12\r\n\x05z_min\x18\x02 \x01(\x05\x12\r\n\x05z_max\x18\x03 \x01(\x05\" \n\x0eZScaleResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\"\x11\n\x0f\x43hannelsRequest\"$\n\x10\x43hannelsResponse\x12\x10\n\x08\x63hannels\x18\x01 \x03(\t\":\n\x11LoadConfigRequest\x12\x0e\n\x06\x63onfig\x18\x01 \x01(\t\x12\x15\n\rpassword_hash\x18\x02 \x01(\x0c\"$\n\x12LoadConfigResponse\x12\x0e\n\x06status\x18\x01 \x01(\t*2\n\tDroneType\x12\t\n\x05\x41utel\x10\x00\x12\x07\n\x03\x46pv\x10\x01\x12\x07\n\x03\x44ji\x10\x02\x12\x08\n\x04Wifi\x10\x03\x32\xda\x04\n\x15\x44\x61taProcessingService\x12Z\n\x11ProceedDataStream\x12 .NeuroDataProcessing.VoidRequest\x1a!.NeuroDataProcessing.DataResponse0\x01\x12\x61\n\x16SpectrogramImageStream\x12!.NeuroDataProcessing.ImageRequest\x1a\".NeuroDataProcessing.ImageResponse0\x01\x12\x63\n\x0cStartChannel\x12(.NeuroDataProcessing.StartChannelRequest\x1a).NeuroDataProcessing.StartChannelResponse\x12Y\n\x0eZScaleChanging\x12\".NeuroDataProcessing.ZScaleRequest\x1a#.NeuroDataProcessing.ZScaleResponse\x12\x63\n\x14GetAvailableChannels\x12$.NeuroDataProcessing.ChannelsRequest\x1a%.NeuroDataProcessing.ChannelsResponse\x12]\n\nLoadConfig\x12&.NeuroDataProcessing.LoadConfigRequest\x1a\'.NeuroDataProcessing.LoadConfigResponseB\x0e\xaa\x02\x0bNeuroProtosb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bneuro.proto\x12\x13NeuroDataProcessing\"V\n\tUavObject\x12,\n\x04type\x18\x01 \x01(\x0e\x32\x1e.NeuroDataProcessing.DroneType\x12\r\n\x05state\x18\x02 \x01(\x08\x12\x0c\n\x04\x66req\x18\x03 \x01(\x05\"O\n\x0c\x44\x61taResponse\x12\x11\n\tband_name\x18\x01 \x01(\t\x12,\n\x04uavs\x18\x02 \x03(\x0b\x32\x1e.NeuroDataProcessing.UavObject\"\r\n\x0bVoidRequest\"O\n\rImageResponse\x12\x11\n\tband_name\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\x12\x0e\n\x06height\x18\x03 \x01(\x05\x12\r\n\x05width\x18\x04 \x01(\x05\"!\n\x0cImageRequest\x12\x11\n\tband_name\x18\x01 \x01(\t\".\n\x13StartChannelRequest\x12\x17\n\x0f\x63onnection_name\x18\x01 \x01(\t\"1\n\x14StartChannelResponse\x12\x19\n\x11\x63onnection_status\x18\x01 \x01(\t\"@\n\rZScaleRequest\x12\x11\n\tband_name\x18\x01 \x01(\t\x12\r\n\x05z_min\x18\x02 \x01(\x05\x12\r\n\x05z_max\x18\x03 \x01(\x05\" \n\x0eZScaleResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\"\x11\n\x0f\x43hannelsRequest\"$\n\x10\x43hannelsResponse\x12\x10\n\x08\x63hannels\x18\x01 \x03(\t\":\n\x11LoadConfigRequest\x12\x0e\n\x06\x63onfig\x18\x01 \x01(\t\x12\x15\n\rpassword_hash\x18\x02 \x01(\x0c\"$\n\x12LoadConfigResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\"]\n\x1aRecognitionSettingsRequest\x12\x11\n\tband_name\x18\x01 \x01(\t\x12\x19\n\x11\x61\x63\x63umulation_size\x18\x02 \x01(\x05\x12\x11\n\tthreshold\x18\x03 \x01(\x01\"-\n\x1bRecognitionSettingsResponse\x12\x0e\n\x06status\x18\x01 \x01(\t*2\n\tDroneType\x12\t\n\x05\x41utel\x10\x00\x12\x07\n\x03\x46pv\x10\x01\x12\x07\n\x03\x44ji\x10\x02\x12\x08\n\x04Wifi\x10\x03\x32\xd4\x05\n\x15\x44\x61taProcessingService\x12Z\n\x11ProceedDataStream\x12 .NeuroDataProcessing.VoidRequest\x1a!.NeuroDataProcessing.DataResponse0\x01\x12\x61\n\x16SpectrogramImageStream\x12!.NeuroDataProcessing.ImageRequest\x1a\".NeuroDataProcessing.ImageResponse0\x01\x12\x63\n\x0cStartChannel\x12(.NeuroDataProcessing.StartChannelRequest\x1a).NeuroDataProcessing.StartChannelResponse\x12Y\n\x0eZScaleChanging\x12\".NeuroDataProcessing.ZScaleRequest\x1a#.NeuroDataProcessing.ZScaleResponse\x12\x63\n\x14GetAvailableChannels\x12$.NeuroDataProcessing.ChannelsRequest\x1a%.NeuroDataProcessing.ChannelsResponse\x12]\n\nLoadConfig\x12&.NeuroDataProcessing.LoadConfigRequest\x1a\'.NeuroDataProcessing.LoadConfigResponse\x12x\n\x13RecognitionSettings\x12/.NeuroDataProcessing.RecognitionSettingsRequest\x1a\x30.NeuroDataProcessing.RecognitionSettingsResponseB\x0e\xaa\x02\x0bNeuroProtosb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -22,8 +22,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'neuro_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\252\002\013NeuroProtos'
-  _globals['_DRONETYPE']._serialized_start=690
-  _globals['_DRONETYPE']._serialized_end=740
+  _globals['_DRONETYPE']._serialized_start=832
+  _globals['_DRONETYPE']._serialized_end=882
   _globals['_UAVOBJECT']._serialized_start=36
   _globals['_UAVOBJECT']._serialized_end=122
   _globals['_DATARESPONSE']._serialized_start=124
@@ -50,6 +50,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_LOADCONFIGREQUEST']._serialized_end=650
   _globals['_LOADCONFIGRESPONSE']._serialized_start=652
   _globals['_LOADCONFIGRESPONSE']._serialized_end=688
-  _globals['_DATAPROCESSINGSERVICE']._serialized_start=743
-  _globals['_DATAPROCESSINGSERVICE']._serialized_end=1345
+  _globals['_RECOGNITIONSETTINGSREQUEST']._serialized_start=690
+  _globals['_RECOGNITIONSETTINGSREQUEST']._serialized_end=783
+  _globals['_RECOGNITIONSETTINGSRESPONSE']._serialized_start=785
+  _globals['_RECOGNITIONSETTINGSRESPONSE']._serialized_end=830
+  _globals['_DATAPROCESSINGSERVICE']._serialized_start=885
+  _globals['_DATAPROCESSINGSERVICE']._serialized_end=1609
 # @@protoc_insertion_point(module_scope)

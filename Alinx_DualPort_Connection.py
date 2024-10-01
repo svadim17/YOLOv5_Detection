@@ -47,7 +47,6 @@ class Client(Process):
                                            height=self.h,
                                            project_path= r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5",
                                            map_list=self.map_list,
-                                           source_device='alinx',
                                            img_size=self.img_size,
                                            msg_len=self.msg_len,
                                            z_min=self.z_min,
@@ -86,7 +85,7 @@ class Client(Process):
                                 log_mag = np.frombuffer(arr[16:], dtype=np.float16)
                                 log_mag = log_mag.astype(np.float64)
 
-                            img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(self.h, self.w), axes=(1,)))
+                            img_arr = self.nn.normalization(np.fft.fftshift(log_mag.reshape(self.h, self.w), axes=(1,)))
 
                             result = self.nn.processing(img_arr)
                             df_result = result.pandas().xyxy[0]

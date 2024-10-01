@@ -5,19 +5,18 @@ import torch.nn.functional as F
 import cv2
 import torch
 import numpy as np
-from loguru import logger
+#from loguru import logger
 
 
 class NNProcessing(object):
 
     def __init__(self, name: str,
                  weights: str,
-                 sample_rate: int,
-                 width: int,
-                 height: int,
                  project_path: str,
                  map_list: tuple,
-                 source_device='twinrx',
+                 sample_rate=80_000_000,
+                 width=1024,
+                 height=2048,
                  img_size=(640, 640),
                  msg_len=0,
                  z_min=-20,
@@ -30,10 +29,14 @@ class NNProcessing(object):
         self.img_size = img_size
         self.z_min = z_min
         self.z_max = z_max
+        self.show_detected_img_status = False
+        self.save_info = {}
+        self.img_save_path = ''
+
         torch.cuda.empty_cache()
-        self.device = torch.device("cuda")  # = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.last_time = time.time()
-        logger.info(f'Using device: {self.device}')
+        #logger.info(f'Using device: {self.device}')
         self.f = np.arange(sample_rate / (-2), sample_rate / 2, sample_rate / width)
         self.t = np.arange(0, msg_len / sample_rate, width / sample_rate)
         self.load_model()
@@ -48,31 +51,34 @@ class NNProcessing(object):
         # self.model.augment = True
 
     def normalization(self, data):
-        norm_data = 255 * (data - np.min(data)) / (np.max(data) - np.min(data))
-        norm_data = np.transpose(norm_data.astype(np.uint8))
-        return norm_data
-
-    def normalization4(self, data):
-        # data = np.transpose(data + 122)
+        #data = np.transpose(data + 122)
         data = np.transpose(data)
-
         norm_data = 255 * (data - self.z_min) / (self.z_max - self.z_min)
         norm_data = norm_data.astype(np.uint8)
         return norm_data
 
     def z_min_value_changed(self, value):
-
         self.z_min = value
 
     def z_max_value_changed(self, value):
         self.z_max = value
 
-    def processing(self, norm_data):
-        # Use OpenCV to create a color image from the normalized data
-        color_image = cv2.applyColorMap(norm_data, cv2.COLORMAP_RAINBOW)
+    def processing(self, norm_data, save_images=False):
+        color_image = cv2.applyColorMap(norm_data, cv2.COLORMAP_RAINBOW)   # create a color image from normalized data
         screen = cv2.resize(color_image, self.img_size)
-
         result = self.model(screen, size=self.img_size[0])       # set the model use the screen
+
+        if self.show_detected_img_status:
+            cv2.imshow(f'{self.name}', result.render()[0])
+            cv2.waitKey(1)  # Required to render the image properly
+
+        if save_images:
+            #central_freq = self.save_info['central_freq']
+            #filename = datetime.datetime.now().strftime(f'{central_freq}_%Y-%m-%d-%H-%M-%S-%f')
+            filename = datetime.datetime.now().strftime(f'%Y-%m-%d-%H-%M-%S-%f')
+            cv2.imwrite(filename=self.img_save_path + '\\' + filename + '.jpg', img=screen)
+            cv2.imwrite(filename=self.img_save_path + '\\' + filename + '_detected.jpg', img=result.render()[0])
+
         return result
 
     def convert_result(self, df: pandas.DataFrame, return_data_type='list'):
@@ -153,6 +159,7 @@ class NNProcessing(object):
                     result_dict[name] = {'confidence': 0, 'ymin': 0, 'ymax': 0}
 
             return result_dict
+
 
         # elif return_data_type == 'dict_with_freq':
         #     result_dict = {}

@@ -72,6 +72,15 @@ message LoadConfigResponse {                 //
     string status = 1;
 }
 
+message RecognitionSettingsRequest {
+    string band_name = 1;
+    int32 accumulation_size = 2;
+    double threshold = 3;
+}
+
+message RecognitionSettingsResponse {
+    string status = 1;
+}
 
 // Сервис обработки данных
 service DataProcessingService {
@@ -81,4 +90,5 @@ service DataProcessingService {
     rpc ZScaleChanging (ZScaleRequest) returns (ZScaleResponse);
     rpc GetAvailableChannels (ChannelsRequest) returns (ChannelsResponse);
     rpc LoadConfig (LoadConfigRequest) returns (LoadConfigResponse);
+    rpc RecognitionSettings (RecognitionSettingsRequest) returns (RecognitionSettingsResponse);
 }

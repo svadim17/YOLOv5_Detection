@@ -18,7 +18,7 @@ import pandas as pd
 import datetime
 import yaml
 from collections import deque
-import Alinx_DualPort_Connection
+# import Alinx_DualPort_Connection
 import TwinRX_Connection
 import TwinRX_Connection as nn
 # import Alinx_DualPort_Connection as nn
@@ -539,8 +539,8 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.l_zmin = QLabel('Z min')
         self.spb_zmin = QSpinBox()
         self.spb_zmin.setSingleStep(1)
-        self.spb_zmin.setMinimum(-100)
-        self.spb_zmin.setMaximum(100)
+        self.spb_zmin.setMinimum(-200)
+        self.spb_zmin.setMaximum(200)
         self.spb_zmin.setValue(self.z_min)
         self.spb_zmin.setFixedWidth(70)
         self.spb_zmin.setDisabled(True)
@@ -548,8 +548,8 @@ class RecognitionViewerWidget(QDockWidget, QWidget):
         self.l_zmax = QLabel('Z max')
         self.spb_zmax = QSpinBox()
         self.spb_zmax.setSingleStep(1)
-        self.spb_zmax.setMinimum(-100)
-        self.spb_zmax.setMaximum(100)
+        self.spb_zmax.setMinimum(-200)
+        self.spb_zmax.setMaximum(200)
         self.spb_zmax.setValue(self.z_max)
         self.spb_zmax.setFixedWidth(70)
         self.spb_zmax.setDisabled(True)

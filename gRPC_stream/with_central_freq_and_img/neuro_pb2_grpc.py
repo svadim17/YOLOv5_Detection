@@ -70,11 +70,6 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.LoadConfigRequest.SerializeToString,
                 response_deserializer=neuro__pb2.LoadConfigResponse.FromString,
                 _registered_method=True)
-        self.RecognitionSettings = channel.unary_unary(
-                '/NeuroDataProcessing.DataProcessingService/RecognitionSettings',
-                request_serializer=neuro__pb2.RecognitionSettingsRequest.SerializeToString,
-                response_deserializer=neuro__pb2.RecognitionSettingsResponse.FromString,
-                _registered_method=True)
 
 
 class DataProcessingServiceServicer(object):
@@ -120,12 +115,6 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def RecognitionSettings(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
 
 def add_DataProcessingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -158,11 +147,6 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.LoadConfig,
                     request_deserializer=neuro__pb2.LoadConfigRequest.FromString,
                     response_serializer=neuro__pb2.LoadConfigResponse.SerializeToString,
-            ),
-            'RecognitionSettings': grpc.unary_unary_rpc_method_handler(
-                    servicer.RecognitionSettings,
-                    request_deserializer=neuro__pb2.RecognitionSettingsRequest.FromString,
-                    response_serializer=neuro__pb2.RecognitionSettingsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -328,33 +312,6 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/LoadConfig',
             neuro__pb2.LoadConfigRequest.SerializeToString,
             neuro__pb2.LoadConfigResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def RecognitionSettings(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/NeuroDataProcessing.DataProcessingService/RecognitionSettings',
-            neuro__pb2.RecognitionSettingsRequest.SerializeToString,
-            neuro__pb2.RecognitionSettingsResponse.FromString,
             options,
             channel_credentials,
             insecure,

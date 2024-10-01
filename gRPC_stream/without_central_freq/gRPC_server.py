@@ -24,7 +24,7 @@ sample_rate = 122880000
 img_size = (640, 640)
 
 ALL_CLASSES = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv', '3G/4G']
-MAP_LIST = ['autel', 'fpv', 'dji', 'wifi']
+MAP_LIST = ('autel', 'fpv', 'dji', 'wifi')
 
 PROJECT_PATH = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5"
 WEIGHTS_PATH = PROJECT_PATH + r"\runs\train\yolov5m_6classes_AUGMENTATED_3\weights\best.pt"
@@ -74,7 +74,6 @@ class Client(Process):
                                                width=w,
                                                height=h,
                                                map_list=MAP_LIST,
-                                               source_device='alinx',
                                                sample_rate=sample_rate,
                                                img_size=img_size)
 
@@ -102,7 +101,7 @@ class Client(Process):
                                     log_mag = np.frombuffer(arr[16:], dtype=np.float16)
                                     log_mag = log_mag.astype(np.float64)
 
-                                img_arr = self.nn.normalization4(np.fft.fftshift(log_mag.reshape(h, w), axes=(1,)))
+                                img_arr = self.nn.normalization(np.fft.fftshift(log_mag.reshape(h, w), axes=(1,)))
                                 result = self.nn.processing(img_arr)
                                 df_result = result.pandas().xyxy[0]
 

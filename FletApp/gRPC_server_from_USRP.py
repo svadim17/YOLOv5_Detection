@@ -12,15 +12,20 @@ import copy
 from collections import deque
 from yolov5.nn_processing import NNProcessing
 import yaml
-
+import sys
 # from nn_processing import NNProcessing
+
+logger.remove(0)
+log_level = "TRACE"
+log_format = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b> | {extra}"
+logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
+# logger.add("file.log", level=log_level, format=log_format, colorize=False, backtrace=True, diagnose=True, rotation='1 MB')
 
 
 def load_conf(config_path: str):
     try:
         with open(config_path, encoding='utf-8') as f:
-            config_str = str(yaml.load(f, Loader=yaml.SafeLoader))
-            config = dict(yaml.load(config_str, Loader=yaml.SafeLoader))
+            config = dict(yaml.load(f, Loader=yaml.SafeLoader))
             logger.success(f'Config loaded successfully!')
             return config
     except Exception as e:
@@ -49,8 +54,10 @@ class Client(Process):
                  threshold: int,
                  accumulation_size: int,
                  data_queue=None,
-                 img_queue=None):
+                 img_queue=None,
+                 custom_logger=None):
         super().__init__()
+        self.custom_logger = custom_logger
         self.q_control = Queue()
         self.nn = None
         self.name = name
@@ -73,9 +80,6 @@ class Client(Process):
         self.msg_len = self.signal_width * self.signal_height
         self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
 
-
-
-
     def set_queue(self, data_queue: Queue, img_queue: Queue):
         self.data_q = data_queue
         self.img_q = img_queue
@@ -87,8 +91,14 @@ class Client(Process):
         try:
             self.nn.z_min_value_changed(value=z_min)
             self.nn.z_max_value_changed(value=z_max)
+            self.custom_logger.success('succccccc')
         except Exception as e:
-            logger.error(e)
+            self.custom_logger.error(e)
+
+    def change_recognition_settings(self, accumulation_size: int, threshold: float):
+        self.accumulation_size = accumulation_size
+        self.threshold = threshold
+        self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
 
     def accumulate_and_make_decision(self, result_dict: dict):
         accumed_results = []
@@ -188,6 +198,7 @@ class Client(Process):
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
     def __init__(self, config_path):
+        self.custom_logger = logger.bind(logger_name='gRPC')
         self.config_path = config_path
         self.config = load_conf(config_path=self.config_path)
         self.data_store = {}
@@ -197,7 +208,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.connections = self.config['connections']
 
     def ProceedDataStream(self, request, context):
-        logger.info(f'Start data stream')
+        self.custom_logger.info(f'Start data stream')
         while True:
             if not self.data_q.empty():
                 res = self.data_q.get()
@@ -211,7 +222,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs)
 
     def SpectrogramImageStream(self, request, context):
-        logger.info(f'Start image stream request: {request.band_name}')
+        self.custom_logger.info(f'Start image stream request: {request.band_name}')
         while True:
             if not self.img_q.empty():
                 res = self.img_q.get()
@@ -230,6 +241,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             conn_name = request.connection_name
             connection = self.connections[conn_name]
             try:
+                custom_logger = logger.bind(logger_name=conn_name)
                 cl = Client(name=conn_name,
                             address=(str(connection['ip']), int(connection['port'])),
                             weights_path=connection['neural_network_settings']['weights_path'],
@@ -245,19 +257,20 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                             threshold=int(connection['detection_settings']['threshold']),
                             accumulation_size=int(connection['detection_settings']['accumulation_size']),
                             data_queue=self.data_q,
-                            img_queue=self.img_q)
+                            img_queue=self.img_q,
+                            custom_logger=custom_logger)
 
                 cl.start()
                 self.processes[conn_name] = cl
-                logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
+                self.custom_logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
                 return API_pb2.StartChannelResponse(
                     connection_status=f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
             except Exception as e:
-                logger.error(f'Connection error: {e}')
+                self.custom_logger.error(f'Connection error: {e}')
                 return API_pb2.StartChannelResponse(
                     connection_status=f'Error with connecting to {str(connection["ip"])}:{str(connection["port"])}')
         else:
-            logger.warning(f'Unknown name {request.connection_name} or already exists')
+            self.custom_logger.warning(f'Unknown name {request.connection_name} or already exists')
             return API_pb2.StartChannelResponse(connection_status=f'Unknown channel: {request.connection_name} '
                                                                   f'or already exists!')
 
@@ -266,10 +279,10 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         if name in self.processes:
             self.processes[name].q_control.put({'func': 'change_zscale', 'args': (request.z_min, request.z_max)})
             #self.processes[name].change_zscale(z_min=request.z_min, z_max=request.z_max)
-            logger.info(f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')
+            self.custom_logger.info(f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')
             return API_pb2.ZScaleResponse(status=f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')
         else:
-            logger.error(f'Unknown channel {name}')
+            self.custom_logger.error(f'Unknown channel {name}')
             return API_pb2.ZScaleResponse(status=f'Unknown channel: {name}!')
 
     def LoadConfig(self, request, context):
@@ -279,13 +292,28 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 new_config = dict(yaml.load(request.config, Loader=yaml.SafeLoader))
                 dump_conf(config_path=self.config_path, config=new_config)
             except Exception as e:
-                logger.error('Config did not load! Error: {e}')
+                self.custom_logger.error('Config did not load! Error: {e}')
                 return API_pb2.LoadConfigResponse(status=f'Config did not load! Error: {e}')
-            logger.success('Config loaded successfully!')
+            self.custom_logger.success('Config loaded successfully!')
             return API_pb2.LoadConfigResponse(status='Config loaded successfully!')
         else:
-            logger.warning('Incorrect password!')
+            self.custom_logger.warning('Incorrect password!')
             return API_pb2.LoadConfigResponse(status='Incorrect password!')
+
+    def RecognitionSettings(self, request, context):
+        name = request.band_name
+        accum_size = request.accumulation_size
+        threshold = request.threshold
+        if name in self.processes:
+            self.processes[name].q_control.put({'func': 'change_recognition_settings', 'args': (accum_size, threshold)})
+            self.custom_logger.info(f'Accumulation was changed on {accum_size} and Threshold was changed on {threshold} '
+                        f'in channel {name}')
+            return API_pb2.RecognitionSettingsResponse(
+                status=f'Accumulation was changed on {accum_size} and Threshold was changed on {threshold} '
+                       f'in channel {name}')
+        else:
+            self.custom_logger.error(f'Unknown channel {name}')
+            return API_pb2.RecognitionSettingsResponse(status=f'Unknown channel: {name}!')
 
 
 def serve():

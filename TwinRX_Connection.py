@@ -47,7 +47,6 @@ class Client(Process):
                                        height=self.h,
                                        project_path= r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5",
                                        map_list=self.map_list,
-                                       source_device='twinrx',
                                        img_size=self.img_size,
                                        msg_len=self.msg_len,
                                        z_min=self.z_min,
@@ -76,7 +75,7 @@ class Client(Process):
                         logger.warning(f'Packet {i} missed.')
                     np_arr = np.frombuffer(arr, dtype=np.int8)
                     if np_arr.size == self.msg_len:
-                        img_arr = self.nn.normalization4(np_arr.reshape(self.h, self.w))
+                        img_arr = self.nn.normalization(np_arr.reshape(self.h, self.w))
                         result = self.nn.processing(img_arr)
                         df_result = result.pandas().xyxy[0]
 

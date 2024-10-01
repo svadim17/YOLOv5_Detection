@@ -57,9 +57,6 @@ class RecognitionContainer(ft.UserControl):
 
         self.label = ft.Text(value=self.channel_name, size=22)
 
-        self.slider_zscale = ft.RangeSlider(min=-120, max=120, divisions=240, start_value=-40, end_value=40,
-                                            label="{value}", width=500, on_change=self.slider_zscale_changed)
-
         self.drones_row = ft.Row()
         self.drons_dict_btns = {}
         self.drons_dict_texts = {}
@@ -73,11 +70,100 @@ class RecognitionContainer(ft.UserControl):
 
         self.last_time = 0
 
+        self.settings_container = self.create_settings_controls()
+
+    def create_settings_controls(self):
+        self.label_settings = ft.Text(f'{self.channel_name}', theme_style=ft.TextThemeStyle.TITLE_MEDIUM)
+
+        self.label_slider_zscale = ft.Text('Z Scale range', theme_style=ft.TextThemeStyle.TITLE_SMALL)
+        self.slider_zscale = ft.RangeSlider(min=-120,
+                                            max=120,
+                                            divisions=240,
+                                            start_value=-40,
+                                            end_value=40,
+                                            label="{value}",
+                                            on_change=self.slider_zscale_changed,
+                                            expand=True)
+        self.label_value_slider_zscale = ft.Text(f'[{self.slider_zscale.start_value}, {self.slider_zscale.end_value}]')
+        column_zscale = ft.Column(controls=[self.label_slider_zscale,
+                                            ft.Row(controls=[self.slider_zscale, self.label_value_slider_zscale])],
+                                  spacing=0)
+
+        self.label_slider_accumulation = ft.Text('Accumulation size', theme_style=ft.TextThemeStyle.TITLE_SMALL)
+        self.slider_accumulation = ft.Slider(min=1,
+                                             max=50,
+                                             divisions=49,
+                                             value=25,
+                                             label='{value}',
+                                             on_change=self.slider_accumulation_changed,
+                                             expand=True)
+        self.label_value_slider_accumulation = ft.Text(f'{int(self.slider_accumulation.value)}')
+        column_accumulation = ft.Column(controls=[self.label_slider_accumulation,
+                                        ft.Row(controls=[self.slider_accumulation, self.label_value_slider_accumulation])],
+                                        spacing=0)
+
+        self.label_slider_threshold = ft.Text('Threshold', theme_style=ft.TextThemeStyle.TITLE_SMALL)
+        self.slider_threshold = ft.Slider(min=0.05,
+                                          max=0.95,
+                                          divisions=18,
+                                          value=0.6,
+                                          on_change=self.slider_threshold_changed,
+                                          expand=True)
+        self.label_value_slider_threshold = ft.Text(f'{self.slider_threshold.value:.2f}')
+        column_threshold = ft.Column(controls=[self.label_slider_threshold,
+                                     ft.Row(controls=[self.slider_threshold, self.label_value_slider_threshold])],
+                                     spacing=0)
+
+        self.label_slider_exceedance = ft.Text('Exceedance', theme_style=ft.TextThemeStyle.TITLE_SMALL)
+        self.slider_exceedance = ft.Slider(min=0.05,
+                                           max=0.95,
+                                           divisions=18,
+                                           value=0.6,
+                                           on_change=self.slider_exceedance_changed,
+                                           expand=True)
+        self.label_value_slider_exceedance = ft.Text(f'{self.slider_exceedance.value:.2f}')
+        column_exceedance = ft.Column(controls=[self.label_slider_exceedance,
+                                      ft.Row(controls=[self.slider_exceedance, self.label_value_slider_exceedance])],
+                                      spacing=0)
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[self.label_settings, column_zscale, column_accumulation, column_threshold, column_exceedance],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            padding=ft.Padding(left=10, top=30, right=10, bottom=10),
+            expand=True
+        )
+
     async def slider_zscale_changed(self, e):
         await gRPC_interface.changeZScaleRequest(grpc_channel=self.grpc_channel,
                                                  channel_name=self.channel_name,
                                                  z_min=int(self.slider_zscale.start_value),
                                                  z_max=int(self.slider_zscale.end_value))
+        self.label_value_slider_zscale.value = f'[{int(self.slider_zscale.start_value)}, {int(self.slider_zscale.end_value)}]'
+        self.label_value_slider_zscale.update()
+
+    async def slider_accumulation_changed(self, e):
+        self.label_value_slider_accumulation.value = f'{int(self.slider_accumulation.value)}'
+        self.label_value_slider_accumulation.update()
+        await self.recognitions_settings_changed()
+
+    async def slider_threshold_changed(self, e):
+        self.label_value_slider_threshold.value = f'{self.slider_threshold.value:.2f}'
+        self.label_value_slider_threshold.update()
+        await self.recognitions_settings_changed()
+
+    async def slider_exceedance_changed(self, e):
+        self.label_value_slider_exceedance.value = f'{self.slider_exceedance.value:.2f}'
+        self.label_value_slider_exceedance.update()
+        await self.recognitions_settings_changed()
+
+    async def recognitions_settings_changed(self):
+        threshold = self.slider_accumulation.value * self.slider_threshold.value * self.slider_exceedance.value
+        await gRPC_interface.RecognitionSettingsRequest(grpc_channel=self.grpc_channel,
+                                                        channel_name=self.channel_name,
+                                                        accum_size=int(self.slider_accumulation.value),
+                                                        threshold=threshold)
 
     async def update_image(self, img_base64):
         self.image.src_base64 = img_base64
@@ -102,7 +188,6 @@ class RecognitionContainer(ft.UserControl):
             content=ft.Column(
                 controls=[
                     self.label,
-                    self.slider_zscale,
                     ft.Container(
                         content=self.image_stack,
                         margin=10,
@@ -126,8 +211,8 @@ class BottomBarContent(ft.UserControl):
         self.page = parent_page
 
         self.page.theme_mode = ft.ThemeMode.DARK
-        self.menu_button = ft.IconButton(icon=ft.icons.MENU_ROUNDED, icon_size=30)
-        self.theme_button = ft.IconButton(icon=ft.icons.DARK_MODE_OUTLINED, icon_size=30, on_click=self.change_theme)
+        self.menu_button = ft.IconButton(icon=ft.icons.MENU_ROUNDED, icon_size=25)
+        self.theme_button = ft.IconButton(icon=ft.icons.DARK_MODE_OUTLINED, icon_size=25, on_click=self.change_theme)
 
     def change_theme(self, e):
         if self.page.theme_mode == ft.ThemeMode.LIGHT:
@@ -152,17 +237,15 @@ class MenuContent():
         super().__init__()
         self.page = parent_page
 
-        self.slider = ft.RangeSlider(min=-120, max=120, divisions=240, start_value=-40, end_value=40,
-                                     label='{value}', width=500)
-
-        column = ft.Column(controls=[ft.Text('Settings', size=30),
-                                   self.slider,
-                                   ],
-                         alignment=ft.MainAxisAlignment.CENTER,
-                         horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        )
+        column = ft.Column(controls=[ft.Text('Channels Settings', theme_style=ft.TextThemeStyle.TITLE_LARGE),],
+                           alignment=ft.MainAxisAlignment.CENTER,
+                           horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                           )
 
         self.menu = ft.NavigationDrawer(controls=[column])
+
+    def add_channel_settings(self, container):
+        self.menu.controls.append(container)
 
     def open_menu(self, e):
         self.menu.open = True

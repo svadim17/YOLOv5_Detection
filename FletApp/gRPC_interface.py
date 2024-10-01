@@ -103,6 +103,18 @@ async def LoadConfigRequest(grpc_channel, password: str, config: str):
         logger.error(f'Error with loading config!')
 
 
+async def RecognitionSettingsRequest(grpc_channel, channel_name: str, accum_size: int, threshold: float):
+    try:
+        stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
+        response = stub.RecognitionSettings(API_pb2.RecognitionSettingsRequest(band_name=channel_name,
+                                                                               accumulation_size=accum_size,
+                                                                               threshold=threshold))
+        logger.info(response.status)
+        return response
+    except Exception as e:
+        logger.error(f'Error with changing recognition settings in channel {channel_name} \n{e}')
+
+
 def getAvailableChannelsRequest(grpc_channel):
     try:
         stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
