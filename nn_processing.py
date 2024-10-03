@@ -29,7 +29,7 @@ class NNProcessing(object):
         self.img_size = img_size
         self.z_min = z_min
         self.z_max = z_max
-        self.show_detected_img_status = False
+        self.show_detected_img_status = None
         self.save_info = {}
         self.img_save_path = ''
 
@@ -68,9 +68,14 @@ class NNProcessing(object):
         screen = cv2.resize(color_image, self.img_size)
         result = self.model(screen, size=self.img_size[0])       # set the model use the screen
 
-        if self.show_detected_img_status:
+        if self.show_detected_img_status is None:
+            pass
+        elif self.show_detected_img_status:
             cv2.imshow(f'{self.name}', result.render()[0])
             cv2.waitKey(1)  # Required to render the image properly
+        elif not self.show_detected_img_status:
+            cv2.destroyWindow(f'{self.name}')
+            self.show_detected_img_status = None
 
         if save_images:
             #central_freq = self.save_info['central_freq']

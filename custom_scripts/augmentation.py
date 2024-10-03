@@ -10,8 +10,14 @@ from tqdm import tqdm
 ALL_CLASSES = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv']
 BOX_COLOR = (255, 255, 255)     # white
 TEXT_COLOR = (255, 0, 0)        # red
-OBJ_PATH = r"D:\YOLOv5 DATASET\8 steps 6 classes\obj_VerticalFlip"
-NEW_OBJ_PATH = r"D:\YOLOv5 DATASET\8 steps 6 classes\obj_VerticalFlip_ChanShuffle"
+OBJ_PATH = r"D:\YOLOv5 DATASET\TEST AUG\obj"
+NEW_FOLDERS_PATH = r"D:\YOLOv5 DATASET\TEST AUG"
+augmentation_types = {'chan_shuffle': [A.ChannelShuffle(p=1)],
+                      'chan_dropout': [A.ChannelDropout(p=1)],
+                      'horiz_flip': [A.HorizontalFlip(p=1)],
+                      'vert_flip': [A.VerticalFlip(p=1)],
+                      'horiz_flip_chan_shuffle': [A.ChannelShuffle(p=1), A.HorizontalFlip(p=1)],
+                      'vert_flip_chan_shuffle': [A.ChannelShuffle(p=1), A.VerticalFlip(p=1)]}
 SAVE_STATUS = True      # True or False
 
 
@@ -97,42 +103,44 @@ if __name__ == '__main__':
 
         classes, bboxes = sort_annotation_file(lines)
 
-        aug = A.Compose(
-            [A.ChannelShuffle(p=1)],        # A.ChannelShuffle(p=1), A.HorizontalFlip(p=1), A.VerticalFlip(p=1), A.ChannelDropout(p=1)
-            bbox_params=A.BboxParams(format='yolo', label_fields=['classes'])
-        )
-        try:
-            aug_result = aug(image=image, bboxes=bboxes, classes=classes)
-        except Exception as e:
-            print(e)
-            print(f'Error with image {tail_path_img}')
+        for aug_name, aug_type in augmentation_types.items():
+            image_copy = image.copy()
+            bboxes_copy = bboxes.copy()
+            classes_copy = classes.copy()
 
-        if SAVE_STATUS:
-            new_filename_img = NEW_OBJ_PATH + '\\' + 'vert_flip_chan_shuffle_' + tail_path_img
-            new_filename_txt = NEW_OBJ_PATH + '\\' + 'vert_flip_chan_shuffle_' + tail_path_txt
+            aug = A.Compose(transforms=aug_type, bbox_params=A.BboxParams(format='yolo', label_fields=['classes']))
+            try:
+                aug_result = aug(image=image_copy, bboxes=bboxes_copy, classes=classes_copy)
+            except Exception as e:
+                print(e)
+                print(f'Error with image {tail_path_img}')
 
-            # Save augmented image
-            cv2.imwrite(filename=new_filename_img, img=aug_result['image'])
+            if SAVE_STATUS:
+                new_dir_name = NEW_FOLDERS_PATH + '\\obj_' + aug_name
+                if not os.path.isdir(new_dir_name):     # проверка и создание директории
+                    os.mkdir(new_dir_name)
 
-            # Save augmented annotation
-            text = []
-            for i in range(len(aug_result['classes'])):
-                clas = aug_result['classes'][i]         # get class
-                box = ''
-                for num in aug_result['bboxes'][i]:
-                    box += ' ' + str(num)               # get coordinates of box
-                new_line = str(clas) + box + '\n'       # get full annotation for object on image
-                text.append(new_line)
-            with open(new_filename_txt, 'w') as f:
-                f.writelines(text)
-        else:
-            visualize(image, bboxes, classes)       # visualize original image
+                new_filename_img = new_dir_name + '\\' + aug_name + '_' + tail_path_img
+                new_filename_txt = new_dir_name + '\\' + aug_name + '_' + tail_path_txt
 
-            visualize(aug_result['image'],          # visualize augmented image
-                      aug_result['bboxes'],
-                      aug_result['classes'])
-            plt.show()
+                # Save augmented image
+                cv2.imwrite(filename=new_filename_img, img=aug_result['image'])
 
+                # Save augmented annotation
+                text = []
+                for i in range(len(aug_result['classes'])):
+                    clas = aug_result['classes'][i]         # get class
+                    box = ''
+                    for num in aug_result['bboxes'][i]:
+                        box += ' ' + str(num)               # get coordinates of box
+                    new_line = str(clas) + box + '\n'       # get full annotation for object on image
+                    text.append(new_line)
+                with open(new_filename_txt, 'w') as f:
+                    f.writelines(text)
+            else:
+                visualize(image_copy, bboxes_copy, classes_copy)       # visualize original image
 
-
-
+                visualize(aug_result['image'],          # visualize augmented image
+                          aug_result['bboxes'],
+                          aug_result['classes'])
+                plt.show()
