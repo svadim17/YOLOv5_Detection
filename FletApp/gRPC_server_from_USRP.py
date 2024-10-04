@@ -12,20 +12,23 @@ import copy
 from collections import deque
 from yolov5.nn_processing import NNProcessing
 import yaml
+import json
 import sys
 # from nn_processing import NNProcessing
 
 logger.remove(0)
 log_level = "TRACE"
 log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | {extra} | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
-# logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
-logger.add("logs/file_{time}.log", level=log_level,
+logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
+logger.add("server_logs/file_{time}.log",
+           level=log_level,
            format=log_format,
            colorize=False,
            backtrace=True,
            diagnose=True,
            rotation='1 MB',
            enqueue=True)
+ORIGINAL_HASH_PASSWORD = b'\xac\x00\xeb\xf5+2\xd2\xa4\x90\x0e&\x84rz-O=b\xee\xf0:\xa0g\x01w\x8b\x9aD\x1e<\x94\xbb'
 
 
 def load_conf(config_path: str):
@@ -60,10 +63,8 @@ class Client(Process):
                  threshold: int,
                  accumulation_size: int,
                  data_queue=None,
-                 img_queue=None,
-                 logger_=None):
+                 img_queue=None,):
         super().__init__()
-        self.logger_ = logger_
         self.q_control = Queue()
         self.nn = None
         self.name = name
@@ -93,13 +94,12 @@ class Client(Process):
     def change_zscale(self, z_min: int, z_max: int):
         self.z_min = z_min
         self.z_max = z_max
-        logger.info(f'New z: {z_min} {z_max}')
         try:
             self.nn.z_min_value_changed(value=z_min)
             self.nn.z_max_value_changed(value=z_max)
-            self.logger_.success('succccccc')
+            logger.debug(f'New z: {z_min} {z_max}')
         except Exception as e:
-            self.logger_.error(e)
+            logger.error(e)
 
     def change_recognition_settings(self, accumulation_size: int, threshold: float):
         self.accumulation_size = accumulation_size
@@ -147,7 +147,7 @@ class Client(Process):
                         tcp_connection_status = True
                         logger.success(f'Connected to {self.address}!')
                         nn_type = s.recv(2)
-                        logger.info(f'NN type: {nn_type}')
+                        logger.debug(f'NN type: {nn_type}')
                         self.nn = NNProcessing(name=self.name,
                                                weights=self.weights_path,
                                                sample_rate=self.sample_rate,
@@ -199,7 +199,7 @@ class Client(Process):
                         logger.error(e)
                         s.close()
                         time.sleep(1)
-                logger.info(f'Port №{self.address} finished work')
+                logger.debug(f'Port №{self.address} finished work')
 
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
@@ -214,7 +214,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.connections = self.config['connections']
 
     def ProceedDataStream(self, request, context):
-        self.custom_logger.info(f'Start data stream')
+        self.custom_logger.debug(f'Start data stream')
         while True:
             if not self.data_q.empty():
                 res = self.data_q.get()
@@ -228,7 +228,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs)
 
     def SpectrogramImageStream(self, request, context):
-        self.custom_logger.info(f'Start image stream request: {request.band_name}')
+        self.custom_logger.debug(f'Start image stream request: {request.band_name}')
         while True:
             if not self.img_q.empty():
                 res = self.img_q.get()
@@ -241,6 +241,14 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
     def GetAvailableChannels(self, request, context):
         available_channels = tuple(self.connections.keys())
         return API_pb2.ChannelsResponse(channels=available_channels)
+
+    def GetCurrentZScale(self, request, context):
+        chan_names = tuple(self.connections.keys())
+        z_min, z_max = [], []
+        for conn_name in chan_names:
+            z_min.append(self.connections[conn_name]['neural_network_settings']['z_min'])
+            z_max.append(self.connections[conn_name]['neural_network_settings']['z_max'])
+        return API_pb2.CurrentZScaleResponse(band_names=chan_names, z_min=z_min, z_max=z_max)
 
     def StartChannel(self, request, context):
         if request.connection_name in self.connections and request.connection_name not in self.processes:
@@ -262,8 +270,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                             threshold=int(connection['detection_settings']['threshold']),
                             accumulation_size=int(connection['detection_settings']['accumulation_size']),
                             data_queue=self.data_q,
-                            img_queue=self.img_q,
-                            logger_=logger.bind(logger_name=conn_name))
+                            img_queue=self.img_q,)
 
                 cl.start()
                 self.processes[conn_name] = cl
@@ -283,16 +290,15 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         name = request.band_name
         if name in self.processes:
             self.processes[name].q_control.put({'func': 'change_zscale', 'args': (request.z_min, request.z_max)})
-            #self.processes[name].change_zscale(z_min=request.z_min, z_max=request.z_max)
-            self.custom_logger.info(f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')
+            # self.processes[name].change_zscale(z_min=request.z_min, z_max=request.z_max)
+            self.custom_logger.debug(f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')
             return API_pb2.ZScaleResponse(status=f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')
         else:
             self.custom_logger.error(f'Unknown channel {name}')
             return API_pb2.ZScaleResponse(status=f'Unknown channel: {name}!')
 
     def LoadConfig(self, request, context):
-        original_hash = b'7L\x08\x8d\xe77d\xc4Z$/\x16\xe9\x96w\x9f\x15Uh\xd8\x9e\x81\xa2)\x13[\x95\xbb\xb5\xa5\x16\xa9'
-        if request.password_hash == original_hash:
+        if request.password_hash == ORIGINAL_HASH_PASSWORD:
             try:
                 new_config = dict(yaml.load(request.config, Loader=yaml.SafeLoader))
                 dump_conf(config_path=self.config_path, config=new_config)
@@ -305,13 +311,22 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             self.custom_logger.warning('Incorrect password!')
             return API_pb2.LoadConfigResponse(status='Incorrect password!')
 
+    def SaveConfig(self, request, context):
+        if request.password_hash == ORIGINAL_HASH_PASSWORD:
+            try:
+                for process in self.processes:
+                    pass
+
+
+
+
     def RecognitionSettings(self, request, context):
         name = request.band_name
         accum_size = request.accumulation_size
         threshold = request.threshold
         if name in self.processes:
             self.processes[name].q_control.put({'func': 'change_recognition_settings', 'args': (accum_size, threshold)})
-            self.custom_logger.info(f'Accumulation was changed on {accum_size} and Threshold was changed on {threshold} '
+            self.custom_logger.debug(f'Accumulation was changed on {accum_size} and Threshold was changed on {threshold} '
                         f'in channel {name}')
             return API_pb2.RecognitionSettingsResponse(
                 status=f'Accumulation was changed on {accum_size} and Threshold was changed on {threshold} '
@@ -323,9 +338,9 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
 def serve():
     gRPC_PORT = 51234
-    path = r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\gRPC_stream\with_central_freq_and_img\config_twinrx_test.yaml'
+    CONFIG_PATH = r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\FletApp\config_Flet.yaml'
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(config_path=path), server)
+    API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(config_path=CONFIG_PATH), server)
     server.add_insecure_port(f'localhost:{gRPC_PORT}')
     server.start()
 

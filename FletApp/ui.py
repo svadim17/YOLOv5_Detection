@@ -10,10 +10,11 @@ class StartDialog(ft.UserControl):
         self.callback = callback_func
 
         self.available_channels = gRPC_interface.getAvailableChannelsRequest(grpc_channel=self.grpc_channel)
+        self.current_zscale_dict = gRPC_interface.getCurrentZScaleRequest(grpc_channel=self.grpc_channel)
         self.checkboxes = {}
         self.enabled_channels = []
 
-        self.dialog_start = ft.AlertDialog(modal=False, title=ft.Text('Start channel settings'))
+        self.dialog_start = ft.AlertDialog(modal=False, title=ft.Text('Available channels'))
 
         for name in self.available_channels:
             checkbox = ft.Checkbox(label=name, value=True)
@@ -24,12 +25,19 @@ class StartDialog(ft.UserControl):
         self.dialog_start.actions.append(self.btn_start_channel)
 
     async def btn_start(self, event):
+        # self.dialog_start.clean()
+        # # self.dialog_start.actions.clear()
+        # self.dialog_start.update()
+        # self.dialog_start.actions.append(ft.Column([ft.ProgressRing(), ft.Text('Connecting to channels...')],
+        #                                            horizontal_alignment=ft.CrossAxisAlignment.CENTER))
+        # self.dialog_start.update()
+
         for checkbox in self.checkboxes.values():
             if checkbox.value:
                 self.enabled_channels.append(checkbox.label)
                 await gRPC_interface.startChannelRequest(channel=self.grpc_channel, channel_name=checkbox.label)
         self.close_dialog()
-        await self.callback(self.enabled_channels)
+        await self.callback(self.enabled_channels, self.current_zscale_dict)
 
     def close_dialog(self):
         self.dialog_start.open = False
@@ -45,12 +53,14 @@ class StartDialog(ft.UserControl):
 
 
 class RecognitionContainer(ft.UserControl):
-    def __init__(self, grpc_channel, image64_background, channel_name: str, map_list: list):
+    def __init__(self, grpc_channel, image64_background, channel_name: str, map_list: list, z_min: int, z_max: int):
         super().__init__()
         self.grpc_channel = grpc_channel
         self.channel_name = channel_name
         self.map_list = map_list
-
+        self.z_min = z_min
+        self.z_max = z_max
+        print(f'Starting recognition container {channel_name}')
         self.image = ft.Image(src_base64=image64_background, expand=True, fit=ft.ImageFit.CONTAIN)
         self.fps_view = ft.Text('FPS: 0', size=22)
         self.image_stack = ft.Stack([self.image, self.fps_view])
@@ -79,8 +89,8 @@ class RecognitionContainer(ft.UserControl):
         self.slider_zscale = ft.RangeSlider(min=-120,
                                             max=120,
                                             divisions=240,
-                                            start_value=-40,
-                                            end_value=40,
+                                            start_value=self.z_min,
+                                            end_value=self.z_max,
                                             label="{value}",
                                             on_change=self.slider_zscale_changed,
                                             expand=True)
@@ -233,10 +243,11 @@ class BottomBarContent(ft.UserControl):
 
 
 class MenuContent():
-    def __init__(self, parent_page):
+    def __init__(self, parent_page, grpc_channel):
         super().__init__()
         self.page = parent_page
-
+        self.grpc_channel = grpc_channel
+        self.btn_save_config = ft.TextButton(text='Save config', on_click=self.save_config)
         column = ft.Column(controls=[ft.Text('Channels Settings', theme_style=ft.TextThemeStyle.TITLE_LARGE),],
                            alignment=ft.MainAxisAlignment.CENTER,
                            horizontal_alignment=ft.CrossAxisAlignment.CENTER
@@ -246,6 +257,12 @@ class MenuContent():
 
     def add_channel_settings(self, container):
         self.menu.controls.append(container)
+
+    def add_btn_save_config(self):
+        self.menu.controls.append(self.btn_save_config)
+
+    async def save_config(self, event):
+        await gRPC_interface.SaveConfigRequest(grpc_channel=self.grpc_channel, password='kgbradar')
 
     def open_menu(self, e):
         self.menu.open = True

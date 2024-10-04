@@ -284,7 +284,6 @@ def main(page: ft.Page):
         else:
             print('Error with loading config!')
 
-
     page.title = "NN Interface"     # Установить заголовок страницы
     page.padding = 0
     page.vertical_alignment = ft.MainAxisAlignment.CENTER

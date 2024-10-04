@@ -100,7 +100,17 @@ async def LoadConfigRequest(grpc_channel, password: str, config: str):
         logger.info(response.status)
         return response
     except Exception as e:
-        logger.error(f'Error with loading config!')
+        logger.error(f'Error with loading config! \n{e}')
+
+
+async def SaveConfigRequest(grpc_channel, password: str):
+    try:
+        stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
+        response = stub.SaveConfig(API_pb2.SaveConfigRequest(password_hash=utils.create_password_hash(password=password)))
+        logger.info(response.status)
+        return response
+    except Exception as e:
+        logger.error(f'Error with saving config! \n{e}')
 
 
 async def RecognitionSettingsRequest(grpc_channel, channel_name: str, accum_size: int, threshold: float):
@@ -123,6 +133,25 @@ def getAvailableChannelsRequest(grpc_channel):
         return tuple(response.channels)
     except Exception as e:
         logger.error(f'Error with getting available channels! \n{e}')
+
+
+def getCurrentZScaleRequest(grpc_channel):
+    try:
+        stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
+        response = stub.GetCurrentZScale(API_pb2.CurrentZScaleRequest())
+        chan_names = response.band_names
+        z_min = response.z_min
+        z_max = response.z_max
+
+        # Convert lists to dictionary
+        current_zscale_dict = {}
+        for i in range(len(chan_names)):
+            current_zscale_dict[chan_names[i]] = [z_min[i], z_max[i]]
+
+        logger.info(f'Current ZScale: {current_zscale_dict}')
+        return current_zscale_dict
+    except Exception as e:
+        logger.error(f'Error with getting current ZScale! \n{e}')
 
 
 

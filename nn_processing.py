@@ -36,7 +36,7 @@ class NNProcessing(object):
         torch.cuda.empty_cache()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.last_time = time.time()
-        #logger.info(f'Using device: {self.device}')
+        # logger.info(f'Using device: {self.device}')
         self.f = np.arange(sample_rate / (-2), sample_rate / 2, sample_rate / width)
         self.t = np.arange(0, msg_len / sample_rate, width / sample_rate)
         self.load_model()
@@ -64,7 +64,7 @@ class NNProcessing(object):
         self.z_max = value
 
     def processing(self, norm_data, save_images=False):
-        color_image = cv2.applyColorMap(norm_data, cv2.COLORMAP_RAINBOW)   # create a color image from normalized data
+        color_image = cv2.applyColorMap(norm_data, cv2.COLORMAP_INFERNO)   # create a color image from normalized data
         screen = cv2.resize(color_image, self.img_size)
         result = self.model(screen, size=self.img_size[0])       # set the model use the screen
 

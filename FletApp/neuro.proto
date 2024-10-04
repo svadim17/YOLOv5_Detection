@@ -22,7 +22,6 @@ message DataResponse {
     repeated UavObject uavs = 2;
 }
 
-
 message VoidRequest {                   // Запрос на начало стрима с результатами распознавания
 }
 
@@ -32,7 +31,6 @@ message ImageResponse {
     int32 height = 3;
     int32 width = 4;
 }
-
 
 message ImageRequest {                  // Запрос на начало стрима картинок в определенном канале
     string band_name = 1;
@@ -56,6 +54,15 @@ message ZScaleResponse {                // Ответ на запрос об и�
     string status = 1;
 }
 
+message CurrentZScaleRequest {                 // Запрос на текущую Z-шкалу
+}
+
+message CurrentZScaleResponse {                // Ответ на запрос об текущей Z-шкале
+   repeated string band_names = 1;
+   repeated int32 z_min = 2;
+   repeated int32 z_max = 3;
+}
+
 message ChannelsRequest {
 }
 
@@ -63,12 +70,20 @@ message ChannelsResponse {                // Ответ на запрос об �
     repeated string channels = 1;
 }
 
-message LoadConfigRequest {                 //
+message LoadConfigRequest {                 // Запрос на конфиг
     string config = 1;
     bytes password_hash = 2;
 }
 
-message LoadConfigResponse {                 //
+message LoadConfigResponse {                 // Ответ на запрос о загрузке конфига
+    string status = 1;
+}
+
+message SaveConfigRequest {
+    bytes password_hash = 1;
+}
+
+message SaveConfigResponse {
     string status = 1;
 }
 
@@ -90,5 +105,7 @@ service DataProcessingService {
     rpc ZScaleChanging (ZScaleRequest) returns (ZScaleResponse);
     rpc GetAvailableChannels (ChannelsRequest) returns (ChannelsResponse);
     rpc LoadConfig (LoadConfigRequest) returns (LoadConfigResponse);
+    rpc SaveConfig (SaveConfigRequest) returns (SaveConfigResponse);
     rpc RecognitionSettings (RecognitionSettingsRequest) returns (RecognitionSettingsResponse);
+    rpc GetCurrentZScale (CurrentZScaleRequest) returns (CurrentZScaleResponse);
 }

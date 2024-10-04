@@ -1,0 +1,125 @@
+connections:
+  2G4:
+    ip: 127.0.0.1
+    port: 10091
+    signal_settings:
+      signal_width: 1024
+      signal_height: 2048
+      sample_rate: 80000000
+      calculate_log: false
+    neural_network_settings:
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver3\weights\best.pt
+      img_size:
+      - 640
+      - 640
+      z_min: -60
+      z_max: 80
+    detection_settings:
+      all_classes:
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
+      map_list:
+      - autel
+      - fpv
+      - dji
+      - wifi
+      accumulation_size: 25
+      threshold: 9
+  5G87:
+    ip: 127.0.0.1
+    port: 10093
+    signal_settings:
+      signal_width: 1024
+      signal_height: 2048
+      sample_rate: 80000000
+      calculate_log: false
+    neural_network_settings:
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver3\weights\best.pt
+      img_size:
+      - 640
+      - 640
+      z_min: -55
+      z_max: 80
+    detection_settings:
+      all_classes:
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
+      map_list:
+      - autel
+      - fpv
+      - dji
+      - wifi
+      accumulation_size: 25
+      threshold: 9
+  0G94:
+    ip: 127.0.0.1
+    port: 10092
+    signal_settings:
+      signal_width: 1024
+      signal_height: 2048
+      sample_rate: 80000000
+      calculate_log: false
+    neural_network_settings:
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver3\weights\best.pt
+      img_size:
+        - 640
+        - 640
+      z_min: -40
+      z_max: 40
+    detection_settings:
+      all_classes:
+        - dji
+        - wifi
+        - autel_lite
+        - autel_max_4n(t)
+        - autel_tag
+        - fpv
+      map_list:
+        - autel
+        - fpv
+        - dji
+        - wifi
+      accumulation_size: 25
+      threshold: 9
+  5G88:
+    ip: 127.0.0.1
+    port: 10094
+    signal_settings:
+      signal_width: 1024
+      signal_height: 2048
+      sample_rate: 80000000
+      calculate_log: false
+    neural_network_settings:
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver3\weights\best.pt
+      img_size:
+        - 640
+        - 640
+      z_min: -40
+      z_max: 40
+    detection_settings:
+      all_classes:
+        - dji
+        - wifi
+        - autel_lite
+        - autel_max_4n(t)
+        - autel_tag
+        - fpv
+      map_list:
+        - autel
+        - fpv
+        - dji
+        - wifi
+      accumulation_size: 25
+      threshold: 9
