@@ -5,7 +5,41 @@ import torch.nn.functional as F
 import cv2
 import torch
 import numpy as np
-#from loguru import logger
+# from loguru import logger
+import platform
+import pathlib
+
+# For loading neural model on different OS
+if platform.system() == 'Windows':
+    pathlib.PosixPath = pathlib.WindowsPath
+else:
+    pathlib.WindowsPath = pathlib.PosixPath
+
+
+COLORMAP_DICT = {
+    'autumn': cv2.COLORMAP_AUTUMN,
+    'bone': cv2.COLORMAP_BONE,
+    'jet': cv2.COLORMAP_JET,
+    'winter': cv2.COLORMAP_WINTER,
+    'rainbow': cv2.COLORMAP_RAINBOW,
+    'ocean': cv2.COLORMAP_OCEAN,
+    'summer': cv2.COLORMAP_SUMMER,
+    'spring': cv2.COLORMAP_SPRING,
+    'cool': cv2.COLORMAP_COOL,
+    'hsv': cv2.COLORMAP_HSV,
+    'pink': cv2.COLORMAP_PINK,
+    'hot': cv2.COLORMAP_HOT,
+    'parula': cv2.COLORMAP_PARULA,
+    'magma': cv2.COLORMAP_MAGMA,
+    'inferno': cv2.COLORMAP_INFERNO,
+    'plasma': cv2.COLORMAP_PLASMA,
+    'viridis': cv2.COLORMAP_VIRIDIS,
+    'cividis': cv2.COLORMAP_CIVIDIS,
+    'twilight': cv2.COLORMAP_TWILIGHT,
+    'twilight_shifted': cv2.COLORMAP_TWILIGHT_SHIFTED,
+    'turbo': cv2.COLORMAP_TURBO,
+    'deepgreen': cv2.COLORMAP_DEEPGREEN
+}
 
 
 class NNProcessing(object):
@@ -20,15 +54,21 @@ class NNProcessing(object):
                  img_size=(640, 640),
                  msg_len=0,
                  z_min=-20,
-                 z_max=75):
+                 z_max=75,
+                 colormap='inferno'):
         super().__init__()
+
         self.name = name
         self.weights = weights
         self.project_path = project_path
         self.map_list = map_list
+        self.sample_rate = sample_rate
+        self.width = width
+        self.height = height
         self.img_size = img_size
         self.z_min = z_min
         self.z_max = z_max
+        self.set_colormap(colormap=colormap)
         self.show_detected_img_status = None
         self.save_info = {}
         self.img_save_path = ''
@@ -37,8 +77,8 @@ class NNProcessing(object):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.last_time = time.time()
         # logger.info(f'Using device: {self.device}')
-        self.f = np.arange(sample_rate / (-2), sample_rate / 2, sample_rate / width)
-        self.t = np.arange(0, msg_len / sample_rate, width / sample_rate)
+        self.f = np.arange(self.sample_rate / (-2), self.sample_rate / 2, self.sample_rate / self.width)
+        self.t = np.arange(0, msg_len / self.sample_rate, self.width / self.sample_rate)
         self.load_model()
 
     def load_model(self):
@@ -57,14 +97,20 @@ class NNProcessing(object):
         norm_data = norm_data.astype(np.uint8)
         return norm_data
 
-    def z_min_value_changed(self, value):
+    def set_z_min(self, value):
         self.z_min = value
 
-    def z_max_value_changed(self, value):
+    def set_z_max(self, value):
         self.z_max = value
 
+    def set_colormap(self, colormap: str):
+        try:
+            self.colormap = COLORMAP_DICT[colormap]
+        except KeyError:
+            self.colormap = cv2.COLORMAP_INFERNO
+
     def processing(self, norm_data, save_images=False):
-        color_image = cv2.applyColorMap(norm_data, cv2.COLORMAP_INFERNO)   # create a color image from normalized data
+        color_image = cv2.applyColorMap(norm_data, self.colormap)   # create a color image from normalized data
         screen = cv2.resize(color_image, self.img_size)
         result = self.model(screen, size=self.img_size[0])       # set the model use the screen
 

@@ -85,8 +85,8 @@ class Client(Process):
         self.z_max = z_max
         logger.info(f'New z: {z_min} {z_max}')
         try:
-            self.nn.z_min_value_changed(value=z_min)
-            self.nn.z_max_value_changed(value=z_max)
+            self.nn.set_z_min(value=z_min)
+            self.nn.set_z_max(value=z_max)
         except Exception as e:
             logger.error(e)
 
@@ -264,7 +264,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
     def ZScaleChanging(self, request, context):
         name = request.band_name
         if name in self.processes:
-            self.processes[name].q_control.put({'func': 'change_zscale', 'args': (request.z_min, request.z_max)})
+            self.processes[name].pipe_control_child.put({'func': 'change_zscale', 'args': (request.z_min, request.z_max)})
             #self.processes[name].change_zscale(z_min=request.z_min, z_max=request.z_max)
             logger.info(f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')
             return API_pb2.ZScaleResponse(status=f'Z scale in channel {name} was changed on [{request.z_min}, {request.z_max}]')

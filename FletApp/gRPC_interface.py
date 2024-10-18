@@ -10,13 +10,13 @@ import asyncio
 from loguru import logger
 
 
-async def connect_to_server(port: str):
+async def connect_to_server(ip: str, port: str):
     try:
-        grpc_channel = grpc.insecure_channel(f'127.0.0.1:{port}')
-        logger.success(f'Successfully connected to 127.0.0.1:{port}!')
+        grpc_channel = grpc.insecure_channel(f'{ip}:{port}')
+        logger.success(f'Successfully connected to {ip}:{port}!')
         return grpc_channel
     except Exception as e:
-        logger.error(f'Error with connecting to 127.0.0.1:{port}! \n{e}')
+        logger.error(f'Error with connecting to {ip}:{port}! \n{e}')
 
 
 async def startChannelRequest(channel, channel_name: str):
@@ -45,7 +45,7 @@ async def imageStream(channel, gallery: dict):
 async def dataStream(channel, map_list: list, gallery: dict):
     stub = API_pb2_grpc.DataProcessingServiceStub(channel)
     responses = stub.ProceedDataStream(API_pb2.VoidRequest())
-
+    print(responses)
     for response in responses:
         band_name = response.band_name
         if band_name in gallery:
@@ -71,6 +71,15 @@ async def start_gRPC_streams(grpc_channel, map_list: list, gallery: dict):
         logger.error(f'Error with starting data stream! \n{e}')
     # await asyncio.gather(image_stream_task, data_stream_task)
     return image_stream_task, data_stream_task
+
+
+async def start_data_stream(grpc_channel, map_list: list, gallery: dict):
+    try:
+        data_stream_task = asyncio.create_task(dataStream(channel=grpc_channel, map_list=map_list, gallery=gallery))
+        logger.info('Data stream started successfully!')
+    except Exception as e:
+        logger.error(f'Error with starting data stream! \n{e}')
+    return data_stream_task
 
 
 async def stop_gRPC_streams(grpc_task, grpc_channel):

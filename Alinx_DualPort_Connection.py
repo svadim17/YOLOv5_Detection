@@ -52,7 +52,6 @@ class Client(Process):
                                            z_min=self.z_min,
                                            z_max=self.z_max)
                     while True:
-
                         # Проверка обновлений в z_min и z_max
                         while not self.z_values_queue.empty():
                             key, value = self.z_values_queue.get()

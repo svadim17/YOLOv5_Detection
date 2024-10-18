@@ -1,5 +1,5 @@
 connections:
-  2G4:
+  2G437:
     ip: 127.0.0.1
     port: 10091
     signal_settings:
@@ -14,7 +14,7 @@ connections:
       - 640
       - 640
       z_min: -60
-      z_max: 80
+      z_max: 75
     detection_settings:
       all_classes:
       - dji
@@ -30,7 +30,7 @@ connections:
       - wifi
       accumulation_size: 25
       threshold: 9
-  5G87:
+  5G7865:
     ip: 127.0.0.1
     port: 10093
     signal_settings:
@@ -73,23 +73,23 @@ connections:
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
       weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver3\weights\best.pt
       img_size:
-        - 640
-        - 640
+      - 640
+      - 640
       z_min: -40
       z_max: 40
     detection_settings:
       all_classes:
-        - dji
-        - wifi
-        - autel_lite
-        - autel_max_4n(t)
-        - autel_tag
-        - fpv
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
       map_list:
-        - autel
-        - fpv
-        - dji
-        - wifi
+      - autel
+      - fpv
+      - dji
+      - wifi
       accumulation_size: 25
       threshold: 9
   5G88:
@@ -104,22 +104,22 @@ connections:
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
       weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver3\weights\best.pt
       img_size:
-        - 640
-        - 640
+      - 640
+      - 640
       z_min: -40
       z_max: 40
     detection_settings:
       all_classes:
-        - dji
-        - wifi
-        - autel_lite
-        - autel_max_4n(t)
-        - autel_tag
-        - fpv
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
       map_list:
-        - autel
-        - fpv
-        - dji
-        - wifi
+      - autel
+      - fpv
+      - dji
+      - wifi
       accumulation_size: 25
       threshold: 9

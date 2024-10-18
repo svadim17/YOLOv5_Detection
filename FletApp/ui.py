@@ -1,6 +1,7 @@
 import flet as ft
 import gRPC_interface
 import time
+import asyncio
 
 
 class StartDialog(ft.UserControl):
@@ -13,9 +14,10 @@ class StartDialog(ft.UserControl):
         self.current_zscale_dict = gRPC_interface.getCurrentZScaleRequest(grpc_channel=self.grpc_channel)
         self.checkboxes = {}
         self.enabled_channels = []
+        self.pb = ft.ProgressBar(width=200, visible=False)
 
         self.dialog_start = ft.AlertDialog(modal=False, title=ft.Text('Available channels'))
-
+        self.dialog_start.actions.append(self.pb)
         for name in self.available_channels:
             checkbox = ft.Checkbox(label=name, value=True)
             self.dialog_start.actions.append(checkbox)
@@ -25,18 +27,17 @@ class StartDialog(ft.UserControl):
         self.dialog_start.actions.append(self.btn_start_channel)
 
     async def btn_start(self, event):
-        # self.dialog_start.clean()
-        # # self.dialog_start.actions.clear()
-        # self.dialog_start.update()
-        # self.dialog_start.actions.append(ft.Column([ft.ProgressRing(), ft.Text('Connecting to channels...')],
-        #                                            horizontal_alignment=ft.CrossAxisAlignment.CENTER))
-        # self.dialog_start.update()
+        # Отображаем ProgressBar перед началом асинхронных операций
+        self.close_dialog()
+        asyncio.create_task(self.start_channels_and_callback())
 
+    async def start_channels_and_callback(self):
+        # Асинхронный запуск каналов
         for checkbox in self.checkboxes.values():
             if checkbox.value:
                 self.enabled_channels.append(checkbox.label)
                 await gRPC_interface.startChannelRequest(channel=self.grpc_channel, channel_name=checkbox.label)
-        self.close_dialog()
+        # Выполнение коллбэка после завершения запросов
         await self.callback(self.enabled_channels, self.current_zscale_dict)
 
     def close_dialog(self):
@@ -61,7 +62,11 @@ class RecognitionContainer(ft.UserControl):
         self.z_min = z_min
         self.z_max = z_max
         print(f'Starting recognition container {channel_name}')
-        self.image = ft.Image(src_base64=image64_background, expand=True, fit=ft.ImageFit.CONTAIN)
+        if image64_background is not None:
+            self.image = ft.Image(src_base64=image64_background, expand=True, fit=ft.ImageFit.CONTAIN)
+        else:
+            self.image = ft.Image(expand=True, fit=ft.ImageFit.CONTAIN)
+
         self.fps_view = ft.Text('FPS: 0', size=22)
         self.image_stack = ft.Stack([self.image, self.fps_view])
 
@@ -215,6 +220,48 @@ class RecognitionContainer(ft.UserControl):
         return container
 
 
+class SimpleRecognitionContainer(ft.UserControl):
+    def __init__(self, channel_name: str, map_list: list):
+        super().__init__()
+        self.channel_name = channel_name
+        self.map_list = map_list
+        print(f'Starting recognition container {channel_name}')
+        self.label = ft.Text(value=self.channel_name, size=22)
+
+        self.drones_row = ft.Row()
+        self.drons_dict_btns = {}
+        self.drons_dict_texts = {}
+        for dron in self.map_list:
+            drone_btn_obj = ft.FilledButton(text=dron, disabled=True)
+            drone_text_obj = ft.Text('None', size=17)
+            self.drons_dict_btns[dron] = drone_btn_obj
+            self.drons_dict_texts[dron] = drone_text_obj
+            self.drones_row.controls.append(ft.Column(controls=[drone_btn_obj, drone_text_obj],
+                                                      horizontal_alignment=ft.CrossAxisAlignment.CENTER))
+
+    async def update_buttons(self, name, state, freq):
+        if state:
+            self.drons_dict_btns[name].style.bgcolor = ft.colors.RED_500
+            self.drons_dict_texts[name].value = str(freq)
+        else:
+            self.drons_dict_btns[name].style.bgcolor = ft.colors.GREY
+            self.drons_dict_texts[name].value = 'None'
+        self.drons_dict_btns[name].update()
+        self.drons_dict_texts[name].update()
+
+    def build(self):
+        container = ft.Container(
+            content=ft.Column(
+                controls=[
+                    self.label,
+                    self.drones_row,
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,  # Центрирование всех элементов по горизонтали
+            )
+        )
+        return container
+
+
 class BottomBarContent(ft.UserControl):
     def __init__(self, parent_page):
         super().__init__()
@@ -223,6 +270,8 @@ class BottomBarContent(ft.UserControl):
         self.page.theme_mode = ft.ThemeMode.DARK
         self.menu_button = ft.IconButton(icon=ft.icons.MENU_ROUNDED, icon_size=25)
         self.theme_button = ft.IconButton(icon=ft.icons.DARK_MODE_OUTLINED, icon_size=25, on_click=self.change_theme)
+        self.pb = ft.ProgressRing(visible=True, height=20, width=20)
+
 
     def change_theme(self, e):
         if self.page.theme_mode == ft.ThemeMode.LIGHT:
@@ -238,6 +287,7 @@ class BottomBarContent(ft.UserControl):
         return ft.Row(controls=[
             self.menu_button,
             ft.Container(expand=True),
+            self.pb,
             self.theme_button
         ])
 

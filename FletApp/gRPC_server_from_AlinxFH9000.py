@@ -1,5 +1,5 @@
-import queue
 import grpc
+import queue
 from concurrent import futures
 import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
@@ -11,17 +11,22 @@ import numpy as np
 from loguru import logger
 import copy
 from collections import deque
-from yolov5.nn_processing import NNProcessing
 import yaml
 import json
 import sys
 from collections.abc import Mapping
-# from nn_processing import NNProcessing
+try:
+    from nn_processing import NNProcessing
+except ImportError:
+    import os, sys
+    sys.path.append(os.path.abspath('../'))
+    from nn_processing import NNProcessing
+
 
 logger.remove(0)
 log_level = "TRACE"
 log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | {extra} | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
-logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
+#logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
 logger.add("server_logs/file_{time}.log",
            level=log_level,
            format=log_format,
@@ -75,7 +80,8 @@ class Client(Process):
                  threshold: int,
                  accumulation_size: int,
                  data_queue=None,
-                 img_queue=None,):
+                 img_queue=None,
+                 logger_=None):
         super().__init__()
         self.nn = None
         self.name = name
@@ -98,7 +104,11 @@ class Client(Process):
         self.config_q = Queue()
         self.data_q = data_queue
         self.img_q = img_queue
-        self.msg_len = self.signal_width * self.signal_height
+        if logger_ is None:
+            self.logger = logger.bind(logger_name=self.name)
+        else:
+            self.logger = logger_
+        self.msg_len = self.signal_width * self.signal_height * 2 + 16
         self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
 
     def set_queue(self, data_queue: Queue, img_queue: Queue):
@@ -111,9 +121,9 @@ class Client(Process):
         try:
             self.nn.set_z_min(value=z_min)
             self.nn.set_z_max(value=z_max)
-            logger.debug(f'New z: {z_min} {z_max}')
+            self.logger.debug(f'New z: {z_min} {z_max}')
         except Exception as e:
-            logger.error(e)
+            self.logger.error(e)
 
     def get_current_settings(self):
         self.config_q.put({self.name: {'neural_network_settings': {'z_min': self.z_min, 'z_max': self.z_max},
@@ -143,7 +153,7 @@ class Client(Process):
                     freq = int(freq_shift / 1000000 + 5786.5)
                 else:
                     freq = 0
-                    logger.warning(f'Unknown connection name {self.name}!')
+                    self.logger.warning(f'Unknown connection name {self.name}!')
                 frequencies.append(freq)
             else:
                 frequencies.append(0)
@@ -159,43 +169,50 @@ class Client(Process):
         return f_center
 
     def run(self):
-        tcp_connection_status = False
+        try:
+            self.nn = NNProcessing(name=self.name,
+                                   weights=self.weights_path,
+                                   sample_rate=self.sample_rate,
+                                   width=self.signal_width,
+                                   height=self.signal_height,
+                                   project_path=self.project_path,
+                                   map_list=self.map_list,
+                                   img_size=self.img_size,
+                                   msg_len=self.msg_len,
+                                   z_min=self.z_min,
+                                   z_max=self.z_max)
+            self.logger.debug(f'NNProcessing started by {self.nn.device}')
+            tcp_connection_status = False
+        except Exception as e:
+            self.logger.error('Cant initialize NNProcessing! {e}')
+            tcp_connection_status = True
+
         while not tcp_connection_status:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                for _ in range(4):
-                    try:
-                        s.connect(self.address)
-                        tcp_connection_status = True
-                        logger.success(f'Connected to {self.address}!')
-                        nn_type = s.recv(2)
-                        logger.debug(f'NN type: {nn_type}')
-                        self.nn = NNProcessing(name=self.name,
-                                               weights=self.weights_path,
-                                               sample_rate=self.sample_rate,
-                                               width=self.signal_width,
-                                               height=self.signal_height,
-                                               project_path=self.project_path,
-                                               map_list=self.map_list,
-                                               img_size=self.img_size,
-                                               msg_len=self.msg_len,
-                                               z_min=self.z_min,
-                                               z_max=self.z_max)
-                        res_1 = np.arange(len(self.map_list) * 4)  # array of bytes to send (4 bytes for one class (float32)
+                try:
+                    s.connect(self.address)
+                    self.logger.success(f'Connected to {self.address}!')
+                    res_1 = np.arange(len(self.map_list) * 4)  # array of bytes to send (4 bytes for one class (float32)
+                    last_time = 0
+                    while True:
+                        s.send(b'\x30')
+                        arr = s.recv(self.msg_len)
+                        fps = 1 / (time.time() - last_time)
+                        last_time = time.time()
+                        i = 0
+                        while self.msg_len > len(arr) and i < 500:
+                            i += 1
+                            time.sleep(0.005)
+                            arr += s.recv(self.msg_len - len(arr))
+                            # self.logger.warning(f'Packet {i} missed.')
+                        if len(arr) == self.msg_len:
+                            np_arr = np.frombuffer(arr[16:], dtype=np.float16)
+                            np_arr = np_arr.astype(np.float32)
+                            arr_resh = np_arr.reshape(self.signal_height, self.signal_width)
 
-                        while True:
-                            s.send(res_1.tobytes())
-                            arr = s.recv(self.msg_len)
-                            i = 0
-                            while self.msg_len > len(arr) and i < 200:
-                                i += 1
-                                time.sleep(0.005)
-                                arr += s.recv(self.msg_len - len(arr))
-                                logger.warning(f'Packet {i} missed.')
-                            np_arr = np.frombuffer(arr, dtype=np.int8)
-                            if np_arr.size == self.msg_len:
-                                img_arr = self.nn.normalization(np_arr.reshape(self.signal_height, self.signal_width))
-                                result = self.nn.processing(img_arr)
-                                df_result = result.pandas().xyxy[0]
+                            img_arr = self.nn.normalization(np.fft.fftshift(arr_resh, axes=(1,)))
+                            result = self.nn.processing(img_arr)
+                            df_result = result.pandas().xyxy[0]
 
                             if self.data_q is not None:
                                 res, freq = self.accumulate_and_make_decision(
@@ -215,14 +232,30 @@ class Client(Process):
                                 func = getattr(self, cmd_dict['func'])
                                 func(*args)
 
-                    except queue.Full as e:
-                        print('Queue full.')
-                    except Exception as e:
-                        # print(f'Connection failed\n{e}')
-                        logger.error(e)
-                        s.close()
-                        time.sleep(1)
-                logger.debug(f'Port №{self.address} finished work')
+                        else:
+                            self.logger.warning(f'Packet size = {np_arr.size} missed.')
+
+                except queue.Full as e:
+                    self.logger.debug('IMGQueue full.')
+                except socket.error as e:
+                    s.close()
+                    self.logger.error(f'Connection error! {e}')
+                    time.sleep(1)
+                except Exception as e:
+                    self.logger.error(e)
+                    s.close()
+                    tcp_connection_status = True
+
+        self.logger.debug(f'Port №{self.address} finished work')
+
+
+class ConnectionInterceptor(grpc.ServerInterceptor):
+    def intercept_service(self, continuation, handler_call_details):
+        # Логируем информацию о подключении
+        logger.debug(f"New connection: {handler_call_details.peer()}")
+
+        # Продолжаем обработку запроса
+        return continuation(handler_call_details)
 
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
@@ -232,7 +265,6 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.config = load_conf(config_path=self.config_path)
         self.data_store = {}
         self.data_q = Queue(maxsize=5)
-        # self.img_q = None
         self.img_q = Queue(maxsize=5)
         self.processes = {}
         self.connections = self.config['connections']
@@ -248,7 +280,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                           API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2], freq=res['frequencies'][2]),
                           API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3], freq=res['frequencies'][3])
                         ]
-                logger.info(f'Data was send from band {band_name}')
+                self.custom_logger.trace(f'Data was send from band {band_name}')
                 yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs)
 
     def SpectrogramImageStream(self, request, context):
@@ -264,6 +296,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
     def GetAvailableChannels(self, request, context):
         available_channels = tuple(self.connections.keys())
+        self.custom_logger.debug(f'Client connected {context.peer()}')
         return API_pb2.ChannelsResponse(channels=available_channels)
 
     def GetCurrentZScale(self, request, context):
@@ -294,7 +327,8 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                             threshold=int(connection['detection_settings']['threshold']),
                             accumulation_size=int(connection['detection_settings']['accumulation_size']),
                             data_queue=self.data_q,
-                            img_queue=self.img_q,)
+                            img_queue=self.img_q,
+                            logger_=self.custom_logger.bind(logger_name=str(conn_name)))
 
                 cl.start()
                 self.processes[conn_name] = cl
@@ -371,8 +405,9 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
 def serve():
     gRPC_PORT = 51234
-    CONFIG_PATH = r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\FletApp\config_Flet.yaml'
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    CONFIG_PATH = r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\FletApp\config_Flet_alinx200M.yaml'
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10),)
+                         #interceptors=[ConnectionInterceptor()])  # Добавляем наш interceptor
     API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(config_path=CONFIG_PATH), server)
     server.add_insecure_port(f'[::]:{gRPC_PORT}')
     server.start()

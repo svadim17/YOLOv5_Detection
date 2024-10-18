@@ -5,6 +5,9 @@ default:
   map_list: [ 'noise', 'autel', 'fpv', 'dji', 'wifi' ]
   z_min: -20
   z_max: 75
+  colormap: 'inferno'
+  width: 1024
+  height: 2048
 10091:
   project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
   weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt
@@ -12,6 +15,9 @@ default:
   map_list : ['noise', 'autel', 'fpv', 'dji', 'wifi']
   z_min : -20
   z_max : 50
+  colormap: 'inferno'
+  width: 1024
+  height: 2048
 10092:
   project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
   weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt
@@ -19,6 +25,9 @@ default:
   map_list : ['noise', 'autel', 'fpv', 'dji', 'wifi']
   z_min : -20
   z_max : 80
+  colormap: 'inferno'
+  width: 1024
+  height: 2048
 10093:
   project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
   weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt
@@ -26,6 +35,9 @@ default:
   map_list : ['noise', 'autel', 'fpv', 'dji', 'wifi']
   z_min : -20
   z_max : 13
+  colormap: 'inferno'
+  width: 1024
+  height: 2048
 10094:
   project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
   weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver2\weights\best.pt
@@ -33,3 +45,7 @@ default:
   map_list : ['noise', 'autel', 'fpv', 'dji', 'wifi']
   z_min : -20
   z_max : 20
+  colormap: 'inferno'
+  width: 1024
+  height: 2048
+

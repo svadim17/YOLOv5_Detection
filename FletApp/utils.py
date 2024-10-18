@@ -5,8 +5,11 @@ import cv2
 
 
 def image_to_base64(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode('utf-8')
+    if image_path is None:
+        return None
+    else:
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
 
 
 def create_password_hash(password: str):
@@ -23,6 +26,8 @@ def get_image_from_bytes(arr: bytes, size: tuple):
     _, buffer = cv2.imencode('.png', img_arr)
     img_base64 = base64.b64encode(buffer).decode()
     return img_base64
+
+
 
 
 if __name__ == '__main__':

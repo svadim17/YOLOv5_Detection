@@ -107,5 +107,5 @@ service DataProcessingService {
     rpc LoadConfig (LoadConfigRequest) returns (LoadConfigResponse);
     rpc SaveConfig (SaveConfigRequest) returns (SaveConfigResponse);
     rpc RecognitionSettings (RecognitionSettingsRequest) returns (RecognitionSettingsResponse);
-    rpc GetCurrentZScale (CurrentZScaleRequest) returns (CurrentZScaleResponse);
+    rpc GetCurrentZScale (CurrentZScaleRequest) returns (CurrentZScaleResponse);python main
 }
