@@ -31,12 +31,14 @@ async def main(page: ft.Page):
     map_list = conf['map_list']
     server_port = conf['server_port']
     server_addr = conf['server_addr']
+    show_images_status = conf['show_images']
+    show_freq_status = conf['show_frequinces']
     # START_IMAGE = "spectrum-analysis.png"
     START_IMAGE = None
     page.title = "Neural Detection"
     # page.window.title_bar_hidden = True
-    page.window.height, page.window.min_height = 920, 920
-    page.window.width, page.window.min_width = 1410, 1410
+    page.window.height, page.window.min_height = 920, 200
+    page.window.width, page.window.min_width = 1410, 380
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.update()
@@ -51,15 +53,15 @@ async def main(page: ft.Page):
     page.drawer = menuContent.menu
     bottomBarContent.menu_button.on_click = menuContent.open_menu
 
-    async def create_gallery(channels_names: list, zscale: dict):
+    async def create_gallery(channels_names: list, zscale: dict, recogn_settings: dict):
         global gallery
         gallery = {}
 
         if 2 < len(channels_names) <= 4:
-            gallery_rows = [ft.Row(scroll=ft.ScrollMode.AUTO), ft.Row(scroll=ft.ScrollMode.AUTO)]
+            gallery_rows = [ft.Row(scroll=ft.ScrollMode.AUTO, spacing=30), ft.Row(scroll=ft.ScrollMode.AUTO, spacing=30)]
             page.add(gallery_rows[0]), page.add(gallery_rows[1])
         else:
-            gallery_rows = [ft.Row(scroll=ft.ScrollMode.AUTO)]
+            gallery_rows = [ft.Row(scroll=ft.ScrollMode.AUTO, spacing=30)]
             page.add(gallery_rows[0])
 
         i = 0
@@ -67,9 +69,14 @@ async def main(page: ft.Page):
             container = ui.RecognitionContainer(grpc_channel=gRPC_channel,
                                                 image64_background=utils.image_to_base64(START_IMAGE),
                                                 channel_name=name,
-                                                map_list=map_list,
+                                                map_list=list(map_list),
                                                 z_min=zscale[name][0],
-                                                z_max=zscale[name][1])
+                                                z_max=zscale[name][1],
+                                                accumulation_size=recogn_settings[name][0],
+                                                threshold=recogn_settings[name][1],
+                                                exceedance=recogn_settings[name][2],
+                                                show_images_status=bool(show_images_status),
+                                                show_freq_status=bool(show_freq_status))
             gallery[name] = container
             if len(gallery_rows) == 2:
                 gallery_rows[i % 2].controls.append(container)
@@ -83,8 +90,9 @@ async def main(page: ft.Page):
             page.add(gallery_row)
 
         await gRPC_interface.start_gRPC_streams(grpc_channel=gRPC_channel,
-                                                map_list=map_list,
-                                                gallery=gallery)
+                                                map_list=list(map_list),
+                                                gallery=gallery,
+                                                image_stream_status=bool(show_images_status))
         bottomBarContent.pb.visible = False
         bottomBarContent.pb.update()
 

@@ -80,6 +80,11 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.RecognitionSettingsRequest.SerializeToString,
                 response_deserializer=neuro__pb2.RecognitionSettingsResponse.FromString,
                 _registered_method=True)
+        self.GetRecognitionSettings = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/GetRecognitionSettings',
+                request_serializer=neuro__pb2.GetRecognitionSettingsRequest.SerializeToString,
+                response_deserializer=neuro__pb2.GetRecognitionSettingsResponse.FromString,
+                _registered_method=True)
         self.GetCurrentZScale = channel.unary_unary(
                 '/NeuroDataProcessing.DataProcessingService/GetCurrentZScale',
                 request_serializer=neuro__pb2.CurrentZScaleRequest.SerializeToString,
@@ -142,6 +147,12 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetRecognitionSettings(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def GetCurrentZScale(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -190,6 +201,11 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.RecognitionSettings,
                     request_deserializer=neuro__pb2.RecognitionSettingsRequest.FromString,
                     response_serializer=neuro__pb2.RecognitionSettingsResponse.SerializeToString,
+            ),
+            'GetRecognitionSettings': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRecognitionSettings,
+                    request_deserializer=neuro__pb2.GetRecognitionSettingsRequest.FromString,
+                    response_serializer=neuro__pb2.GetRecognitionSettingsResponse.SerializeToString,
             ),
             'GetCurrentZScale': grpc.unary_unary_rpc_method_handler(
                     servicer.GetCurrentZScale,
@@ -414,6 +430,33 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/RecognitionSettings',
             neuro__pb2.RecognitionSettingsRequest.SerializeToString,
             neuro__pb2.RecognitionSettingsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetRecognitionSettings(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/GetRecognitionSettings',
+            neuro__pb2.GetRecognitionSettingsRequest.SerializeToString,
+            neuro__pb2.GetRecognitionSettingsResponse.FromString,
             options,
             channel_credentials,
             insecure,

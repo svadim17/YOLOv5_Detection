@@ -45,7 +45,6 @@ async def imageStream(channel, gallery: dict):
 async def dataStream(channel, map_list: list, gallery: dict):
     stub = API_pb2_grpc.DataProcessingServiceStub(channel)
     responses = stub.ProceedDataStream(API_pb2.VoidRequest())
-    print(responses)
     for response in responses:
         band_name = response.band_name
         if band_name in gallery:
@@ -57,20 +56,23 @@ async def dataStream(channel, map_list: list, gallery: dict):
             await asyncio.sleep(0.005)
 
 
-async def start_gRPC_streams(grpc_channel, map_list: list, gallery: dict):
+async def start_gRPC_streams(grpc_channel, map_list: list, gallery: dict, image_stream_status: bool):
     # grpc_options = [('grpc.max_receive_message_length', 2 * 1024 * 1024)]  # 2 MB
-    try:
-        image_stream_task = asyncio.create_task(imageStream(channel=grpc_channel, gallery=gallery))
-        logger.info('Image stream started successfully!')
-    except Exception as e:
-        logger.error(f'Error with starting image stream! \n{e}')
     try:
         data_stream_task = asyncio.create_task(dataStream(channel=grpc_channel, map_list=map_list, gallery=gallery))
         logger.info('Data stream started successfully!')
     except Exception as e:
         logger.error(f'Error with starting data stream! \n{e}')
-    # await asyncio.gather(image_stream_task, data_stream_task)
-    return image_stream_task, data_stream_task
+
+    if image_stream_status:
+        try:
+            image_stream_task = asyncio.create_task(imageStream(channel=grpc_channel, gallery=gallery))
+            logger.info('Image stream started successfully!')
+        except Exception as e:
+            logger.error(f'Error with starting image stream! \n{e}')
+        return image_stream_task, data_stream_task
+    else:
+        return data_stream_task
 
 
 async def start_data_stream(grpc_channel, map_list: list, gallery: dict):
@@ -122,12 +124,13 @@ async def SaveConfigRequest(grpc_channel, password: str):
         logger.error(f'Error with saving config! \n{e}')
 
 
-async def RecognitionSettingsRequest(grpc_channel, channel_name: str, accum_size: int, threshold: float):
+async def RecognitionSettingsRequest(grpc_channel, channel_name: str, accum_size: int, threshold: float, exceedance: float):
     try:
         stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
         response = stub.RecognitionSettings(API_pb2.RecognitionSettingsRequest(band_name=channel_name,
                                                                                accumulation_size=accum_size,
-                                                                               threshold=threshold))
+                                                                               threshold=threshold,
+                                                                               exceedance=exceedance))
         logger.info(response.status)
         return response
     except Exception as e:
@@ -161,6 +164,27 @@ def getCurrentZScaleRequest(grpc_channel):
         return current_zscale_dict
     except Exception as e:
         logger.error(f'Error with getting current ZScale! \n{e}')
+
+
+def getRecognitionSettings(grpc_channel):
+    try:
+        stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
+        response = stub.GetRecognitionSettings(API_pb2.GetRecognitionSettingsRequest())
+        chan_names = response.band_name
+        accum_size = response.accumulation_size
+        threshold = response.threshold
+        exceedance = response.exceedance
+
+        # Convert lists to dictionary
+        current_recogn_settings_dict = {}
+        for i in range(len(chan_names)):
+            current_recogn_settings_dict[chan_names[i]] = [accum_size[i], threshold[i], exceedance[i]]
+        logger.info(f'Current Recognition Settings: {current_recogn_settings_dict}')
+        return current_recogn_settings_dict
+    except Exception as e:
+        logger.error(f'Error with getting current Recognition Settings! \n{e}')
+
+
 
 
 

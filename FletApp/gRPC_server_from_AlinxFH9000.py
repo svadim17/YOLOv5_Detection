@@ -26,7 +26,7 @@ except ImportError:
 logger.remove(0)
 log_level = "TRACE"
 log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | {extra} | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
-#logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
+# logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
 logger.add("server_logs/file_{time}.log",
            level=log_level,
            format=log_format,
@@ -79,6 +79,7 @@ class Client(Process):
                  z_max: int,
                  threshold: int,
                  accumulation_size: int,
+                 exceedance: float,
                  data_queue=None,
                  img_queue=None,
                  logger_=None):
@@ -99,6 +100,8 @@ class Client(Process):
         self.z_max = z_max
         self.threshold = threshold
         self.accumulation_size = accumulation_size
+        self.exceedance = exceedance
+        self.global_threshold = self.threshold * self.accumulation_size * self.exceedance
         self.pipe_control_child, self.pipe_control_parent = Pipe()
         self.control_q = Queue()
         self.config_q = Queue()
@@ -132,10 +135,12 @@ class Client(Process):
                                        }
                            })
 
-    def change_recognition_settings(self, accumulation_size: int, threshold: float):
+    def change_recognition_settings(self, accumulation_size: int, threshold: float, exceedance: float):
         self.accumulation_size = accumulation_size
         self.threshold = threshold
+        self.exceedance = exceedance
         self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
+        self.global_threshold = self.threshold * self.accumulation_size * self.exceedance
 
     def accumulate_and_make_decision(self, result_dict: dict):
         accumed_results = []
@@ -143,7 +148,7 @@ class Client(Process):
         for key, key_dict in result_dict.items():
             self.accum_deques[key].appendleft(key_dict['confidence'])
             accum = sum(self.accum_deques[key])
-            state = bool(accum >= self.threshold)
+            state = bool(accum >= self.global_threshold)
             accumed_results.append(state)
             if state:
                 freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
@@ -299,6 +304,19 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.custom_logger.debug(f'Client connected {context.peer()}')
         return API_pb2.ChannelsResponse(channels=available_channels)
 
+    def GetRecognitionSettings(self, request, context):
+        chan_names = tuple(self.connections.keys())
+        accum_size, threshold, exceedance = [], [], []
+        for conn_name in chan_names:
+            accum_size.append(self.connections[conn_name]['detection_settings']['accumulation_size'])
+            threshold.append(self.connections[conn_name]['detection_settings']['threshold'])
+            exceedance.append(self.connections[conn_name]['detection_settings']['exceedance'])
+
+        return API_pb2.GetRecognitionSettingsResponse(band_name=chan_names,
+                                                      accumulation_size=accum_size,
+                                                      threshold=threshold,
+                                                      exceedance=exceedance)
+
     def GetCurrentZScale(self, request, context):
         chan_names = tuple(self.connections.keys())
         z_min, z_max = [], []
@@ -326,6 +344,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                             z_max=int(connection['neural_network_settings']['z_max']),
                             threshold=int(connection['detection_settings']['threshold']),
                             accumulation_size=int(connection['detection_settings']['accumulation_size']),
+                            exceedance=float(connection['detection_settings']['exceedance']),
                             data_queue=self.data_q,
                             img_queue=self.img_q,
                             logger_=self.custom_logger.bind(logger_name=str(conn_name)))
@@ -391,13 +410,15 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         name = request.band_name
         accum_size = request.accumulation_size
         threshold = request.threshold
+        exceedance = request.exceedance
         if name in self.processes:
-            self.processes[name].control_q.put({'func': 'change_recognition_settings', 'args': (accum_size, threshold)})
-            self.custom_logger.debug(f'Accumulation was changed on {accum_size} and Threshold was changed on {threshold} '
-                                     f'in channel {name}')
+            self.processes[name].control_q.put({'func': 'change_recognition_settings',
+                                                'args': (accum_size, threshold, exceedance)})
+            self.custom_logger.debug(f'Accumulation was changed on {accum_size}, Threshold was changed on {threshold}, '
+                                     f' Exceedance was changed on {exceedance} in channel {name}')
             return API_pb2.RecognitionSettingsResponse(
-                status=f'Accumulation was changed on {accum_size} and Threshold was changed on {threshold} '
-                       f'in channel {name}')
+                status=f'Accumulation was changed on {accum_size}, Threshold was changed on {threshold}, '
+                       f'Exceedance was changed on {exceedance} in channel {name}')
         else:
             self.custom_logger.error(f'Unknown channel {name}')
             return API_pb2.RecognitionSettingsResponse(status=f'Unknown channel: {name}!')

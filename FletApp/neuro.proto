@@ -91,10 +91,21 @@ message RecognitionSettingsRequest {
     string band_name = 1;
     int32 accumulation_size = 2;
     double threshold = 3;
+    double exceedance = 4;
 }
 
 message RecognitionSettingsResponse {
     string status = 1;
+}
+
+message GetRecognitionSettingsRequest {       // Запрос параметров при старте клиента
+}
+
+message GetRecognitionSettingsResponse {
+    repeated string band_name = 1;
+    repeated int32 accumulation_size = 2;
+    repeated double threshold = 3;
+    repeated double exceedance = 4;
 }
 
 // Сервис обработки данных
@@ -107,5 +118,6 @@ service DataProcessingService {
     rpc LoadConfig (LoadConfigRequest) returns (LoadConfigResponse);
     rpc SaveConfig (SaveConfigRequest) returns (SaveConfigResponse);
     rpc RecognitionSettings (RecognitionSettingsRequest) returns (RecognitionSettingsResponse);
-    rpc GetCurrentZScale (CurrentZScaleRequest) returns (CurrentZScaleResponse);python main
+    rpc GetRecognitionSettings (GetRecognitionSettingsRequest) returns (GetRecognitionSettingsResponse);
+    rpc GetCurrentZScale (CurrentZScaleRequest) returns (CurrentZScaleResponse);
 }
