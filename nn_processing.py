@@ -1,4 +1,5 @@
 import datetime
+import os.path
 import time
 import pandas
 import torch.nn.functional as F
@@ -55,7 +56,8 @@ class NNProcessing(object):
                  msg_len=0,
                  z_min=-20,
                  z_max=75,
-                 colormap='inferno'):
+                 colormap='inferno',
+                 img_save_path='\saved_images'):
         super().__init__()
 
         self.name = name
@@ -70,15 +72,15 @@ class NNProcessing(object):
         self.z_max = z_max
         self.set_colormap(colormap=colormap)
         self.show_detected_img_status = None
-        self.save_info = {}
-        self.img_save_path = ''
+        self.last_time = time.time()
+        self.f = np.arange(self.sample_rate / (-2), self.sample_rate / 2, self.sample_rate / self.width)
+        self.t = np.arange(0, msg_len / self.sample_rate, self.width / self.sample_rate)
+        self.img_save_path = img_save_path
+        if not os.path.isdir(self.img_save_path):
+            os.mkdir(self.img_save_path)
 
         torch.cuda.empty_cache()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.last_time = time.time()
-        # logger.info(f'Using device: {self.device}')
-        self.f = np.arange(self.sample_rate / (-2), self.sample_rate / 2, self.sample_rate / self.width)
-        self.t = np.arange(0, msg_len / self.sample_rate, self.width / self.sample_rate)
         self.load_model()
 
     def load_model(self):
@@ -124,8 +126,6 @@ class NNProcessing(object):
             self.show_detected_img_status = None
 
         if save_images:
-            #central_freq = self.save_info['central_freq']
-            #filename = datetime.datetime.now().strftime(f'{central_freq}_%Y-%m-%d-%H-%M-%S-%f')
             filename = datetime.datetime.now().strftime(f'%Y-%m-%d-%H-%M-%S-%f')
             cv2.imwrite(filename=self.img_save_path + '\\' + filename + '.jpg', img=screen)
             cv2.imwrite(filename=self.img_save_path + '\\' + filename + '_detected.jpg', img=result.render()[0])

@@ -1,7 +1,7 @@
 import flet as ft
 import gRPC_interface
 import ui
-import utils
+import custom_utils
 
 
 async def main(page: ft.Page):

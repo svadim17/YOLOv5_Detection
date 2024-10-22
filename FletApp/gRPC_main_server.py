@@ -15,10 +15,11 @@ import yaml
 import json
 import sys
 from collections.abc import Mapping
+import custom_utils
+import os
 try:
     from nn_processing import NNProcessing
 except ImportError:
-    import os, sys
     sys.path.append(os.path.abspath('../'))
     from nn_processing import NNProcessing
 
@@ -67,6 +68,7 @@ class Client(Process):
     def __init__(self,
                  name: str,
                  address: tuple,
+                 hardware_type: str,
                  weights_path: str,
                  project_path: str,
                  sample_rate: int,
@@ -87,6 +89,7 @@ class Client(Process):
         self.nn = None
         self.name = name
         self.address = address
+        self.hardware = hardware_type
         self.weights_path = weights_path
         self.project_path = project_path
         self.sample_rate = sample_rate
@@ -107,12 +110,24 @@ class Client(Process):
         self.config_q = Queue()
         self.data_q = data_queue
         self.img_q = img_queue
+        self.img_save_path = '\\saved_images'
+        if not os.path.isdir(self.img_save_path):
+            os.mkdir(self.img_save_path)
+
         if logger_ is None:
             self.logger = logger.bind(logger_name=self.name)
         else:
             self.logger = logger_
-        self.msg_len = self.signal_width * self.signal_height * 2 + 16
+
+        if self.hardware == 'USRP' or self.hardware == 'Usrp' or self.hardware == 'usrp':
+            self.msg_len = self.signal_width * self.signal_height
+        elif self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
+            self.msg_len = self.signal_width * self.signal_height * 2 + 16
+        else:
+            self.logger.error('Unknown Device Type !')
+
         self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
+        self.record_images_status = False
 
     def set_queue(self, data_queue: Queue, img_queue: Queue):
         self.data_q = data_queue
@@ -148,17 +163,17 @@ class Client(Process):
         for key, key_dict in result_dict.items():
             self.accum_deques[key].appendleft(key_dict['confidence'])
             accum = sum(self.accum_deques[key])
-            state = bool(accum >= self.global_threshold)
+            state = bool(accum >= self.threshold)
             accumed_results.append(state)
             if state:
                 freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
-                if self.name == '2G437':
+                if '2G437' in self.name:
                     freq = int(freq_shift/1000000 + 2437)
-                elif self.name == '5G7865':
+                elif '5G7865' in self.name:
                     freq = int(freq_shift / 1000000 + 5786.5)
                 else:
                     freq = 0
-                    self.logger.warning(f'Unknown connection name {self.name}!')
+                    logger.trace(f"Can\'t calculate frequency for {self.name}!")
                 frequencies.append(freq)
             else:
                 frequencies.append(0)
@@ -173,85 +188,122 @@ class Client(Process):
         f_center = (self.sample_rate / 2 - f) * (-1)
         return f_center
 
+    def change_record_images_status(self, status: bool):
+        self.record_images_status = status
+        self.logger.debug(f'Record images status was changed on {status}.')
+
+    def receive_from_Alinx(self, sock):
+        while True:
+            sock.send(b'\x30')
+            arr = sock.recv(self.msg_len)
+            i = 0
+            while self.msg_len > len(arr) and i < 500:
+                i += 1
+                time.sleep(0.005)
+                arr += sock.recv(self.msg_len - len(arr))
+                # self.logger.warning(f'Packet {i} missed.')
+            if len(arr) == self.msg_len:
+                np_arr = np.frombuffer(arr[16:], dtype=np.float16)
+                np_arr = np_arr.astype(np.float32)
+                arr_resh = np_arr.reshape(self.signal_height, self.signal_width)
+
+                img_arr = self.nn.normalization(np.fft.fftshift(arr_resh, axes=(1,)))
+                return img_arr
+            else:
+                self.logger.warning(f'Packet size = {len(arr)} missed.')
+                return None
+
+    def receive_from_USRP(self, sock):
+        res_1 = np.arange(len(self.map_list) * 4)  # array of bytes to send (4 bytes for one class (float32)
+        sock.send(res_1.tobytes())
+        arr = sock.recv(self.msg_len)
+
+        i = 0
+        while self.msg_len > len(arr) and i < 500:
+            i += 1
+            time.sleep(0.005)
+            arr += sock.recv(self.msg_len - len(arr))
+            # self.logger.warning(f'Packet {i} missed.')
+        np_arr = np.frombuffer(arr, dtype=np.int8)
+        if np_arr.size == self.msg_len:
+            img_arr = self.nn.normalization(np_arr.reshape(self.signal_height, self.signal_width))
+            return img_arr
+        else:
+            self.logger.warning(f'Packet size = {np_arr.size} missed.')
+            return None
+
     def run(self):
-        try:
-            self.nn = NNProcessing(name=self.name,
-                                   weights=self.weights_path,
-                                   sample_rate=self.sample_rate,
-                                   width=self.signal_width,
-                                   height=self.signal_height,
-                                   project_path=self.project_path,
-                                   map_list=self.map_list,
-                                   img_size=self.img_size,
-                                   msg_len=self.msg_len,
-                                   z_min=self.z_min,
-                                   z_max=self.z_max)
-            self.logger.debug(f'NNProcessing started by {self.nn.device}')
-            tcp_connection_status = False
-        except Exception as e:
-            self.logger.error('Cant initialize NNProcessing! {e}')
-            tcp_connection_status = True
+            try:
+                self.nn = NNProcessing(name=self.name,
+                                       weights=self.weights_path,
+                                       sample_rate=self.sample_rate,
+                                       width=self.signal_width,
+                                       height=self.signal_height,
+                                       project_path=self.project_path,
+                                       map_list=self.map_list,
+                                       img_size=self.img_size,
+                                       msg_len=self.msg_len,
+                                       z_min=self.z_min,
+                                       z_max=self.z_max,
+                                       img_save_path=self.img_save_path)
+                self.logger.debug(f'NNProcessing started by {self.nn.device}')
+                tcp_connection_status = True
+            except Exception as e:
+                self.logger.error(f'Cant initialize NNProcessing! {e}')
+                tcp_connection_status = False
 
-        while not tcp_connection_status:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                try:
-                    s.connect(self.address)
-                    self.logger.success(f'Connected to {self.address}!')
-                    res_1 = np.arange(len(self.map_list) * 4)  # array of bytes to send (4 bytes for one class (float32)
-                    last_time = 0
-                    while True:
-                        s.send(b'\x30')
-                        arr = s.recv(self.msg_len)
-                        fps = 1 / (time.time() - last_time)
-                        last_time = time.time()
-                        i = 0
-                        while self.msg_len > len(arr) and i < 500:
-                            i += 1
-                            time.sleep(0.005)
-                            arr += s.recv(self.msg_len - len(arr))
-                            # self.logger.warning(f'Packet {i} missed.')
-                        if len(arr) == self.msg_len:
-                            np_arr = np.frombuffer(arr[16:], dtype=np.float16)
-                            np_arr = np_arr.astype(np.float32)
-                            arr_resh = np_arr.reshape(self.signal_height, self.signal_width)
+            while tcp_connection_status:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    try:
+                        s.settimeout(5)
+                        s.connect(self.address)
+                        self.logger.success(f'Connected to {self.address}!')
+                        if self.hardware == 'USRP' or self.hardware == 'Usrp' or self.hardware == 'usrp':
+                            nn_type = s.recv(2)
+                            self.logger.debug(f'NN type: {nn_type}')
 
-                            img_arr = self.nn.normalization(np.fft.fftshift(arr_resh, axes=(1,)))
-                            result = self.nn.processing(img_arr)
-                            df_result = result.pandas().xyxy[0]
-
-                            if self.data_q is not None:
-                                res, freq = self.accumulate_and_make_decision(
-                                    self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
-                                self.data_q.put({'name': self.name,
-                                                 'results': res,
-                                                 'frequencies': freq,
-                                                 'predict_df': df_result})
-                            if self.img_q is not None and not self.img_q.full():
-                               self.img_q.put({'image': copy.deepcopy(result.render()[0]),
-                                                'img_size': self.img_size,
-                                                'name': self.name})
-
-                            if not self.control_q.empty():
-                                cmd_dict = self.control_q.get()
-                                args = cmd_dict['args']
-                                func = getattr(self, cmd_dict['func'])
-                                func(*args)
-
+                            receive = self.receive_from_USRP
+                        elif self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
+                            receive = self.receive_from_Alinx
                         else:
-                            self.logger.warning(f'Packet size = {np_arr.size} missed.')
+                            self.logger.critical('Unknown Device Type!')
+                            return
 
-                except queue.Full as e:
-                    self.logger.debug('IMGQueue full.')
-                except socket.error as e:
-                    s.close()
-                    self.logger.error(f'Connection error! {e}')
-                    time.sleep(1)
-                except Exception as e:
-                    self.logger.error(e)
-                    s.close()
-                    tcp_connection_status = True
+                        while True:
+                            img_arr = receive(sock=s)
+                            if img_arr is not None:
+                                result = self.nn.processing(img_arr, save_images=self.record_images_status)
+                                df_result = result.pandas().xyxy[0]
 
-        self.logger.debug(f'Port №{self.address} finished work')
+                                if self.data_q is not None:
+                                    res, freq = self.accumulate_and_make_decision(
+                                        self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
+                                    self.data_q.put({'name': self.name,
+                                                     'results': res,
+                                                     'frequencies': freq,
+                                                     'predict_df': df_result})
+                                if self.img_q is not None and not self.img_q.full():
+                                    self.img_q.put({'image': copy.deepcopy(result.render()[0]),
+                                                    'img_size': self.img_size,
+                                                    'name': self.name})
+                                if not self.control_q.empty():
+                                    cmd_dict = self.control_q.get()
+                                    args = cmd_dict['args']
+                                    func = getattr(self, cmd_dict['func'])
+                                    func(*args)
+
+                    except queue.Full as e:
+                        self.logger.debug('IMGQueue full.')
+                    except socket.error as e:
+                        s.close()
+                        self.logger.error(f'Connection error! {e}')
+                        time.sleep(1)
+                    except Exception as e:
+                        self.logger.error(e)
+                        s.close()
+                        tcp_connection_status = False
+
+            self.logger.debug(f'Port №{self.address} finished work')
 
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
@@ -323,6 +375,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             try:
                 cl = Client(name=conn_name,
                             address=(str(connection['ip']), int(connection['port'])),
+                            hardware_type=str(connection['hardware_type']),
                             weights_path=connection['neural_network_settings']['weights_path'],
                             project_path=connection['neural_network_settings']['project_path'],
                             sample_rate=int(connection['signal_settings']['sample_rate']),
@@ -339,8 +392,8 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                             data_queue=self.data_q,
                             img_queue=self.img_q,
                             logger_=self.custom_logger.bind(logger_name=str(conn_name)))
-
                 cl.start()
+                self.custom_logger.debug('Client started!')
                 self.processes[conn_name] = cl
                 self.custom_logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
                 return API_pb2.StartChannelResponse(
@@ -414,6 +467,20 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             self.custom_logger.error(f'Unknown channel {name}')
             return API_pb2.RecognitionSettingsResponse(status=f'Unknown channel: {name}!')
 
+    def RecordImages(self, request, context):
+        name = request.band_name
+        status = request.record_status
+        if name in self.processes:
+            self.processes[name].control_q.put({'func': 'change_record_images_status',
+                                                'args': (status,)})
+            self.custom_logger.debug(f'Record images status was changed on {status} in {name}')
+            return API_pb2.RecordImagesResponse(
+                numb_of_files=custom_utils.count_files(directory=self.processes[name].img_save_path))
+
+        else:
+            self.custom_logger.error(f'Unknown channel {name}')
+            return API_pb2.RecognitionSettingsResponse(numb_of_files=-1)
+
 
 def serve():
     gRPC_PORT = 51234
@@ -434,3 +501,86 @@ def serve():
 
 if __name__ == "__main__":
     serve()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

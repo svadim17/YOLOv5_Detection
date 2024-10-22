@@ -90,6 +90,11 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.CurrentZScaleRequest.SerializeToString,
                 response_deserializer=neuro__pb2.CurrentZScaleResponse.FromString,
                 _registered_method=True)
+        self.RecordImages = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/RecordImages',
+                request_serializer=neuro__pb2.RecordImagesRequest.SerializeToString,
+                response_deserializer=neuro__pb2.RecordImagesResponse.FromString,
+                _registered_method=True)
 
 
 class DataProcessingServiceServicer(object):
@@ -159,6 +164,12 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RecordImages(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataProcessingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -211,6 +222,11 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.GetCurrentZScale,
                     request_deserializer=neuro__pb2.CurrentZScaleRequest.FromString,
                     response_serializer=neuro__pb2.CurrentZScaleResponse.SerializeToString,
+            ),
+            'RecordImages': grpc.unary_unary_rpc_method_handler(
+                    servicer.RecordImages,
+                    request_deserializer=neuro__pb2.RecordImagesRequest.FromString,
+                    response_serializer=neuro__pb2.RecordImagesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -484,6 +500,33 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/GetCurrentZScale',
             neuro__pb2.CurrentZScaleRequest.SerializeToString,
             neuro__pb2.CurrentZScaleResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RecordImages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/RecordImages',
+            neuro__pb2.RecordImagesRequest.SerializeToString,
+            neuro__pb2.RecordImagesResponse.FromString,
             options,
             channel_credentials,
             insecure,

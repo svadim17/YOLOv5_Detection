@@ -2,6 +2,7 @@ import base64
 import hashlib
 import numpy as np
 import cv2
+import os
 
 
 def image_to_base64(image_path):
@@ -26,6 +27,14 @@ def get_image_from_bytes(arr: bytes, size: tuple):
     _, buffer = cv2.imencode('.png', img_arr)
     img_base64 = base64.b64encode(buffer).decode()
     return img_base64
+
+
+def count_files(directory):
+    if os.path.isdir(directory):
+        return len([name for name in os.listdir(directory) if os.path.isfile(os.path.join(directory, name))])
+    else:
+        return -1
+
 
 
 

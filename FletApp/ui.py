@@ -77,6 +77,7 @@ class RecognitionContainer(ft.UserControl):
         self.exceedance = exceedance
         self.show_images_status = show_images_status
         self.show_freq_status = show_freq_status
+        self.save_images_status = False
 
         print(f'Starting recognition container {channel_name}')
         if self.show_images_status:
@@ -96,7 +97,7 @@ class RecognitionContainer(ft.UserControl):
         self.drons_dict_btns = {}
         self.drons_dict_texts = {}
         for dron in self.map_list:
-            drone_btn_obj = ft.FilledButton(text=dron, disabled=True)
+            drone_btn_obj = ft.FilledButton(text=dron, disabled=True, style=ft.ButtonStyle(bgcolor=ft.colors.GREY))
             self.drons_dict_btns[dron] = drone_btn_obj
             if self.show_freq_status:
                 drone_text_obj = ft.Text('None', size=17)
@@ -165,9 +166,17 @@ class RecognitionContainer(ft.UserControl):
                                       ft.Row(controls=[self.slider_exceedance, self.label_value_slider_exceedance])],
                                       spacing=0)
 
+        self.btn_save_images = ft.TextButton('Start record', icon=ft.icons.SAVE,
+                                             on_click=self.change_save_images_status)
+
         return ft.Container(
             content=ft.Column(
-                controls=[self.label_settings, column_zscale, column_accumulation, column_threshold, column_exceedance],
+                controls=[self.label_settings,
+                          column_zscale,
+                          column_accumulation,
+                          column_threshold,
+                          column_exceedance,
+                          self.btn_save_images],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
             padding=ft.Padding(left=10, top=30, right=10, bottom=10),
@@ -203,6 +212,20 @@ class RecognitionContainer(ft.UserControl):
                                                         accum_size=int(self.slider_accumulation.value),
                                                         threshold=self.slider_threshold.value,
                                                         exceedance=self.slider_exceedance.value)
+
+    async def change_save_images_status(self, event):
+        if self.save_images_status:
+            self.save_images_status = False
+            self.btn_save_images.text = 'Start record'
+            self.btn_save_images.icon = ft.icons.SAVE
+        else:
+            self.save_images_status = True
+            self.btn_save_images.text = 'Stop record'
+            self.btn_save_images.icon = ft.icons.SAVE_OUTLINED
+        await gRPC_interface.setRecordImagesRequest(grpc_channel=self.grpc_channel,
+                                                    channel_name=self.channel_name,
+                                                    status=self.save_images_status)
+        self.btn_save_images.update()
 
     async def update_image(self, img_base64):
         self.image.src_base64 = img_base64

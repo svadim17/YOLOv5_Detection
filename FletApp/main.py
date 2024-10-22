@@ -1,6 +1,6 @@
 import flet as ft
 import yaml
-import utils
+import custom_utils
 import gRPC_interface
 import ui
 from loguru import logger
@@ -67,7 +67,7 @@ async def main(page: ft.Page):
         i = 0
         for name in channels_names:
             container = ui.RecognitionContainer(grpc_channel=gRPC_channel,
-                                                image64_background=utils.image_to_base64(START_IMAGE),
+                                                image64_background=custom_utils.image_to_base64(START_IMAGE),
                                                 channel_name=name,
                                                 map_list=list(map_list),
                                                 z_min=zscale[name][0],

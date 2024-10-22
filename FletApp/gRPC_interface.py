@@ -5,7 +5,7 @@ import time
 import numpy as np
 import cv2
 import base64
-import utils
+import custom_utils
 import asyncio
 from loguru import logger
 
@@ -36,7 +36,7 @@ async def imageStream(channel, gallery: dict):
     for img_response in img_responses:
         band_name = img_response.band_name
         size = (img_response.height, img_response.width, 3)  # (640, 640, 3)
-        img_base64 = utils.get_image_from_bytes(arr=img_response.data, size=size)
+        img_base64 = custom_utils.get_image_from_bytes(arr=img_response.data, size=size)
         if band_name in gallery:
             await gallery[band_name].update_image(img_base64=img_base64)
             await asyncio.sleep(0.005)
@@ -107,7 +107,7 @@ async def LoadConfigRequest(grpc_channel, password: str, config: str):
     try:
         stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
         response = stub.LoadConfig(API_pb2.LoadConfigRequest(config=config,
-                                                             password_hash=utils.create_password_hash(password=password)))
+                                                             password_hash=custom_utils.create_password_hash(password=password)))
         logger.info(response.status)
         return response
     except Exception as e:
@@ -117,7 +117,7 @@ async def LoadConfigRequest(grpc_channel, password: str, config: str):
 async def SaveConfigRequest(grpc_channel, password: str):
     try:
         stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
-        response = stub.SaveConfig(API_pb2.SaveConfigRequest(password_hash=utils.create_password_hash(password=password)))
+        response = stub.SaveConfig(API_pb2.SaveConfigRequest(password_hash=custom_utils.create_password_hash(password=password)))
         logger.info(response.status)
         return response
     except Exception as e:
@@ -183,6 +183,15 @@ def getRecognitionSettings(grpc_channel):
         return current_recogn_settings_dict
     except Exception as e:
         logger.error(f'Error with getting current Recognition Settings! \n{e}')
+
+
+async def setRecordImagesRequest(grpc_channel, channel_name: str, status: bool):
+    try:
+        stub = API_pb2_grpc.DataProcessingServiceStub(grpc_channel)
+        response = stub.RecordImages(API_pb2.RecordImagesRequest(band_name=channel_name, record_status=status))
+        logger.info(f'Total files in save folder: {response.numb_of_files}')
+    except Exception as e:
+        logger.error(f'Error with set record status on {status}! \n{e}')
 
 
 
