@@ -1,4 +1,5 @@
 import grpc
+from grpc import StatusCode
 import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
 import time
@@ -8,11 +9,44 @@ import base64
 import custom_utils
 import asyncio
 from loguru import logger
+import sys
+import yaml
+
+
+logger.remove(0)
+log_level = "TRACE"
+log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> |"
+              " <level>{level: <8}</level> |"
+              " {extra} |"
+              " <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
+logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True, enqueue=True)
+
+gRPC_channel_options = [
+        ('grpc.keepalive_time_ms', 60000),      # Интервал между пингами - 60 секунд
+        ('grpc.keepalive_timeout_ms', 20000),   # Таймаут ответа на пинг - 20 секунд
+        ('grpc.keepalive_permit_without_calls', True),  # Разрешить пинги без активных вызовов
+        ('grpc.http2.max_pings_without_data', 0),  # Без ограничения количества пингов без данных
+        ('grpc.http2.min_time_between_pings_ms', 60000)  # Минимальный интервал между пингами - 60 секунд
+    ]
+
+MAX_RETRIES = 55555
+
+
+def load_conf(config_path: str):
+    try:
+        with open(config_path, encoding='utf-8') as f:
+            config = dict(yaml.load(f, Loader=yaml.SafeLoader))
+            logger.success(f'Config loaded successfully!')
+            return config
+    except Exception as e:
+        logger.error(f'Error with loading config: {e}')
 
 
 async def connect_to_server(ip: str, port: str):
     try:
-        grpc_channel = grpc.insecure_channel(f'{ip}:{port}')
+
+        grpc_channel = grpc.insecure_channel(target=f'{ip}:{port}',
+                                             options=gRPC_channel_options)
         logger.success(f'Successfully connected to {ip}:{port}!')
         return grpc_channel
     except Exception as e:
@@ -31,30 +65,57 @@ async def startChannelRequest(channel, channel_name: str):
 
 async def imageStream(channel, gallery: dict):
     stub = API_pb2_grpc.DataProcessingServiceStub(channel)
-    img_responses = stub.SpectrogramImageStream(API_pb2.ImageRequest(band_name='Start'))
+    retry_count = 0
+    while retry_count < MAX_RETRIES:
+        try:
+            img_responses = stub.SpectrogramImageStream(API_pb2.ImageRequest(band_name='Start'))
+            for img_response in img_responses:
+                band_name = img_response.band_name
+                size = (img_response.height, img_response.width, 3)  # (640, 640, 3)
+                img_base64 = custom_utils.get_image_from_bytes(arr=img_response.data, size=size)
+                if band_name in gallery:
+                    await gallery[band_name].update_image(img_base64=img_base64)
+                    await asyncio.sleep(0.05)
 
-    for img_response in img_responses:
-        band_name = img_response.band_name
-        size = (img_response.height, img_response.width, 3)  # (640, 640, 3)
-        img_base64 = custom_utils.get_image_from_bytes(arr=img_response.data, size=size)
-        if band_name in gallery:
-            await gallery[band_name].update_image(img_base64=img_base64)
-            await asyncio.sleep(0.005)
+        except grpc.RpcError as rpc_error:
+            if rpc_error.code() == grpc.StatusCode.UNAVAILABLE:
+                logger.warning(f"Сервер недоступен. Попытка переподключения... {rpc_error}")
+                # Задержка перед повторной попыткой подключения
+                retry_count += 1
+                await asyncio.sleep(1)
+            else:
+                break
 
 
 async def dataStream(channel, map_list: list, gallery: dict):
     stub = API_pb2_grpc.DataProcessingServiceStub(channel)
-    responses = stub.ProceedDataStream(API_pb2.VoidRequest())
-    for response in responses:
-        band_name = response.band_name
-        if band_name in gallery:
-            for uav in response.uavs:
-                drone_name = map_list[uav.type]
-                drone_state = uav.state
-                drone_freq = uav.freq
-                await gallery[band_name].update_buttons(drone_name, drone_state, drone_freq)
-            await asyncio.sleep(0.005)
 
+    retry_count = 0
+
+    # Попытка установить стрим и обработать данные
+    while retry_count < MAX_RETRIES:
+        try:
+            responses = stub.ProceedDataStream(API_pb2.VoidRequest())
+
+            # Обработка каждой порции данных
+            for response in responses:
+                band_name = response.band_name
+                if band_name in gallery:
+                    for uav in response.uavs:
+                        drone_name = map_list[uav.type]
+                        drone_state = uav.state
+                        drone_freq = uav.freq
+                        await gallery[band_name].update_buttons(drone_name, drone_state, drone_freq)
+                    await asyncio.sleep(0.01)  # Небольшая задержка между обновлениями
+
+        except grpc.RpcError as rpc_error:
+            if rpc_error.code() == grpc.StatusCode.UNAVAILABLE:
+                logger.warning(f"Сервер недоступен. Попытка переподключения... {rpc_error}")
+                # Задержка перед повторной попыткой подключения
+                retry_count += 1
+                await asyncio.sleep(1)
+        else:
+            break
 
 async def start_gRPC_streams(grpc_channel, map_list: list, gallery: dict, image_stream_status: bool):
     # grpc_options = [('grpc.max_receive_message_length', 2 * 1024 * 1024)]  # 2 MB
@@ -145,6 +206,7 @@ def getAvailableChannelsRequest(grpc_channel):
         return tuple(response.channels)
     except Exception as e:
         logger.error(f'Error with getting available channels! \n{e}')
+        logger.debug(f'Response = {response}')
 
 
 def getCurrentZScaleRequest(grpc_channel):

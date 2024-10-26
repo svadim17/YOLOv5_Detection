@@ -88,9 +88,10 @@ class NNProcessing(object):
                                     model='custom',
                                     path=self.weights,
                                     source='local')
-        # self.model.iou = 0.1
-        # self.model.conf = 0.1
+        self.model.iou = 0.8
+        self.model.conf = 0.4
         # self.model.augment = True
+        self.model.agnostic = True
 
     def normalization(self, data):
         #data = np.transpose(data + 122)

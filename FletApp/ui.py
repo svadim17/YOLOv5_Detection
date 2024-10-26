@@ -1,7 +1,13 @@
+import os.path
 import flet as ft
 import gRPC_interface
 import time
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import simpleaudio as sa
+import pygame
+
+pygame.mixer.init()     # initialize pygame
 
 
 class StartDialog(ft.UserControl):
@@ -78,6 +84,8 @@ class RecognitionContainer(ft.UserControl):
         self.show_images_status = show_images_status
         self.show_freq_status = show_freq_status
         self.save_images_status = False
+        self.sound_status = True
+        self.sound_file = 'assets/warning2.mp3'
 
         print(f'Starting recognition container {channel_name}')
         if self.show_images_status:
@@ -115,6 +123,10 @@ class RecognitionContainer(ft.UserControl):
     def create_settings_controls(self):
         self.label_settings = ft.Text(f'{self.channel_name}', theme_style=ft.TextThemeStyle.TITLE_MEDIUM)
 
+        self.chb_sound = ft.Checkbox(label='Sound notifications',
+                                     value=True,
+                                     on_change=self.change_sound_status)
+
         self.label_slider_zscale = ft.Text('Z Scale range', theme_style=ft.TextThemeStyle.TITLE_SMALL)
         self.slider_zscale = ft.RangeSlider(min=-120,
                                             max=120,
@@ -122,7 +134,7 @@ class RecognitionContainer(ft.UserControl):
                                             start_value=self.z_min,
                                             end_value=self.z_max,
                                             label="{value}",
-                                            on_change=self.slider_zscale_changed,
+                                            on_change_end=self.slider_zscale_changed,
                                             expand=True)
         self.label_value_slider_zscale = ft.Text(f'[{self.slider_zscale.start_value}, {self.slider_zscale.end_value}]')
         column_zscale = ft.Column(controls=[self.label_slider_zscale,
@@ -135,7 +147,7 @@ class RecognitionContainer(ft.UserControl):
                                              divisions=49,
                                              value=self.accumulation_size,
                                              label='{value}',
-                                             on_change=self.slider_accumulation_changed,
+                                             on_change_end=self.slider_accumulation_changed,
                                              expand=True)
         self.label_value_slider_accumulation = ft.Text(f'{int(self.slider_accumulation.value)}')
         column_accumulation = ft.Column(controls=[self.label_slider_accumulation,
@@ -147,7 +159,7 @@ class RecognitionContainer(ft.UserControl):
                                           max=0.95,
                                           divisions=18,
                                           value=self.threshold,
-                                          on_change=self.slider_threshold_changed,
+                                          on_change_end=self.slider_threshold_changed,
                                           expand=True)
         self.label_value_slider_threshold = ft.Text(f'{self.slider_threshold.value:.2f}')
         column_threshold = ft.Column(controls=[self.label_slider_threshold,
@@ -159,7 +171,7 @@ class RecognitionContainer(ft.UserControl):
                                            max=0.95,
                                            divisions=18,
                                            value=self.exceedance,
-                                           on_change=self.slider_exceedance_changed,
+                                           on_change_end=self.slider_exceedance_changed,
                                            expand=True)
         self.label_value_slider_exceedance = ft.Text(f'{self.slider_exceedance.value:.2f}')
         column_exceedance = ft.Column(controls=[self.label_slider_exceedance,
@@ -172,6 +184,7 @@ class RecognitionContainer(ft.UserControl):
         return ft.Container(
             content=ft.Column(
                 controls=[self.label_settings,
+                          self.chb_sound,
                           column_zscale,
                           column_accumulation,
                           column_threshold,
@@ -242,6 +255,8 @@ class RecognitionContainer(ft.UserControl):
             self.drons_dict_btns[name].style.bgcolor = ft.colors.RED_500
             if self.show_freq_status:
                 self.drons_dict_texts[name].value = str(freq)
+            if self.sound_status and name != 'WiFi':
+                await self.play_sound_async()
         else:
             self.drons_dict_btns[name].style.bgcolor = ft.colors.GREY
             if self.show_freq_status:
@@ -251,6 +266,20 @@ class RecognitionContainer(ft.UserControl):
             self.drons_dict_texts[name].update()
         self.icon_status.name = ft.icons.CIRCLE_OUTLINED
         self.icon_status.update()
+
+    async def play_sound_async(self):
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(None, self.play_sound)
+
+    def play_sound(self):
+        pygame.mixer.music.load(self.sound_file)
+        pygame.mixer.music.play()
+
+    def change_sound_status(self, event):
+        if self.chb_sound.value == True:
+            self.sound_status = True
+        elif self.chb_sound.value == False:
+            self.sound_status = False
 
     def build(self):
         if self.show_images_status:
@@ -359,6 +388,7 @@ class MenuContent():
         super().__init__()
         self.page = parent_page
         self.grpc_channel = grpc_channel
+
         self.btn_save_config = ft.TextButton(text='Save config', on_click=self.save_config)
         column = ft.Column(controls=[ft.Text('Channels Settings', theme_style=ft.TextThemeStyle.TITLE_LARGE),],
                            alignment=ft.MainAxisAlignment.CENTER,

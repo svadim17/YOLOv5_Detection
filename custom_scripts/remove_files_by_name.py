@@ -1,6 +1,6 @@
 import os
 
-FOLDER_PATH = r"D:\YOLOv5 DATASET\STEP 8\IMAGES\fpv_2 — копия"
+FOLDER_PATH = r"D:\YOLOv5 DATASET\STEP 9\IMAGES\dji_GrozaZ2"
 
 
 def calculate_files_count(filepath):

@@ -1,33 +1,16 @@
+import time
+
 import flet as ft
 import yaml
 import custom_utils
 import gRPC_interface
 import ui
-from loguru import logger
-import sys
-
-logger.remove(0)
-log_level = "TRACE"
-log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> |"
-              " <level>{level: <8}</level> |"
-              " {extra} |"
-              " <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
-logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True)
-
-
-def load_conf(config_path: str):
-    try:
-        with open(config_path, encoding='utf-8') as f:
-            config = dict(yaml.load(f, Loader=yaml.SafeLoader))
-            logger.success(f'Config loaded successfully!')
-            return config
-    except Exception as e:
-        logger.error(f'Error with loading config: {e}')
+import asyncio
 
 
 async def main(page: ft.Page):
     global gallery
-    conf = load_conf('client_conf.yaml')
+    conf = gRPC_interface.load_conf('client_conf.yaml')
     map_list = conf['map_list']
     server_port = conf['server_port']
     server_addr = conf['server_addr']
@@ -88,7 +71,7 @@ async def main(page: ft.Page):
         for gallery_row in gallery_rows:
             gallery_row.update()
             page.add(gallery_row)
-
+        await asyncio.sleep(5)
         await gRPC_interface.start_gRPC_streams(grpc_channel=gRPC_channel,
                                                 map_list=list(map_list),
                                                 gallery=gallery,

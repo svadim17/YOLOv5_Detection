@@ -12,7 +12,6 @@ from loguru import logger
 import copy
 from collections import deque
 import yaml
-import json
 import sys
 from collections.abc import Mapping
 import custom_utils
@@ -79,7 +78,7 @@ class Client(Process):
                  map_list: tuple,
                  z_min: int,
                  z_max: int,
-                 threshold: int,
+                 threshold: float,
                  accumulation_size: int,
                  exceedance: float,
                  data_queue=None,
@@ -160,6 +159,7 @@ class Client(Process):
     def accumulate_and_make_decision(self, result_dict: dict):
         accumed_results = []
         frequencies = []
+
         for key, key_dict in result_dict.items():
             self.accum_deques[key].appendleft(key_dict['confidence'])
             accum = sum(self.accum_deques[key])
@@ -173,7 +173,7 @@ class Client(Process):
                     freq = int(freq_shift / 1000000 + 5786.5)
                 else:
                     freq = 0
-                    logger.trace(f"Can\'t calculate frequency for {self.name}!")
+                    self.logger.trace(f"Can\'t calculate frequency for {self.name}!")
                 frequencies.append(freq)
             else:
                 frequencies.append(0)
@@ -308,7 +308,7 @@ class Client(Process):
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
     def __init__(self, config_path):
-        self.custom_logger = logger.bind(logger_name='gRPC')
+        self.custom_logger = logger.bind(process='gRPC')
         self.config_path = config_path
         self.config = load_conf(config_path=self.config_path)
         self.data_store = {}
@@ -386,12 +386,12 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                             map_list=tuple(connection['detection_settings']['map_list']),
                             z_min=int(connection['neural_network_settings']['z_min']),
                             z_max=int(connection['neural_network_settings']['z_max']),
-                            threshold=int(connection['detection_settings']['threshold']),
+                            threshold=float(connection['detection_settings']['threshold']),
                             accumulation_size=int(connection['detection_settings']['accumulation_size']),
                             exceedance=float(connection['detection_settings']['exceedance']),
                             data_queue=self.data_q,
                             img_queue=self.img_q,
-                            logger_=self.custom_logger.bind(logger_name=str(conn_name)))
+                            logger_=self.custom_logger.bind(process=str(conn_name)))
                 cl.start()
                 self.custom_logger.debug('Client started!')
                 self.processes[conn_name] = cl
@@ -439,15 +439,15 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                     process.control_q.put({'func': 'get_current_settings', 'args': []})
                     try:
                         info = process.config_q.get()
-                        logger.debug(f'Data for saving config is: {info}')
+                        self.custom_logger.debug(f'Data for saving config is: {info}')
                     except Exception as e:
-                        logger.error(f'Error with extracting data from queue for save config! \n {e}')
+                        self.custom_logger.error(f'Error with extracting data from queue for save config! \n {e}')
                     self.config['connections'] = deep_update(self.config['connections'], info)
 
                 dump_conf(self.config_path, self.config)
                 return API_pb2.SaveConfigResponse(status='Config saved successfully!')
             except Exception as e:
-                logger.error(f'Error with saving config! \n{e}')
+                self.custom_logger.error(f'Error with saving config! \n{e}')
                 return API_pb2.SaveConfigResponse(status='Error with saving config!')
 
     def RecognitionSettings(self, request, context):
@@ -501,86 +501,6 @@ def serve():
 
 if __name__ == "__main__":
     serve()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

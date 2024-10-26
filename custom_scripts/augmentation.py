@@ -10,8 +10,8 @@ from tqdm import tqdm
 ALL_CLASSES = ['dji', 'wifi', 'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv']
 BOX_COLOR = (255, 255, 255)     # white
 TEXT_COLOR = (255, 0, 0)        # red
-OBJ_PATH = r"D:\YOLOv5 DATASET\TEST AUG\obj"
-NEW_FOLDERS_PATH = r"D:\YOLOv5 DATASET\TEST AUG"
+OBJ_PATH = r"D:\YOLOv5 DATASET\9 steps 6 classes\1\step9"
+NEW_FOLDERS_PATH = r"D:\YOLOv5 DATASET\9 steps 6 classes\1"
 augmentation_types = {'chan_shuffle': [A.ChannelShuffle(p=1)],
                       'chan_dropout': [A.ChannelDropout(p=1)],
                       'horiz_flip': [A.HorizontalFlip(p=1)],
