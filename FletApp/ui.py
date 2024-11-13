@@ -6,6 +6,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import simpleaudio as sa
 import pygame
+from collections import deque
 
 pygame.mixer.init()     # initialize pygame
 
@@ -86,6 +87,7 @@ class RecognitionContainer(ft.UserControl):
         self.save_images_status = False
         self.sound_status = True
         self.sound_file = 'assets/warning2.mp3'
+        self.last_fps = deque(maxlen=self.accumulation_size)
 
         print(f'Starting recognition container {channel_name}')
         if self.show_images_status:
@@ -240,11 +242,12 @@ class RecognitionContainer(ft.UserControl):
                                                     status=self.save_images_status)
         self.btn_save_images.update()
 
-    async def update_image(self, img_base64):
+    def update_image(self, img_base64):
         self.image.src_base64 = img_base64
-        await self.image.update_async()
+        self.image.update()
         if self.fps_view:
-            self.fps_view.value = f'FPS: {1 / (time.time() - self.last_time):.2f}'
+            self.last_fps.append(1 / (time.time() - self.last_time))
+            self.fps_view.value = f'FPS: {sum(self.last_fps)/ len(self.last_fps):.2f}'
             self.last_time = time.time()
             self.fps_view.update()
 

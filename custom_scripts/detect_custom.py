@@ -31,8 +31,8 @@ if __name__ == '__main__':
 
     import detect
 
-    print(detect.run(weights=r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\exp10\weights\best.pt",
-               source=r"D:\YOLOv5 DATASET\TEST FROM UNUSED\autel_evo_max_with_wifi\640_autel_max_with_wifi_163.jpg",
+    print(detect.run(weights=r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10s_6classes\weights\best.pt",
+               source=r"D:\YOLOv5 DATASET\test\2023-11-22-16-46-47-946350.jpg",
                data=r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\dataset.yaml",
                imgsz=(640, 640),
                conf_thres=0.2,

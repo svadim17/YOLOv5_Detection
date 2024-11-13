@@ -1,6 +1,8 @@
 import os
+import shutil
 
-FOLDER_PATH = r"D:\YOLOv5 DATASET\STEP 9\IMAGES\dji_GrozaZ2"
+FOLDER_PATH = r"C:\Users\v.stecko\Desktop\images2\clear"
+NEW_FOLDER_PATH = r"C:\Users\v.stecko\Desktop\images2\detected"
 
 
 def calculate_files_count(filepath):
@@ -23,5 +25,5 @@ if __name__ == '__main__':
 
     for i in range(len(signals)):
         if 'detected' in signals[i]:
-            os.remove(FOLDER_PATH + '\\' + signals[i])
-
+            shutil.copy(FOLDER_PATH + '\\' + signals[i], NEW_FOLDER_PATH + '\\' + signals[i])
+            # os.remove(FOLDER_PATH + '\\' + signals[i])

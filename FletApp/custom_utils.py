@@ -21,7 +21,6 @@ def create_password_hash(password: str):
 
 def get_image_from_bytes(arr: bytes, size: tuple):
     img_arr = np.frombuffer(arr, dtype=np.uint8).reshape(size)
-    color_image = cv2.applyColorMap(img_arr, cv2.COLORMAP_JET)
 
     # Convert image to base64
     _, buffer = cv2.imencode('.png', img_arr)
@@ -34,9 +33,6 @@ def count_files(directory):
         return len([name for name in os.listdir(directory) if os.path.isfile(os.path.join(directory, name))])
     else:
         return -1
-
-
-
 
 
 if __name__ == '__main__':

@@ -9,6 +9,7 @@ import numpy as np
 # from loguru import logger
 import platform
 import pathlib
+from ultralytics import YOLO
 
 # For loading neural model on different OS
 if platform.system() == 'Windows':
@@ -88,6 +89,7 @@ class NNProcessing(object):
                                     model='custom',
                                     path=self.weights,
                                     source='local')
+
         self.model.iou = 0.8
         self.model.conf = 0.4
         # self.model.augment = True

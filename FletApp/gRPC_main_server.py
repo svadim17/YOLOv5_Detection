@@ -145,7 +145,8 @@ class Client(Process):
     def get_current_settings(self):
         self.config_q.put({self.name: {'neural_network_settings': {'z_min': self.z_min, 'z_max': self.z_max},
                                        'detection_settings': {'accumulation_size': self.accumulation_size,
-                                                              'threshold': self.threshold}
+                                                              'threshold': self.threshold,
+                                                              'exceedance': self.exceedance}
                                        }
                            })
 
@@ -163,7 +164,7 @@ class Client(Process):
         for key, key_dict in result_dict.items():
             self.accum_deques[key].appendleft(key_dict['confidence'])
             accum = sum(self.accum_deques[key])
-            state = bool(accum >= self.threshold)
+            state = bool(accum >= self.global_threshold)
             accumed_results.append(state)
             if state:
                 freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
@@ -196,6 +197,7 @@ class Client(Process):
         while True:
             sock.send(b'\x30')
             arr = sock.recv(self.msg_len)
+            self.logger.trace(f'Received {self.msg_len} bytes.')
             i = 0
             while self.msg_len > len(arr) and i < 500:
                 i += 1
@@ -232,6 +234,7 @@ class Client(Process):
             self.logger.warning(f'Packet size = {np_arr.size} missed.')
             return None
 
+    @logger.catch
     def run(self):
             try:
                 self.nn = NNProcessing(name=self.name,
@@ -245,6 +248,7 @@ class Client(Process):
                                        msg_len=self.msg_len,
                                        z_min=self.z_min,
                                        z_max=self.z_max,
+                                       colormap='inferno',
                                        img_save_path=self.img_save_path)
                 self.logger.debug(f'NNProcessing started by {self.nn.device}')
                 tcp_connection_status = True
@@ -274,7 +278,7 @@ class Client(Process):
                             if img_arr is not None:
                                 result = self.nn.processing(img_arr, save_images=self.record_images_status)
                                 df_result = result.pandas().xyxy[0]
-
+                                print(df_result)
                                 if self.data_q is not None:
                                     res, freq = self.accumulate_and_make_decision(
                                         self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
@@ -458,10 +462,12 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         if name in self.processes:
             self.processes[name].control_q.put({'func': 'change_recognition_settings',
                                                 'args': (accum_size, threshold, exceedance)})
-            self.custom_logger.debug(f'Accumulation was changed on {accum_size}, Threshold was changed on {threshold}, '
-                                     f' Exceedance was changed on {exceedance} in channel {name}')
+            self.custom_logger.debug(f'Accumulation was changed on {accum_size}, '
+                                     f'Threshold was changed on {threshold}, '
+                                     f'Exceedance was changed on {exceedance} in channel {name}')
             return API_pb2.RecognitionSettingsResponse(
-                status=f'Accumulation was changed on {accum_size}, Threshold was changed on {threshold}, '
+                status=f'Accumulation was changed on {accum_size}, '
+                       f'Threshold was changed on {threshold}, '
                        f'Exceedance was changed on {exceedance} in channel {name}')
         else:
             self.custom_logger.error(f'Unknown channel {name}')
@@ -486,7 +492,7 @@ def serve():
     gRPC_PORT = 51234
     CONFIG_PATH = r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\FletApp\config_Flet_alinx200M.yaml'
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10),)
-                         #interceptors=[ConnectionInterceptor()])  # Добавляем наш interceptor
+                         # interceptors=[ConnectionInterceptor()])  # Добавляем наш interceptor
     API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(config_path=CONFIG_PATH), server)
     server.add_insecure_port(f'[::]:{gRPC_PORT}')
     server.start()

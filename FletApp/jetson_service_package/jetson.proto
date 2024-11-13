@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option csharp_namespace = "JetsonProtos";
+
+package JetsonParameters;
+
+
+message TemperatureRequest {
+
+}
+
+message TemperatureResponse {
+    string parameters = 1;
+}
+
+
+// Сервис обработки данных
+service JetsonProcessingService {
+    rpc JetsonTemperature (TemperatureRequest) returns (TemperatureResponse);
+}

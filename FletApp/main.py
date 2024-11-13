@@ -1,21 +1,27 @@
 import time
-
 import flet as ft
 import yaml
 import custom_utils
 import gRPC_interface
 import ui
 import asyncio
+import os
+
+
+project_path: str = os.path.abspath(os.path.dirname(__file__))
+CONFIG_PATH = os.path.join(project_path, 'client_conf.yaml')
 
 
 async def main(page: ft.Page):
     global gallery
-    conf = gRPC_interface.load_conf('client_conf.yaml')
+    conf = gRPC_interface.load_conf(CONFIG_PATH)
     map_list = conf['map_list']
     server_port = conf['server_port']
+    jetson_service_port = conf['jetson_service_port']
     server_addr = conf['server_addr']
     show_images_status = conf['show_images']
     show_freq_status = conf['show_frequinces']
+
     # START_IMAGE = "spectrum-analysis.png"
     START_IMAGE = None
     page.title = "Neural Detection"
@@ -31,6 +37,7 @@ async def main(page: ft.Page):
     page.scroll = ft.ScrollMode.AUTO
 
     gRPC_channel = await gRPC_interface.connect_to_server(ip=server_addr, port=server_port)
+
 
     menuContent = ui.MenuContent(parent_page=page, grpc_channel=gRPC_channel)
     page.drawer = menuContent.menu
@@ -79,7 +86,7 @@ async def main(page: ft.Page):
         bottomBarContent.pb.visible = False
         bottomBarContent.pb.update()
 
-    # Создаем диалоговое окно и добавляем его на страницу
+    # РЎРѕР·РґР°РµРј РґРёР°Р»РѕРіРѕРІРѕРµ РѕРєРЅРѕ Рё РґРѕР±Р°РІР»СЏРµРј РµРіРѕ РЅР° СЃС‚СЂР°РЅРёС†Сѓ
     startDialog = ui.StartDialog(grpc_channel=gRPC_channel, callback_func=create_gallery)
     page.overlay.append(startDialog)
     page.update()

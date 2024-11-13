@@ -1,11 +1,7 @@
 import grpc
-from grpc import StatusCode
 import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
-import time
-import numpy as np
-import cv2
-import base64
+from jetson_service_package import jetson_pb2_grpc, jetson_pb2
 import custom_utils
 import asyncio
 from loguru import logger
@@ -44,7 +40,6 @@ def load_conf(config_path: str):
 
 async def connect_to_server(ip: str, port: str):
     try:
-
         grpc_channel = grpc.insecure_channel(target=f'{ip}:{port}',
                                              options=gRPC_channel_options)
         logger.success(f'Successfully connected to {ip}:{port}!')
@@ -74,8 +69,8 @@ async def imageStream(channel, gallery: dict):
                 size = (img_response.height, img_response.width, 3)  # (640, 640, 3)
                 img_base64 = custom_utils.get_image_from_bytes(arr=img_response.data, size=size)
                 if band_name in gallery:
-                    await gallery[band_name].update_image(img_base64=img_base64)
-                    await asyncio.sleep(0.05)
+                    gallery[band_name].update_image(img_base64=img_base64)
+                    await asyncio.sleep(0.01)
 
         except grpc.RpcError as rpc_error:
             if rpc_error.code() == grpc.StatusCode.UNAVAILABLE:
@@ -106,7 +101,7 @@ async def dataStream(channel, map_list: list, gallery: dict):
                         drone_state = uav.state
                         drone_freq = uav.freq
                         await gallery[band_name].update_buttons(drone_name, drone_state, drone_freq)
-                    await asyncio.sleep(0.01)  # Небольшая задержка между обновлениями
+                    await asyncio.sleep(0.005)  # Небольшая задержка между обновлениями
 
         except grpc.RpcError as rpc_error:
             if rpc_error.code() == grpc.StatusCode.UNAVAILABLE:
@@ -116,6 +111,7 @@ async def dataStream(channel, map_list: list, gallery: dict):
                 await asyncio.sleep(1)
         else:
             break
+
 
 async def start_gRPC_streams(grpc_channel, map_list: list, gallery: dict, image_stream_status: bool):
     # grpc_options = [('grpc.max_receive_message_length', 2 * 1024 * 1024)]  # 2 MB
@@ -256,7 +252,16 @@ async def setRecordImagesRequest(grpc_channel, channel_name: str, status: bool):
         logger.error(f'Error with set record status on {status}! \n{e}')
 
 
+async def getJetsonTemperature_periodically(gRPC_Jetson_channel):
+    while True:  # Бесконечный цикл, выполняющий запросы каждые 1 секунду
+        getJetsonTemperatureRequest(gRPC_Jetson_channel)
+        await asyncio.sleep(2)  # Задержка 1 секунда
 
+
+def getJetsonTemperatureRequest(grpc_channel):
+    stub = jetson_pb2_grpc.JetsonProcessingServiceStub(grpc_channel)
+    response = stub.JetsonTemperature(jetson_pb2.TemperatureRequest())
+    logger.info(response.parameters)
 
 
 
