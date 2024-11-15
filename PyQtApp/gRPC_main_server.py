@@ -278,18 +278,14 @@ class Client(Process):
                             if img_arr is not None:
                                 result = self.nn.processing(img_arr, save_images=self.record_images_status)
                                 df_result = result.pandas().xyxy[0]
-                                print(df_result)
                                 if self.data_q is not None:
                                     res, freq = self.accumulate_and_make_decision(
                                         self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
                                     self.data_q.put({'name': self.name,
                                                      'results': res,
                                                      'frequencies': freq,
-                                                     'predict_df': df_result})
-                                if self.img_q is not None and not self.img_q.full():
-                                    self.img_q.put({'image': copy.deepcopy(result.render()[0]),
-                                                    'img_size': self.img_size,
-                                                    'name': self.name})
+                                                     'predict_df': df_result,
+                                                     'image': copy.deepcopy(result.render()[0])})
                                 if not self.control_q.empty():
                                     cmd_dict = self.control_q.get()
                                     args = cmd_dict['args']
@@ -317,37 +313,28 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.config = load_conf(config_path=self.config_path)
         self.data_store = {}
         self.data_q = Queue(maxsize=5)
-        self.img_q = Queue(maxsize=5)
         self.processes = {}
         self.connections = self.config['connections']
 
     def ProceedDataStream(self, request, context):
-        self.custom_logger.debug(f'Start data stream')
+        self.custom_logger.debug(f'Start data stream with img status = {request.img}')
         while True:
             if not self.data_q.empty():
                 res = self.data_q.get()
                 band_name = res['name']
+
                 Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0], freq=res['frequencies'][0]),
                           API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1], freq=res['frequencies'][1]),
                           API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2], freq=res['frequencies'][2]),
                           API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3], freq=res['frequencies'][3])
                         ]
-                self.custom_logger.trace(f'Data was send from band {band_name}')
-                yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs)
+                if request.img:
+                    img = res['image'].tobytes()
+                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs, img=img)
+                else:
+                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs)
 
-    def SpectrogramImageStream(self, request, context):
-        self.custom_logger.debug(f'Start image stream request: {request.band_name}')
-        while True:
-            if not self.img_q.empty():
-                res = self.img_q.get()
-                band_name = res['name']
-                img = res['image'].tobytes()
-                print(len(img))
-                print(res['img_size'])
-                yield API_pb2.ImageResponse(band_name=band_name,
-                                            data=img,
-                                            height=res['img_size'][0],
-                                            width=res['img_size'][1])
+                self.custom_logger.trace(f'Data was send from band {band_name}')
 
     def GetAvailableChannels(self, request, context):
         available_channels = tuple(self.connections.keys())
@@ -397,7 +384,6 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                             accumulation_size=int(connection['detection_settings']['accumulation_size']),
                             exceedance=float(connection['detection_settings']['exceedance']),
                             data_queue=self.data_q,
-                            img_queue=self.img_q,
                             logger_=self.custom_logger.bind(process=str(conn_name)))
                 cl.start()
                 self.custom_logger.debug('Client started!')

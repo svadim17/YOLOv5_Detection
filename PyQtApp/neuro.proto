@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+option csharp_namespace = "NeuroProtos";
+
+package NeuroDataProcessing;
+
+enum DroneType {
+  Autel = 0;
+  Fpv = 1;
+  Dji = 2;
+  Wifi = 3;
+}
+
+message UavObject {
+    DroneType type = 1;
+    bool state = 2;
+    int32 freq = 3;
+}
+
+message DataResponse {
+    string band_name = 1;
+    repeated UavObject uavs = 2;
+    optional bytes img = 3;
+}
+
+message ProceedDataStreamRequest {                   // Запрос на начало стрима с результатами распознавания
+    bool img = 1;
+}
+
+
+message StartChannelRequest {           // Запрос на старт канала обработки
+    string connection_name = 1;
+}
+
+message StartChannelResponse {          // Ответ на запрос о старте канала обработки
+    string connection_status = 1;
+}
+
+message ZScaleRequest {                 // Запрос на изменение Z-шкалы
+    string band_name = 1;
+    int32 z_min = 2;
+    int32 z_max = 3;
+}
+
+message ZScaleResponse {                // Ответ на запрос об изменении Z-шкалы
+    string status = 1;
+}
+
+message CurrentZScaleRequest {                 // Запрос на текущую Z-шкалу
+}
+
+message CurrentZScaleResponse {                // Ответ на запрос об текущей Z-шкале
+   repeated string band_names = 1;
+   repeated int32 z_min = 2;
+   repeated int32 z_max = 3;
+}
+
+message ChannelsRequest {
+}
+
+message ChannelsResponse {
+    repeated string channels = 1;
+}
+
+message LoadConfigRequest {                 // Запрос на конфиг
+    string config = 1;
+    bytes password_hash = 2;
+}
+
+message LoadConfigResponse {                 // Ответ на запрос о загрузке конфига
+    string status = 1;
+}
+
+message SaveConfigRequest {
+    bytes password_hash = 1;
+}
+
+message SaveConfigResponse {
+    string status = 1;
+}
+
+message RecognitionSettingsRequest {
+    string band_name = 1;
+    int32 accumulation_size = 2;
+    double threshold = 3;
+    double exceedance = 4;
+}
+
+message RecognitionSettingsResponse {
+    string status = 1;
+}
+
+message GetRecognitionSettingsRequest {       // Запрос параметров при старте клиента
+}
+
+message GetRecognitionSettingsResponse {
+    repeated string band_name = 1;
+    repeated int32 accumulation_size = 2;
+    repeated double threshold = 3;
+    repeated double exceedance = 4;
+}
+
+message RecordImagesRequest {
+    string band_name = 1;
+    bool record_status = 2;
+}
+
+message RecordImagesResponse {
+    int32 numb_of_files = 1;
+}
+
+// Сервис обработки данных
+service DataProcessingService {
+    rpc ProceedDataStream (ProceedDataStreamRequest) returns (stream DataResponse); // RPC для отправки данных
+    rpc StartChannel (StartChannelRequest) returns (StartChannelResponse);   // RPC для старта канала обработки
+    rpc ZScaleChanging (ZScaleRequest) returns (ZScaleResponse);
+    rpc GetAvailableChannels (ChannelsRequest) returns (ChannelsResponse);
+    rpc LoadConfig (LoadConfigRequest) returns (LoadConfigResponse);
+    rpc SaveConfig (SaveConfigRequest) returns (SaveConfigResponse);
+    rpc RecognitionSettings (RecognitionSettingsRequest) returns (RecognitionSettingsResponse);
+    rpc GetRecognitionSettings (GetRecognitionSettingsRequest) returns (GetRecognitionSettingsResponse);
+    rpc GetCurrentZScale (CurrentZScaleRequest) returns (CurrentZScaleResponse);
+    rpc RecordImages (RecordImagesRequest) returns (RecordImagesResponse);
+}

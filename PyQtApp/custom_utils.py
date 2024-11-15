@@ -21,7 +21,7 @@ def create_password_hash(password: str):
 
 def get_image_from_bytes(arr: bytes, size: tuple):
     img_arr = np.frombuffer(arr, dtype=np.uint8).reshape(size)
-    print(f'size = {size} array_len = {len(arr)}')
+
     # Convert image to base64
     _, buffer = cv2.imencode('.png', img_arr)
     img_base64 = base64.b64encode(buffer).decode()
