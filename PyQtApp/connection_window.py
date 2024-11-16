@@ -1,23 +1,21 @@
 from PyQt6.QtWidgets import QDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
-from gRPC_thread import gRPCThread
 from PyQt6.QtCore import pyqtSignal
 
 
 class ConnectWindow(QDialog):
     signal_init_connections = pyqtSignal(list)
 
-    def __init__(self, ip: str, grpc_port: str, map_list: list):
+    def __init__(self, ip: str, grpc_port: str, grpc_thread):
         super().__init__()
         self.ip = ip
         self.gRPC_port = grpc_port
-        self.map_list = map_list
+        self.gRPCThread = grpc_thread
 
         self.setWindowTitle('Connection parameters')
         self.setFixedSize(400, 300)
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
-        self.gRPCThread = gRPCThread(map_list=self.map_list, img_status=True)
         self.available_channels = None
         self.checkboxes = {}
         self.enabled_channels = []

@@ -1,57 +1,102 @@
-from PyQt6.QtWidgets import QWidget, QDockWidget, QApplication, QLayout, QMainWindow, QGridLayout
-from PyQt6.QtWidgets import QDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSizePolicy
-from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtCore import pyqtSlot, Qt
-import numpy as np
-import cv2
+from PyQt5.QtCore import Qt, QRect, QPoint
+from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QLabel
+from PyQt5.QtGui import QPainter, QColor
 
-
-class MainWindow(QMainWindow):
+class DoubleSlider(QWidget):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Window")
-        grid_layout = QGridLayout()
+        super(DoubleSlider, self).__init__()
 
-        docked = QDockWidget("Dockable", self)
-        docked.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
-        dockedWidget = QWidget(self)
-        docked.setWidget(dockedWidget)
-        dockedWidget.setLayout(QVBoxLayout())
-        dockedWidget.layout().addWidget(QPushButton("1"))
+        self.setWindowTitle('Двухползунковый слайдер')
+        self.setGeometry(200, 200, 400, 100)
 
-        docked_2 = QDockWidget("Dockable_2", self)
-        docked_2.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
-        dockedWidget_2 = QWidget(self)
-        docked_2.setWidget(dockedWidget_2)
-        dockedWidget_2.setLayout(QVBoxLayout())
-        dockedWidget_2.layout().addWidget(QPushButton("2"))
+        # Значения для ползунков
+        self.min_value = 20
+        self.max_value = 80
 
-        docked_3 = QDockWidget("Dockable_3", self)
-        docked_3.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
-        dockedWidget_3 = QWidget(self)
-        docked_3.setWidget(dockedWidget_3)
-        dockedWidget_3.setLayout(QVBoxLayout())
-        dockedWidget_3.layout().addWidget(QPushButton("3"))
+        # Диапазон слайдера
+        self.min_range = 0
+        self.max_range = 100
 
-        docked_4 = QDockWidget("Dockable_4", self)
-        docked_4.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
-        dockedWidget_4 = QWidget(self)
-        docked_4.setWidget(dockedWidget_4)
-        dockedWidget_4.setLayout(QVBoxLayout())
-        dockedWidget_4.layout().addWidget(QPushButton("4"))
+        self.setMinimumWidth(400)
+        self.setMinimumHeight(60)
 
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, docked)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docked_2)
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, docked_3)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docked_4)
-        widget = QWidget()
-        widget.setLayout(grid_layout)
-        self.setCentralWidget(widget)
+        # Метка для отображения значений ползунков
+        self.label = QLabel(f"Min: {self.min_value}, Max: {self.max_value}", self)
+
+        # Основной вертикальный layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+    def paintEvent(self, event):
+        # Рисуем слайдер и два ползунка
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Рисуем основной слайдер
+        slider_rect = QRect(50, 40, self.width() - 100, 10)
+        painter.setBrush(QColor(220, 220, 220))  # Светло-серый цвет для фона слайдера
+        painter.drawRect(slider_rect)
+
+        # Вычисляем позиции ползунков на слайдере
+        min_pos = (self.min_value - self.min_range) / (self.max_range - self.min_range) * (slider_rect.width())
+        max_pos = (self.max_value - self.min_range) / (self.max_range - self.min_range) * (slider_rect.width())
+
+        # Рисуем ползунки
+        min_thumb = QPoint(slider_rect.left() + min_pos, slider_rect.top() + slider_rect.height() / 2)
+        max_thumb = QPoint(slider_rect.left() + max_pos, slider_rect.top() + slider_rect.height() / 2)
+        painter.setBrush(QColor(50, 150, 250))  # Синий цвет для ползунков
+        painter.drawEllipse(min_thumb, 8, 8)
+        painter.drawEllipse(max_thumb, 8, 8)
+
+    def mousePressEvent(self, event):
+        # Логика для перетаскивания ползунков
+        slider_rect = QRect(50, 40, self.width() - 100, 10)
+        min_pos = (self.min_value - self.min_range) / (self.max_range - self.min_range) * (slider_rect.width())
+        max_pos = (self.max_value - self.min_range) / (self.max_range - self.min_range) * (slider_rect.width())
+        min_thumb = QPoint(slider_rect.left() + min_pos, slider_rect.top() + slider_rect.height() / 2)
+        max_thumb = QPoint(slider_rect.left() + max_pos, slider_rect.top() + slider_rect.height() / 2)
+
+        # Проверяем, был ли клик по ползункам
+        if min_thumb.x() - 8 <= event.x() <= min_thumb.x() + 8 and min_thumb.y() - 8 <= event.y() <= min_thumb.y() + 8:
+            self.dragging_min = True
+            self.dragging_max = False
+        elif max_thumb.x() - 8 <= event.x() <= max_thumb.x() + 8 and max_thumb.y() - 8 <= event.y() <= max_thumb.y() + 8:
+            self.dragging_max = True
+            self.dragging_min = False
+        else:
+            self.dragging_min = False
+            self.dragging_max = False
+
+    def mouseMoveEvent(self, event):
+        # Двигаем ползунки в зависимости от клика
+        if self.dragging_min or self.dragging_max:
+            slider_rect = QRect(50, 40, self.width() - 100, 10)
+            mouse_pos = event.x() - slider_rect.left()
+
+            # Ограничаем движение ползунков в пределах слайдера
+            if self.dragging_min:
+                new_min_value = min(self.max_range, max(self.min_range, mouse_pos / slider_rect.width() * (self.max_range - self.min_range)))
+                if new_min_value < self.max_value:
+                    self.min_value = new_min_value
+            elif self.dragging_max:
+                new_max_value = max(self.min_range, min(self.max_range, mouse_pos / slider_rect.width() * (self.max_range - self.min_range)))
+                if new_max_value > self.min_value:
+                    self.max_value = new_max_value
+
+            self.update()  # Перерисовываем слайдер
+
+        # Обновляем метку с новыми значениями
+        self.label.setText(f"Min: {int(self.min_value)}, Max: {int(self.max_value)}")
+
+    def mouseReleaseEvent(self, event):
+        # Завершаем перетаскивание
+        self.dragging_min = False
+        self.dragging_max = False
 
 
-if __name__ == '__main__':
-    import sys
-    app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec())
+if __name__ == "__main__":
+    app = QApplication([])
+    window = DoubleSlider()
+    window.show()
+    app.exec()

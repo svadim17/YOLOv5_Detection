@@ -1,10 +1,12 @@
 import sys
-from PyQt6.QtWidgets import QMainWindow, QApplication, QTabWidget, QToolBar, QPushButton
+from PyQt6.QtWidgets import QMainWindow, QApplication, QTabWidget, QToolBar, QPushButton, QMenu
 from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt
 import qdarktheme
+from gRPC_thread import gRPCThread
 from connection_window import ConnectWindow
 from recognition_widget import RecognitionWidget
+from popout_menu import PopOutMenu
 from processing import Processor
 import yaml
 from loguru import logger
@@ -26,17 +28,23 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle('NN Recognition')
-        # self.setDockOptions(QMainWindow.DockOption.AllowTabbedDocks | QMainWindow.DockOption.AnimatedDocks)
         self.config = self.load_conf()
+        self.map_list = list(self.config['map_list'])
         self.create_actions()
         self.create_toolbar()
 
+        self.gRPCThread = gRPCThread(map_list=self.map_list, img_status=True)
+
         self.connectWindow = ConnectWindow(ip=self.config['server_addr'],
                                            grpc_port=self.config['server_port'],
-                                           map_list=list(self.config['map_list']))
-        self.connectWindow.finished.connect(self.show)
+                                           grpc_thread=self.gRPCThread)
+        self.connectWindow.finished.connect(self.show)      # открытие основного окна после закрытия ConnectWindow
 
         self.processor = Processor()
+
+        self.popoutMenu = PopOutMenu(enabled_channels=self.connectWindow.enabled_channels)
+        self.popoutMenu.setFloating(True)
+        self.popoutMenu.hide()
 
         self.recogn_widgets = {}
         self.link_events()
@@ -48,28 +56,61 @@ class MainWindow(QMainWindow):
         self.act_start.setCheckable(True)
         self.act_start.triggered.connect(self.change_connection_state)
 
+        self.act_popout_menu = QAction()
+        self.act_popout_menu.setText('Menu')
+        self.act_popout_menu.setCheckable(True)
+        self.act_popout_menu.triggered.connect(self.toggle_popout_menu)
+
     def create_toolbar(self):
         self.toolBar = QToolBar()
         self.toolBar.addAction(self.act_start)
-        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.toolBar)
+        self.toolBar.addAction(self.act_popout_menu)
+
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
     def create_recognition_widgets(self, enabled_channels: list):
+        current_zscale_settings_dict = self.gRPCThread.getCurrentZScaleRequest()
         for channel in enabled_channels:
-            recogn_widget = RecognitionWidget(window_name=channel, map_list=['Autel', 'Fpv', 'Dji', 'WiFi'])
+            recogn_widget = RecognitionWidget(window_name=channel,
+                                              map_list=self.map_list,
+                                              zscale_settings=current_zscale_settings_dict[channel])
+            recogn_widget.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
             self.recogn_widgets[channel] = recogn_widget
-            # self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, recogn_widget)
-            # self.tab.addTab(recogn_widget, channel)
-        self.add_recogn_widgets()
+        self.add_recogn_widgets(type_of_adding='default')
         self.processor.init_recogn_widgets(recogn_widgets=self.recogn_widgets)
 
-    def add_recogn_widgets(self):
-        i = 1
-        for widget in self.recogn_widgets.values():
-            if i % 2 == 1:
-                self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, widget)
-            else:
+    def add_recogn_widgets(self, type_of_adding: str):
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.popoutMenu)
+
+        if type_of_adding == 'default':
+            i = 1
+            for widget in self.recogn_widgets.values():
+                if i % 2 == 1:
+                    self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, widget)
+                else:
+                    self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, widget)
+                i += 1
+
+        elif type_of_adding == 'tabs':
+            i = 0
+            for widget in self.recogn_widgets.values():
                 self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, widget)
-            i += 1
+
+            # табуляция между соседними виджетами
+            while i < len(self.recogn_widgets) - 1:
+                try:
+                    self.tabifyDockWidget(self.recogn_widgets[list(self.recogn_widgets.keys())[i]],
+                                          self.recogn_widgets[list(self.recogn_widgets.keys())[i + 1]])
+                    i += 2
+                except: pass
+
+    def toggle_popout_menu(self):
+        if self.popoutMenu.isVisible():
+            self.popoutMenu.hide()
+            self.add_recogn_widgets(type_of_adding='default')
+        else:
+            self.popoutMenu.show()
+            self.add_recogn_widgets(type_of_adding='tabs')
 
     def change_connection_state(self, status: bool):
         if status:

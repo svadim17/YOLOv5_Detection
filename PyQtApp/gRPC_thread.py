@@ -65,6 +65,33 @@ class gRPCThread(QtCore.QThread):
         except Exception as e:
             logger.error(f'Error with getting response from StartChannelRequest! \n{e}')
 
+    def getCurrentZScaleRequest(self):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.GetCurrentZScale(API_pb2.CurrentZScaleRequest())
+            chan_names = response.band_names
+            z_min = response.z_min
+            z_max = response.z_max
+
+            # Convert lists to dictionary
+            current_zscale_dict = {}
+            for i in range(len(chan_names)):
+                current_zscale_dict[chan_names[i]] = [z_min[i], z_max[i]]
+
+            logger.info(f'Current ZScale: {current_zscale_dict}')
+            return current_zscale_dict
+        except Exception as e:
+            logger.error(f'Error with getting current ZScale! \n{e}')
+
+    def changeZScaleRequest(self, channel_name: str, z_min: int, z_max: int):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.ZScaleChanging(API_pb2.ZScaleRequest(band_name=channel_name, z_min=z_min, z_max=z_max))
+            logger.info(response.status)
+            return response
+        except Exception as e:
+            logger.error(f'Error with changing Z scale in channel {channel_name} \n{e}')
+
     def run(self):
         stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
         retry_count = 0
@@ -103,41 +130,6 @@ class gRPCThread(QtCore.QThread):
                     logger.error(rpc_error)
             else:
                 break
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

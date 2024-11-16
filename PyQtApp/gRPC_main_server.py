@@ -479,7 +479,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
 def serve():
     gRPC_PORT = 51234
-    CONFIG_PATH = r'C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\FletApp\server_conf.yaml'
+    CONFIG_PATH = 'server_conf.yaml'
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10),)
                          # interceptors=[ConnectionInterceptor()])  # Добавляем наш interceptor
     API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(config_path=CONFIG_PATH), server)
