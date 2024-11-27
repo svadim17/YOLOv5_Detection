@@ -285,11 +285,11 @@ def plot_val_study(file="", dir="", x=None):
         if plot2:
             s = ["P", "R", "mAP@.5", "mAP@.5:.95", "t_preprocess (ms/img)", "t_inference (ms/img)", "t_NMS (ms/img)"]
             for i in range(7):
-                ax[i].plot(x, y[i], ".-", linewidth=2, markersize=8)
+                ax[i].histogram_plot(x, y[i], ".-", linewidth=2, markersize=8)
                 ax[i].set_title(s[i])
 
         j = y[3].argmax() + 1
-        ax2.plot(
+        ax2.histogram_plot(
             y[5, 1:j],
             y[3, 1:j] * 1e2,
             ".-",
@@ -298,7 +298,7 @@ def plot_val_study(file="", dir="", x=None):
             label=f.stem.replace("study_coco_", "").replace("yolo", "YOLO"),
         )
 
-    ax2.plot(
+    ax2.histogram_plot(
         1e3 / np.array([209, 140, 97, 58, 35, 18]),
         [34.6, 40.5, 43.0, 47.5, 49.7, 51.5],
         "k.-",
@@ -446,8 +446,8 @@ def plot_results(file="path/to/results.csv", dir=""):
             for i, j in enumerate([1, 2, 3, 4, 5, 8, 9, 10, 6, 7]):
                 y = data.values[:, j].astype("float")
                 # y[y == 0] = np.nan  # don't show zero values
-                ax[i].plot(x, y, marker=".", label=f.stem, linewidth=2, markersize=8)  # actual results
-                ax[i].plot(x, gaussian_filter1d(y, sigma=3), ":", label="smooth", linewidth=2)  # smoothing line
+                ax[i].histogram_plot(x, y, marker=".", label=f.stem, linewidth=2, markersize=8)  # actual results
+                ax[i].histogram_plot(x, gaussian_filter1d(y, sigma=3), ":", label="smooth", linewidth=2)  # smoothing line
                 ax[i].set_title(s[j], fontsize=12)
                 # if j in [8, 9, 10]:  # share train and val loss y axes
                 #     ax[i].get_shared_y_axes().join(ax[i], ax[i - 5])
@@ -478,7 +478,7 @@ def profile_idetection(start=0, stop=0, labels=(), save_dir=""):
             for i, a in enumerate(ax):
                 if i < len(results):
                     label = labels[fi] if len(labels) else f.stem.replace("frames_", "")
-                    a.plot(t, results[i], marker=".", label=label, linewidth=1, markersize=5)
+                    a.histogram_plot(t, results[i], marker=".", label=label, linewidth=1, markersize=5)
                     a.set_title(s[i])
                     a.set_xlabel("time (s)")
                     # if fi == len(files) - 1:

@@ -2,21 +2,10 @@ import grpc
 from grpc import StatusCode
 import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
-import asyncio
-from loguru import logger
-import sys
-import yaml
+import custom_utils
 from PyQt6 import QtCore
 from PyQt6.QtCore import pyqtSignal
 
-
-logger.remove(0)
-log_level = "TRACE"
-log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> |"
-              " <level>{level: <8}</level> |"
-              " {extra} |"
-              " <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
-logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True, enqueue=True)
 
 gRPC_channel_options = [
         ('grpc.keepalive_time_ms', 60000),      # Интервал между пингами - 60 секунд
@@ -27,43 +16,85 @@ gRPC_channel_options = [
     ]
 
 
+def connect_to_gRPC_server(ip: str, port: str):
+    return grpc.insecure_channel(target=f'{ip}:{port}', options=gRPC_channel_options)
+    # try:
+    #     gRPC_channel = grpc.insecure_channel(target=f'{ip}:{port}', options=gRPC_channel_options)
+    #     logger_.success(f'Successfully connected to {ip}:{port}!')
+    # except Exception as e:
+    #     self.logger_.error(f'Error with connecting to {ip}:{port}! \n{e}')
+
+
+class gRPCServerErrorThread(QtCore.QThread):
+    signal_dataStream_response = pyqtSignal(dict)
+
+    def __init__(self, channel, logger_):
+        QtCore.QThread.__init__(self)
+        self.logger = logger_
+        self.gRPC_channel = channel
+        self.start()
+
+    def run(self):
+        stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+        error_responses = stub.ServerErrorStream(API_pb2.VoidRequest())
+        for err in error_responses:
+            self.logger.critical(f'SERVER ERROR: {err}')
+            self.msleep(5)
+
+
 class gRPCThread(QtCore.QThread):
     signal_dataStream_response = pyqtSignal(dict)
 
-    def __init__(self, map_list, img_status: bool):
+    def __init__(self, channel, map_list, detected_img_status: bool, clear_img_status: bool, logger_):
         QtCore.QThread.__init__(self)
         self.map_list = map_list
-        self.gRPC_channel = None
+        self.gRPC_channel = channel
         self.max_gRPC_retries = 55555
         self.available_channels = None
-        self.show_img_status = img_status
-
-    def connect_to_gRPC_server(self, ip: str, port: str):
-        try:
-            self.gRPC_channel = grpc.insecure_channel(target=f'{ip}:{port}', options=gRPC_channel_options)
-            logger.success(f'Successfully connected to {ip}:{port}!')
-        except Exception as e:
-            logger.error(f'Error with connecting to {ip}:{port}! \n{e}')
+        self.detected_img_status = detected_img_status
+        self.clear_img_status = clear_img_status
+        self.logger_ = logger_
 
     def getAvailableChannelsRequest(self):
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
             response = stub.GetAvailableChannels(API_pb2.ChannelsRequest())
-            logger.info(f'Available channels: {response.channels}')
+            self.logger_.info(f'Available channels: {response.channels}')
             self.available_channels = list(response.channels)
             return tuple(response.channels)
         except Exception as e:
-            logger.error(f'Error with getting available channels! \n{e}')
-            logger.debug(f'Response = {response}')
+            self.logger_.error(f'Error with getting available channels! \n{e}')
+            self.logger_.debug(f'Response = {response}')
 
     def startChannelRequest(self, channel_name: str):
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
             response = stub.StartChannel(API_pb2.StartChannelRequest(connection_name=channel_name))
-            logger.info(response.connection_status)
+            self.logger_.info(response.connection_status)
             return response
         except Exception as e:
-            logger.error(f'Error with getting response from StartChannelRequest! \n{e}')
+            self.logger_.error(f'Error with getting response from StartChannelRequest! \n{e}')
+
+    def gerCurrentRecognitionSettings(self):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.GetRecognitionSettings(API_pb2.GetRecognitionSettingsRequest())
+            chan_names = response.band_name
+            accum_size = response.accumulation_size
+            threshold = response.threshold
+            exceedance = response.exceedance
+
+            # Convert lists to dictionary
+            current_recogn_settings_dict = {}
+            for i in range(len(chan_names)):
+                current_recogn_settings_dict[chan_names[i]] = {'accum_size': accum_size[i],
+                                                               'threshold': threshold[i],
+                                                               'exceedance': exceedance[i]}
+
+            self.logger_.info(f'Current Recognition Settings: {current_recogn_settings_dict}')
+            return current_recogn_settings_dict
+        except Exception as e:
+            self.logger_.error(f'Error with getting current Recognition Settings! \n{e}')
 
     def getCurrentZScaleRequest(self):
         try:
@@ -78,33 +109,66 @@ class gRPCThread(QtCore.QThread):
             for i in range(len(chan_names)):
                 current_zscale_dict[chan_names[i]] = [z_min[i], z_max[i]]
 
-            logger.info(f'Current ZScale: {current_zscale_dict}')
+            self.logger_.info(f'Current ZScale: {current_zscale_dict}')
             return current_zscale_dict
         except Exception as e:
-            logger.error(f'Error with getting current ZScale! \n{e}')
+            self.logger_.error(f'Error with getting current ZScale! \n{e}')
+
+    def sendRecognitionSettings(self, channel_name: str, accum_size: int, threshold: float, exceedance: float):
+        print('SEND RECOGN SETTINGS ', channel_name)
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.RecognitionSettings(API_pb2.RecognitionSettingsRequest(band_name=channel_name,
+                                                                                   accumulation_size=accum_size,
+                                                                                   threshold=threshold,
+                                                                                   exceedance=exceedance))
+            self.logger_.info(response.status)
+            return response
+        except Exception as e:
+            self.logger_.error(f'Error with changing recognition settings in channel {channel_name} \n{e}')
 
     def changeZScaleRequest(self, channel_name: str, z_min: int, z_max: int):
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
             response = stub.ZScaleChanging(API_pb2.ZScaleRequest(band_name=channel_name, z_min=z_min, z_max=z_max))
-            logger.info(response.status)
+            self.logger_.info(response.status)
             return response
         except Exception as e:
-            logger.error(f'Error with changing Z scale in channel {channel_name} \n{e}')
+            self.logger_.error(f'Error with changing Z scale in channel {channel_name} \n{e}')
+
+    def saveConfigRequest(self, password: str):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.SaveConfig(
+                API_pb2.SaveConfigRequest(password_hash=custom_utils.create_password_hash(password=password)))
+            self.logger_.info(response.status)
+            return response
+        except Exception as e:
+            self.logger_.error(f'Error with saving config! \n{e}')
+
+    def onOffAccumulationRequest(self, state: int):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.OnOffAccumulation(API_pb2.OnOffAccumulationRequest(accum_status=bool(state)))
+            self.logger_.info(response.accum_status)
+            return response
+        except Exception as e:
+            self.logger_.error(f'Error with changing accumulation status! \n{e}')
 
     def run(self):
         stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
         retry_count = 0
         while retry_count < self.max_gRPC_retries:
             if self.isInterruptionRequested():                  # stop thread
-                logger.info('gRPCThread is interrupted.')
+                self.logger_.info('gRPCThread is interrupted.')
                 break
             try:
-                responses = stub.ProceedDataStream(API_pb2.ProceedDataStreamRequest(img=self.show_img_status))
+                responses = stub.ProceedDataStream(API_pb2.ProceedDataStreamRequest(detected_img=self.detected_img_status,
+                                                                                    clear_img=self.clear_img_status))
 
                 for response in responses:                  # Обработка каждой порции данных
                     if self.isInterruptionRequested():
-                        logger.info('gRPCThread is interrupted.')
+                        self.logger_.info('gRPCThread is interrupted.')
                         break
                     band_name = response.band_name
                     if band_name in self.available_channels:
@@ -116,18 +180,21 @@ class gRPCThread(QtCore.QThread):
                             drone_freq = uav.freq
                             drones_list.append({'name': drone_name, 'state': drone_state, 'freq': drone_freq})
                         response_dict['drones'] = drones_list
-                        if response.HasField('img'):
-                            response_dict['img'] = response.img
+                        if response.HasField('detected_img'):
+                            response_dict['detected_img'] = response.detected_img
+                        if response.HasField('clear_img'):
+                            response_dict['clear_img'] = response.clear_img
                         self.signal_dataStream_response.emit(response_dict)
                         self.msleep(5)
 
+
             except grpc.RpcError as rpc_error:
                 if rpc_error.code() == grpc.StatusCode.UNAVAILABLE:
-                    logger.warning(f"Сервер недоступен. Попытка переподключения... {rpc_error}")
+                    self.logger_.warning(f"Сервер недоступен. Попытка переподключения... {rpc_error}")
                     retry_count += 1
                     self.msleep(5)
                 else:
-                    logger.error(rpc_error)
+                    self.logger_.error(rpc_error)
             else:
                 break
 

@@ -82,7 +82,7 @@ class Client(Process):
                  accumulation_size: int,
                  exceedance: float,
                  data_queue=None,
-                 img_queue=None,
+                 error_queue=None,
                  logger_=None):
         super().__init__()
         self.nn = None
@@ -103,12 +103,13 @@ class Client(Process):
         self.threshold = threshold
         self.accumulation_size = accumulation_size
         self.exceedance = exceedance
+        self.accum_status = True
         self.global_threshold = self.threshold * self.accumulation_size * self.exceedance
         self.pipe_control_child, self.pipe_control_parent = Pipe()
         self.control_q = Queue()
         self.config_q = Queue()
         self.data_q = data_queue
-        self.img_q = img_queue
+        self.error_queue = error_queue
         self.img_save_path = '\\saved_images'
         if not os.path.isdir(self.img_save_path):
             os.mkdir(self.img_save_path)
@@ -128,9 +129,8 @@ class Client(Process):
         self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
         self.record_images_status = False
 
-    def set_queue(self, data_queue: Queue, img_queue: Queue):
+    def set_queue(self, data_queue: Queue):
         self.data_q = data_queue
-        self.img_q = img_queue
 
     def change_zscale(self, z_min: int, z_max: int):
         self.z_min = z_min
@@ -158,13 +158,17 @@ class Client(Process):
         self.global_threshold = self.threshold * self.accumulation_size * self.exceedance
 
     def accumulate_and_make_decision(self, result_dict: dict):
+        print('res= ', result_dict)
         accumed_results = []
         frequencies = []
 
         for key, key_dict in result_dict.items():
-            self.accum_deques[key].appendleft(key_dict['confidence'])
-            accum = sum(self.accum_deques[key])
-            state = bool(accum >= self.global_threshold)
+            if self.accum_status:
+                self.accum_deques[key].appendleft(key_dict['confidence'])
+                accum = sum(self.accum_deques[key])
+                state = bool(accum >= self.global_threshold)
+            else:
+                state = bool(key_dict['confidence'] > self.threshold)
             accumed_results.append(state)
             if state:
                 freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
@@ -178,6 +182,7 @@ class Client(Process):
                 frequencies.append(freq)
             else:
                 frequencies.append(0)
+            print('accum= ', accumed_results)
         return accumed_results, frequencies
 
     def calculate_frequency(self, ymin, ymax):
@@ -192,6 +197,10 @@ class Client(Process):
     def change_record_images_status(self, status: bool):
         self.record_images_status = status
         self.logger.debug(f'Record images status was changed on {status}.')
+
+    def change_accum_status(self, accum_status: bool):
+        self.accum_status = accum_status
+        print(f'Accum status = {self.accum_status}')
 
     def receive_from_Alinx(self, sock):
         while True:
@@ -236,74 +245,77 @@ class Client(Process):
 
     @logger.catch
     def run(self):
-            try:
-                self.nn = NNProcessing(name=self.name,
-                                       weights=self.weights_path,
-                                       sample_rate=self.sample_rate,
-                                       width=self.signal_width,
-                                       height=self.signal_height,
-                                       project_path=self.project_path,
-                                       map_list=self.map_list,
-                                       img_size=self.img_size,
-                                       msg_len=self.msg_len,
-                                       z_min=self.z_min,
-                                       z_max=self.z_max,
-                                       colormap='inferno',
-                                       img_save_path=self.img_save_path)
-                self.logger.debug(f'NNProcessing started by {self.nn.device}')
-                tcp_connection_status = True
-            except Exception as e:
-                self.logger.error(f'Cant initialize NNProcessing! {e}')
-                tcp_connection_status = False
+        try:
+            self.nn = NNProcessing(name=self.name,
+                                   weights=self.weights_path,
+                                   sample_rate=self.sample_rate,
+                                   width=self.signal_width,
+                                   height=self.signal_height,
+                                   project_path=self.project_path,
+                                   map_list=self.map_list,
+                                   img_size=self.img_size,
+                                   msg_len=self.msg_len,
+                                   z_min=self.z_min,
+                                   z_max=self.z_max,
+                                   colormap='inferno',
+                                   img_save_path=self.img_save_path)
+            self.logger.debug(f'NNProcessing started by {self.nn.device}')
 
-            while tcp_connection_status:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    try:
-                        s.settimeout(5)
-                        s.connect(self.address)
-                        self.logger.success(f'Connected to {self.address}!')
-                        if self.hardware == 'USRP' or self.hardware == 'Usrp' or self.hardware == 'usrp':
-                            nn_type = s.recv(2)
-                            self.logger.debug(f'NN type: {nn_type}')
+        except Exception as e:
+            self.logger.error(f'Cant initialize NNProcessing! {e}')
+            self.error_queue.put(f'Cant initialize NNProcessing! {e}')
+            return
 
-                            receive = self.receive_from_USRP
-                        elif self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
-                            receive = self.receive_from_Alinx
-                        else:
-                            self.logger.critical('Unknown Device Type!')
-                            return
+        while True:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.settimeout(5)
+                    s.connect(self.address)
+                    self.logger.success(f'Connected to {self.address}!')
+                    if self.hardware == 'USRP' or self.hardware == 'Usrp' or self.hardware == 'usrp':
+                        nn_type = s.recv(2)
+                        self.logger.debug(f'NN type: {nn_type}')
 
-                        while True:
-                            img_arr = receive(sock=s)
-                            if img_arr is not None:
-                                result = self.nn.processing(img_arr, save_images=self.record_images_status)
-                                df_result = result.pandas().xyxy[0]
-                                if self.data_q is not None:
-                                    res, freq = self.accumulate_and_make_decision(
-                                        self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
-                                    self.data_q.put({'name': self.name,
-                                                     'results': res,
-                                                     'frequencies': freq,
-                                                     'predict_df': df_result,
-                                                     'image': copy.deepcopy(result.render()[0])})
-                                if not self.control_q.empty():
-                                    cmd_dict = self.control_q.get()
-                                    args = cmd_dict['args']
-                                    func = getattr(self, cmd_dict['func'])
-                                    func(*args)
+                        receive = self.receive_from_USRP
+                    elif self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
+                        receive = self.receive_from_Alinx
+                    else:
+                        self.logger.critical('Unknown Device Type!')
+                        return
 
-                    except queue.Full as e:
-                        self.logger.debug('IMGQueue full.')
-                    except socket.error as e:
-                        s.close()
-                        self.logger.error(f'Connection error! {e}')
-                        time.sleep(1)
-                    except Exception as e:
-                        self.logger.error(e)
-                        s.close()
-                        tcp_connection_status = False
+                    while True:
+                        img_arr = receive(sock=s)
+                        if img_arr is not None:
+                            clear_img, df_result, detected_img = self.nn.processing_for_grpc(img_arr)
 
-            self.logger.debug(f'Port №{self.address} finished work')
+                            if self.data_q is not None:
+                                res, freq = self.accumulate_and_make_decision(
+                                    self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
+                                self.data_q.put({'name': self.name,
+                                                 'results': res,
+                                                 'frequencies': freq,
+                                                 'predict_df': df_result,
+                                                 'detected_img': detected_img,
+                                                 'clear_img': clear_img})
+                            if not self.control_q.empty():
+                                cmd_dict = self.control_q.get()
+                                args = cmd_dict['args']
+                                func = getattr(self, cmd_dict['func'])
+                                func(*args)
+
+                except queue.Full as e:
+                    self.logger.debug('IMGQueue full.')
+                except socket.error as e:
+                    s.close()
+                    self.logger.error(f'Connection error! {e}')
+                    self.error_queue.put(f'Connection error! {e}')
+                    time.sleep(1)
+                except Exception as e:
+                    self.logger.error(e)
+                    self.error_queue.put(e)
+                    s.close()
+                    break
+        self.logger.debug(f'Port №{self.address} finished work')
 
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
@@ -313,11 +325,20 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.config = load_conf(config_path=self.config_path)
         self.data_store = {}
         self.data_q = Queue(maxsize=5)
+        self.error_q = Queue()
         self.processes = {}
         self.connections = self.config['connections']
 
+    def ServerErrorStream(self, request, context):
+        self.custom_logger.debug(f'Start server error stream ')
+        while True:
+            if not self.error_q.empty():
+                print(error:=self.error_q.get())
+                yield API_pb2.ServerErrorResponse(msg=error)
+
     def ProceedDataStream(self, request, context):
-        self.custom_logger.debug(f'Start data stream with img status = {request.img}')
+        self.custom_logger.debug(f'Start data stream with detected img status = {request.detected_img} and'
+                                 f'clear img status = {request.clear_img}')
         while True:
             if not self.data_q.empty():
                 res = self.data_q.get()
@@ -328,9 +349,16 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                           API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2], freq=res['frequencies'][2]),
                           API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3], freq=res['frequencies'][3])
                         ]
-                if request.img:
-                    img = res['image'].tobytes()
-                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs, img=img)
+                if request.detected_img and request.clear_img:
+                    clear_img = res['clear_img'].tobytes()
+                    detected_img = res['detected_img'].tobytes()
+                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs, detected_img=detected_img, clear_img=clear_img)
+                elif request.detected_img:
+                    detected_img = res['detected_img'].tobytes()
+                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs, detected_img=detected_img)
+                elif request.clear_img:
+                    clear_img = res['clear_img'].tobytes()
+                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs, clear_img=clear_img)
                 else:
                     yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs)
 
@@ -384,6 +412,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                             accumulation_size=int(connection['detection_settings']['accumulation_size']),
                             exceedance=float(connection['detection_settings']['exceedance']),
                             data_queue=self.data_q,
+                            error_queue=self.error_q,
                             logger_=self.custom_logger.bind(process=str(conn_name)))
                 cl.start()
                 self.custom_logger.debug('Client started!')
@@ -475,6 +504,12 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         else:
             self.custom_logger.error(f'Unknown channel {name}')
             return API_pb2.RecognitionSettingsResponse(numb_of_files=-1)
+
+    def OnOffAccumulation(self, request, context):
+        accum_status = request.accum_status
+        for name, process in self.processes.items():
+            process.control_q.put({'func': 'change_accum_status', 'args': (accum_status, )})
+        return API_pb2.OnOffAccumulationResponse(accum_status=f'Accumulation status was changed on {accum_status}')
 
 
 def serve():

@@ -31,13 +31,13 @@ if __name__ == '__main__':
 
     import detect
 
-    print(detect.run(weights=r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10s_6classes\weights\best.pt",
-               source=r"D:\YOLOv5 DATASET\test\2023-11-22-16-46-47-946350.jpg",
+    print(detect.run(weights=r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver3\weights\best.pt",
+               source=r"D:\2\11-21-12-57-22-731293.jpg",
                data=r"C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\data\dataset.yaml",
                imgsz=(640, 640),
                conf_thres=0.2,
                view_img=True,
-               nosave=True,
+               nosave=False,
                visualize=False,
                iou_thres=0.25))
 

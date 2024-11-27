@@ -1,3 +1,4 @@
+import copy
 import datetime
 import os.path
 import time
@@ -114,6 +115,15 @@ class NNProcessing(object):
         except KeyError:
             self.colormap = cv2.COLORMAP_INFERNO
 
+    def processing_for_grpc(self, norm_data):
+        color_image = cv2.applyColorMap(norm_data, self.colormap)   # create a color image from normalized data
+        img = cv2.resize(color_image, self.img_size)
+        clear_img = copy.copy(img)
+        result = self.model(img, size=self.img_size[0])       # set the model use the screen
+        df_result = result.pandas().xyxy[0]
+        detected_img = result.render()[0]
+        return clear_img, df_result, detected_img
+
     def processing(self, norm_data, save_images=False):
         color_image = cv2.applyColorMap(norm_data, self.colormap)   # create a color image from normalized data
         screen = cv2.resize(color_image, self.img_size)
@@ -134,6 +144,15 @@ class NNProcessing(object):
             cv2.imwrite(filename=self.img_save_path + '\\' + filename + '_detected.jpg', img=result.render()[0])
 
         return result
+
+    def processing_calc_power(self, norm_data):
+        img = cv2.imread(r"D:\2\input.jpg")
+        result = self.model(img, size=self.img_size[0])  # set the model use the screen
+        df_result = result.pandas().xyxy[0]
+        print(df_result)
+        detected_img = result.render()[0]
+        return img, df_result, detected_img
+
 
     def convert_result(self, df: pandas.DataFrame, return_data_type='list'):
         labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag', 'autel_max_4n(t)']

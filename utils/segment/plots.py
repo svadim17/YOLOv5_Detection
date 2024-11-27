@@ -132,7 +132,7 @@ def plot_results_with_masks(file="path/to/results.csv", dir="", best=True):
             for i, j in enumerate([1, 2, 3, 4, 5, 6, 9, 10, 13, 14, 15, 16, 7, 8, 11, 12]):
                 y = data.values[:, j]
                 # y[y == 0] = np.nan  # don't show zero values
-                ax[i].plot(x, y, marker=".", label=f.stem, linewidth=2, markersize=2)
+                ax[i].histogram_plot(x, y, marker=".", label=f.stem, linewidth=2, markersize=2)
                 if best:
                     # best
                     ax[i].scatter(index, y[index], color="r", label=f"best:{index}", marker="*", linewidth=3)

@@ -7,8 +7,8 @@ import cv2
 import datetime
 
 
-signals_folder = r"D:\YOLOv5 DATASET\STEP 3\IMAGES\autel_evo_pro_v3_sig"
-images_folder = r"D:\YOLOv5 DATASET\STEP 3\IMAGES\autel_evo_max_shift"
+signals_folder = r"D:\1"
+images_folder = r"D:\2"
 
 
 def open_all_bin_files(filepath):

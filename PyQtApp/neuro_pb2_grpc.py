@@ -45,6 +45,11 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.ProceedDataStreamRequest.SerializeToString,
                 response_deserializer=neuro__pb2.DataResponse.FromString,
                 _registered_method=True)
+        self.ServerErrorStream = channel.unary_stream(
+                '/NeuroDataProcessing.DataProcessingService/ServerErrorStream',
+                request_serializer=neuro__pb2.VoidRequest.SerializeToString,
+                response_deserializer=neuro__pb2.ServerErrorResponse.FromString,
+                _registered_method=True)
         self.StartChannel = channel.unary_unary(
                 '/NeuroDataProcessing.DataProcessingService/StartChannel',
                 request_serializer=neuro__pb2.StartChannelRequest.SerializeToString,
@@ -85,10 +90,10 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.CurrentZScaleRequest.SerializeToString,
                 response_deserializer=neuro__pb2.CurrentZScaleResponse.FromString,
                 _registered_method=True)
-        self.RecordImages = channel.unary_unary(
-                '/NeuroDataProcessing.DataProcessingService/RecordImages',
-                request_serializer=neuro__pb2.RecordImagesRequest.SerializeToString,
-                response_deserializer=neuro__pb2.RecordImagesResponse.FromString,
+        self.OnOffAccumulation = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/OnOffAccumulation',
+                request_serializer=neuro__pb2.OnOffAccumulationRequest.SerializeToString,
+                response_deserializer=neuro__pb2.OnOffAccumulationResponse.FromString,
                 _registered_method=True)
 
 
@@ -98,6 +103,13 @@ class DataProcessingServiceServicer(object):
 
     def ProceedDataStream(self, request, context):
         """RPC для отправки данных
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ServerErrorStream(self, request, context):
+        """RPC для серверных ошибок
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -152,7 +164,7 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def RecordImages(self, request, context):
+    def OnOffAccumulation(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -165,6 +177,11 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.ProceedDataStream,
                     request_deserializer=neuro__pb2.ProceedDataStreamRequest.FromString,
                     response_serializer=neuro__pb2.DataResponse.SerializeToString,
+            ),
+            'ServerErrorStream': grpc.unary_stream_rpc_method_handler(
+                    servicer.ServerErrorStream,
+                    request_deserializer=neuro__pb2.VoidRequest.FromString,
+                    response_serializer=neuro__pb2.ServerErrorResponse.SerializeToString,
             ),
             'StartChannel': grpc.unary_unary_rpc_method_handler(
                     servicer.StartChannel,
@@ -206,10 +223,10 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     request_deserializer=neuro__pb2.CurrentZScaleRequest.FromString,
                     response_serializer=neuro__pb2.CurrentZScaleResponse.SerializeToString,
             ),
-            'RecordImages': grpc.unary_unary_rpc_method_handler(
-                    servicer.RecordImages,
-                    request_deserializer=neuro__pb2.RecordImagesRequest.FromString,
-                    response_serializer=neuro__pb2.RecordImagesResponse.SerializeToString,
+            'OnOffAccumulation': grpc.unary_unary_rpc_method_handler(
+                    servicer.OnOffAccumulation,
+                    request_deserializer=neuro__pb2.OnOffAccumulationRequest.FromString,
+                    response_serializer=neuro__pb2.OnOffAccumulationResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -240,6 +257,33 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/ProceedDataStream',
             neuro__pb2.ProceedDataStreamRequest.SerializeToString,
             neuro__pb2.DataResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ServerErrorStream(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/ServerErrorStream',
+            neuro__pb2.VoidRequest.SerializeToString,
+            neuro__pb2.ServerErrorResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -467,7 +511,7 @@ class DataProcessingService(object):
             _registered_method=True)
 
     @staticmethod
-    def RecordImages(request,
+    def OnOffAccumulation(request,
             target,
             options=(),
             channel_credentials=None,
@@ -480,9 +524,9 @@ class DataProcessingService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/NeuroDataProcessing.DataProcessingService/RecordImages',
-            neuro__pb2.RecordImagesRequest.SerializeToString,
-            neuro__pb2.RecordImagesResponse.FromString,
+            '/NeuroDataProcessing.DataProcessingService/OnOffAccumulation',
+            neuro__pb2.OnOffAccumulationRequest.SerializeToString,
+            neuro__pb2.OnOffAccumulationResponse.FromString,
             options,
             channel_credentials,
             insecure,

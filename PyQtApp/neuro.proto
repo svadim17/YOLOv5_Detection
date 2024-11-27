@@ -20,13 +20,21 @@ message UavObject {
 message DataResponse {
     string band_name = 1;
     repeated UavObject uavs = 2;
-    optional bytes img = 3;
+    optional bytes detected_img = 3;
+    optional bytes clear_img = 4;
 }
 
 message ProceedDataStreamRequest {                   // Запрос на начало стрима с результатами распознавания
-    bool img = 1;
+    bool detected_img = 1;
+    bool clear_img = 2;
 }
 
+message VoidRequest {
+}
+
+message ServerErrorResponse {
+    string msg = 1;
+}
 
 message StartChannelRequest {           // Запрос на старт канала обработки
     string connection_name = 1;
@@ -100,18 +108,18 @@ message GetRecognitionSettingsResponse {
     repeated double exceedance = 4;
 }
 
-message RecordImagesRequest {
-    string band_name = 1;
-    bool record_status = 2;
+message OnOffAccumulationRequest {
+    bool accum_status = 1;
 }
 
-message RecordImagesResponse {
-    int32 numb_of_files = 1;
+message OnOffAccumulationResponse {
+    string accum_status = 1;
 }
 
 // Сервис обработки данных
 service DataProcessingService {
     rpc ProceedDataStream (ProceedDataStreamRequest) returns (stream DataResponse); // RPC для отправки данных
+    rpc ServerErrorStream (VoidRequest) returns (stream ServerErrorResponse); // RPC для серверных ошибок
     rpc StartChannel (StartChannelRequest) returns (StartChannelResponse);   // RPC для старта канала обработки
     rpc ZScaleChanging (ZScaleRequest) returns (ZScaleResponse);
     rpc GetAvailableChannels (ChannelsRequest) returns (ChannelsResponse);
@@ -120,5 +128,7 @@ service DataProcessingService {
     rpc RecognitionSettings (RecognitionSettingsRequest) returns (RecognitionSettingsResponse);
     rpc GetRecognitionSettings (GetRecognitionSettingsRequest) returns (GetRecognitionSettingsResponse);
     rpc GetCurrentZScale (CurrentZScaleRequest) returns (CurrentZScaleResponse);
-    rpc RecordImages (RecordImagesRequest) returns (RecordImagesResponse);
+    rpc OnOffAccumulation (OnOffAccumulationRequest) returns (OnOffAccumulationResponse);
 }
+
+
