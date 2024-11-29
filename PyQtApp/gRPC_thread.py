@@ -45,14 +45,20 @@ class gRPCServerErrorThread(QtCore.QThread):
 class gRPCThread(QtCore.QThread):
     signal_dataStream_response = pyqtSignal(dict)
 
-    def __init__(self, channel, map_list, detected_img_status: bool, clear_img_status: bool, logger_):
+    def __init__(self, channel: int,
+                 map_list: list,
+                 detected_img_status: bool,
+                 clear_img_status: bool,
+                 spectrum_status: bool,
+                 logger_):
         QtCore.QThread.__init__(self)
         self.map_list = map_list
         self.gRPC_channel = channel
         self.max_gRPC_retries = 55555
         self.available_channels = None
-        self.detected_img_status = detected_img_status
+        self.show_img_status = detected_img_status
         self.clear_img_status = clear_img_status
+        self.show_spectrum_status = spectrum_status
         self.logger_ = logger_
 
     def getAvailableChannelsRequest(self):
@@ -163,8 +169,9 @@ class gRPCThread(QtCore.QThread):
                 self.logger_.info('gRPCThread is interrupted.')
                 break
             try:
-                responses = stub.ProceedDataStream(API_pb2.ProceedDataStreamRequest(detected_img=self.detected_img_status,
-                                                                                    clear_img=self.clear_img_status))
+                responses = stub.ProceedDataStream(API_pb2.ProceedDataStreamRequest(detected_img=self.show_img_status,
+                                                                                    clear_img=self.clear_img_status,
+                                                                                    spectrum=self.show_spectrum_status))
 
                 for response in responses:                  # Обработка каждой порции данных
                     if self.isInterruptionRequested():
@@ -184,6 +191,9 @@ class gRPCThread(QtCore.QThread):
                             response_dict['detected_img'] = response.detected_img
                         if response.HasField('clear_img'):
                             response_dict['clear_img'] = response.clear_img
+                        if response.HasField('spectrum'):
+                            response_dict['spectrum'] = response.spectrum
+
                         self.signal_dataStream_response.emit(response_dict)
                         self.msleep(5)
 

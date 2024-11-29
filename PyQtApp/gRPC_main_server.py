@@ -158,7 +158,6 @@ class Client(Process):
         self.global_threshold = self.threshold * self.accumulation_size * self.exceedance
 
     def accumulate_and_make_decision(self, result_dict: dict):
-        print('res= ', result_dict)
         accumed_results = []
         frequencies = []
 
@@ -182,7 +181,6 @@ class Client(Process):
                 frequencies.append(freq)
             else:
                 frequencies.append(0)
-            print('accum= ', accumed_results)
         return accumed_results, frequencies
 
     def calculate_frequency(self, ymin, ymax):
@@ -200,7 +198,11 @@ class Client(Process):
 
     def change_accum_status(self, accum_status: bool):
         self.accum_status = accum_status
-        print(f'Accum status = {self.accum_status}')
+        self.logger.info(f'Accum status = {self.accum_status}')
+
+    def average_spectrum(self, arr: np.ndarray):
+        spectrum = np.mean(arr, axis=0).astype(np.float16)    # среднее по столбцам (axis=0)
+        return spectrum
 
     def receive_from_Alinx(self, sock):
         while True:
@@ -218,8 +220,9 @@ class Client(Process):
                 np_arr = np_arr.astype(np.float32)
                 arr_resh = np_arr.reshape(self.signal_height, self.signal_width)
 
+                spectrum = self.average_spectrum(arr=arr_resh)
                 img_arr = self.nn.normalization(np.fft.fftshift(arr_resh, axes=(1,)))
-                return img_arr
+                return img_arr, spectrum
             else:
                 self.logger.warning(f'Packet size = {len(arr)} missed.')
                 return None
@@ -236,9 +239,13 @@ class Client(Process):
             arr += sock.recv(self.msg_len - len(arr))
             # self.logger.warning(f'Packet {i} missed.')
         np_arr = np.frombuffer(arr, dtype=np.int8)
+        arr_resh = np_arr.reshape(self.signal_height, self.signal_width)
+
+        spectrum = self.average_spectrum(arr=arr_resh)
+
         if np_arr.size == self.msg_len:
-            img_arr = self.nn.normalization(np_arr.reshape(self.signal_height, self.signal_width))
-            return img_arr
+            img_arr = self.nn.normalization(arr_resh)
+            return img_arr, spectrum
         else:
             self.logger.warning(f'Packet size = {np_arr.size} missed.')
             return None
@@ -284,7 +291,7 @@ class Client(Process):
                         return
 
                     while True:
-                        img_arr = receive(sock=s)
+                        img_arr, spectrum = receive(sock=s)
                         if img_arr is not None:
                             clear_img, df_result, detected_img = self.nn.processing_for_grpc(img_arr)
 
@@ -296,7 +303,8 @@ class Client(Process):
                                                  'frequencies': freq,
                                                  'predict_df': df_result,
                                                  'detected_img': detected_img,
-                                                 'clear_img': clear_img})
+                                                 'clear_img': clear_img,
+                                                 'spectrum': spectrum})
                             if not self.control_q.empty():
                                 cmd_dict = self.control_q.get()
                                 args = cmd_dict['args']
@@ -349,19 +357,16 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                           API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2], freq=res['frequencies'][2]),
                           API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3], freq=res['frequencies'][3])
                         ]
-                if request.detected_img and request.clear_img:
-                    clear_img = res['clear_img'].tobytes()
-                    detected_img = res['detected_img'].tobytes()
-                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs, detected_img=detected_img, clear_img=clear_img)
-                elif request.detected_img:
-                    detected_img = res['detected_img'].tobytes()
-                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs, detected_img=detected_img)
-                elif request.clear_img:
-                    clear_img = res['clear_img'].tobytes()
-                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs, clear_img=clear_img)
-                else:
-                    yield API_pb2.DataResponse(band_name=band_name, uavs=Uavs)
 
+                response_data = {'band_name': band_name, 'uavs': Uavs}
+                if request.clear_img:
+                    response_data['clear_img'] = res['clear_img'].tobytes()
+                if request.detected_img:
+                    response_data['detected_img'] = res['detected_img'].tobytes()
+                if request.spectrum:
+                    response_data['spectrum'] = res['spectrum'].tobytes()
+
+                yield API_pb2.DataResponse(**response_data)
                 self.custom_logger.trace(f'Data was send from band {band_name}')
 
     def GetAvailableChannels(self, request, context):
@@ -515,7 +520,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 def serve():
     gRPC_PORT = 51234
     CONFIG_PATH = 'server_conf.yaml'
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10),)
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=100),)
                          # interceptors=[ConnectionInterceptor()])  # Добавляем наш interceptor
     API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(config_path=CONFIG_PATH), server)
     server.add_insecure_port(f'[::]:{gRPC_PORT}')

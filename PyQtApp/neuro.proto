@@ -22,11 +22,13 @@ message DataResponse {
     repeated UavObject uavs = 2;
     optional bytes detected_img = 3;
     optional bytes clear_img = 4;
+    optional bytes spectrum = 5;
 }
 
 message ProceedDataStreamRequest {                   // Запрос на начало стрима с результатами распознавания
     bool detected_img = 1;
     bool clear_img = 2;
+    bool spectrum = 3;
 }
 
 message VoidRequest {
