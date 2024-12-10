@@ -95,6 +95,16 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.OnOffAccumulationRequest.SerializeToString,
                 response_deserializer=neuro__pb2.OnOffAccumulationResponse.FromString,
                 _registered_method=True)
+        self.GetProcessStatus = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/GetProcessStatus',
+                request_serializer=neuro__pb2.GetProcessStatusRequest.SerializeToString,
+                response_deserializer=neuro__pb2.GetProcessStatusResponse.FromString,
+                _registered_method=True)
+        self.RestartProcess = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/RestartProcess',
+                request_serializer=neuro__pb2.RestartProcessRequest.SerializeToString,
+                response_deserializer=neuro__pb2.RestartProcessResponse.FromString,
+                _registered_method=True)
 
 
 class DataProcessingServiceServicer(object):
@@ -170,6 +180,18 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetProcessStatus(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RestartProcess(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataProcessingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -227,6 +249,16 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.OnOffAccumulation,
                     request_deserializer=neuro__pb2.OnOffAccumulationRequest.FromString,
                     response_serializer=neuro__pb2.OnOffAccumulationResponse.SerializeToString,
+            ),
+            'GetProcessStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetProcessStatus,
+                    request_deserializer=neuro__pb2.GetProcessStatusRequest.FromString,
+                    response_serializer=neuro__pb2.GetProcessStatusResponse.SerializeToString,
+            ),
+            'RestartProcess': grpc.unary_unary_rpc_method_handler(
+                    servicer.RestartProcess,
+                    request_deserializer=neuro__pb2.RestartProcessRequest.FromString,
+                    response_serializer=neuro__pb2.RestartProcessResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -527,6 +559,60 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/OnOffAccumulation',
             neuro__pb2.OnOffAccumulationRequest.SerializeToString,
             neuro__pb2.OnOffAccumulationResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetProcessStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/GetProcessStatus',
+            neuro__pb2.GetProcessStatusRequest.SerializeToString,
+            neuro__pb2.GetProcessStatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RestartProcess(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/RestartProcess',
+            neuro__pb2.RestartProcessRequest.SerializeToString,
+            neuro__pb2.RestartProcessResponse.FromString,
             options,
             channel_credentials,
             insecure,

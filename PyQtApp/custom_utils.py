@@ -35,6 +35,15 @@ def count_files(directory):
         return -1
 
 
+class AlinxException(Exception):
+
+    def __init__(self, message='Error with receiving data from hardware!'):
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
+
 if __name__ == '__main__':
     dk = create_password_hash(password='kgbradar')
     print(dk)

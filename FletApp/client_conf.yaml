@@ -1,7 +1,7 @@
 map_list: ['Autel', 'Fpv', 'Dji', 'WiFi']
 server_port: '51234'
 jetson_service_port: '51235'
-#server_addr: '192.168.1.193'
-server_addr: 'localhost'
+server_addr: '192.168.1.240'
+#server_addr: 'localhost'
 show_images: True
 show_frequinces: True

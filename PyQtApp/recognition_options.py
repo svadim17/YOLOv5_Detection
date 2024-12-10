@@ -32,11 +32,6 @@ class RecognitionOptions(QWidget):
         self.add_widgets_to_layout()
 
     def create_widgets(self):
-        # self.l_chb_sound = QLabel('Enable sound')
-        self.chb_sound = QCheckBox('Enable sound')
-        self.chb_sound.setCheckable(True)
-        self.chb_sound.setChecked(False)
-
         self.box_decision = QGroupBox('Decision')
 
         self.l_slider_threshold = QLabel('Threshold')
@@ -92,7 +87,6 @@ class RecognitionOptions(QWidget):
         self.l_slider_zscale_min = QLabel('Z-Min')
 
     def link_events(self):
-        self.chb_sound.stateChanged.connect(self.chb_sound_value_changed)
         self.slider_threshold.valueChanged.connect(lambda: self.slider_threshold_value_changed(
                                                      self.slider_threshold.value() / 100))
         self.slider_threshold.sliderReleased.connect(self.recognition_settings_changed)
@@ -103,12 +97,6 @@ class RecognitionOptions(QWidget):
 
     def add_widgets_to_layout(self):
         spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        sound_layout = QHBoxLayout()
-        sound_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        sound_layout.setSpacing(0)
-        sound_layout.addWidget(self.chb_sound)
-        # sound_layout.addWidget(self.l_chb_sound)
 
         threshold_slider_layout = QHBoxLayout()
         threshold_slider_layout.addWidget(self.slider_threshold)
@@ -154,12 +142,8 @@ class RecognitionOptions(QWidget):
         self.box_decision.setLayout(cntrls_layout)
         self.box_zscale.setLayout(sliders_layout)
 
-        self.main_layout.addLayout(sound_layout)
         self.main_layout.addWidget(self.box_decision)
         self.main_layout.addWidget(self.box_zscale)
-
-    def chb_sound_value_changed(self, value: int):
-        print(f'Sound state: {bool(value)}')
 
     @pyqtSlot(float)
     def slider_threshold_value_changed(self, value: float):
@@ -189,6 +173,7 @@ class RecognitionOptions(QWidget):
         self.slider_zscale_min.setValue(value)
         self.spb_slider_zscale_min.setValue(value)
         self.signal_zscale_changed.emit(self.name, self.slider_zscale_min.value(), self.slider_zscale_max.value())
+
 
 if __name__ == '__main__':
     app = QApplication([])

@@ -44,6 +44,7 @@ class gRPCServerErrorThread(QtCore.QThread):
 
 class gRPCThread(QtCore.QThread):
     signal_dataStream_response = pyqtSignal(dict)
+    signal_process_status = pyqtSignal(bool)
 
     def __init__(self, channel: int,
                  map_list: list,
@@ -160,6 +161,26 @@ class gRPCThread(QtCore.QThread):
             return response
         except Exception as e:
             self.logger_.error(f'Error with changing accumulation status! \n{e}')
+
+    def getProcessStatusRequest(self, name: str):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.GetProcessStatus(API_pb2.GetProcessStatusRequest(channel_name=name))
+            self.signal_process_status.emit(response.status)
+            self.logger_.info(f'Process "{name}" status is {response.status}.')
+            return response
+        except Exception as e:
+            self.logger_.error(f'Error with getting process "{name}" status! \n{e}')
+
+    def restartProcess(self, name: str):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.RestartProcess(API_pb2.RestartProcessRequest(channel_name=name))
+            self.signal_process_status.emit(response.status)
+            self.logger_.info(f'Process "{name}" status is {response.status} after restart.')
+            return response
+        except Exception as e:
+            self.logger_.error(f'Error with restarting process "{name}"! \n{e}')
 
     def run(self):
         stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)

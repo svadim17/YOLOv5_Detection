@@ -144,13 +144,17 @@ class MainWindow(QMainWindow):
                                               show_images=self.show_img_status,
                                               show_histogram=self.show_histogram_status,
                                               show_spectrum=self.show_spectrum_status)
-            recogn_widget.recogn_options.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
-            recogn_widget.recogn_options.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
-            self.settingsWidget.mainTab.chb_show_zscale.stateChanged.connect(recogn_widget.recogn_options.show_zscale_settings)
+            recogn_widget.recognOptions.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
+            recogn_widget.recognOptions.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
+            self.settingsWidget.mainTab.chb_show_zscale.stateChanged.connect(recogn_widget.recognOptions.show_zscale_settings)
             self.settingsWidget.mainTab.chb_show_frequencies.stateChanged.connect(recogn_widget.show_frequencies)
 
+            recogn_widget.processOptions.signal_process_name.connect(self.gRPCThread.getProcessStatusRequest)
+            recogn_widget.processOptions.signal_restart_process_name.connect(self.gRPCThread.restartProcess)
+            self.gRPCThread.signal_process_status.connect(recogn_widget.processOptions.update_process_status)
+
             self.recogn_widgets[channel] = recogn_widget
-        self.add_recogn_widgets(type_of_adding='default')
+        self.add_recogn_widgets(type_of_adding='left')
         self.processor.init_recogn_widgets(recogn_widgets=self.recogn_widgets)
 
     def add_recogn_widgets(self, type_of_adding: str):
@@ -176,6 +180,10 @@ class MainWindow(QMainWindow):
                                           self.recogn_widgets[list(self.recogn_widgets.keys())[i + 1]])
                     i += 2
                 except: pass
+
+        elif type_of_adding == 'left':
+            for widget in self.recogn_widgets.values():
+                self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, widget)
 
     def change_connection_state(self, status: bool):
         if status:
@@ -306,6 +314,9 @@ class MainWindow(QMainWindow):
 
         # Перемещаем окно в центр экрана
         self.move(x, y)
+
+    # def closeEvent(self, a0):
+    #     self.gRPCThread.gRPC_channel.close()
 
 
 if __name__ == '__main__':

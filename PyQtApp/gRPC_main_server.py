@@ -225,7 +225,7 @@ class Client(Process):
                 return img_arr, spectrum
             else:
                 self.logger.warning(f'Packet size = {len(arr)} missed.')
-                return None
+                raise custom_utils.AlinxException()
 
     def receive_from_USRP(self, sock):
         res_1 = np.arange(len(self.map_list) * 4)  # array of bytes to send (4 bytes for one class (float32)
@@ -276,7 +276,7 @@ class Client(Process):
         while True:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 try:
-                    s.settimeout(5)
+                    # s.settimeout(10)
                     s.connect(self.address)
                     self.logger.success(f'Connected to {self.address}!')
                     if self.hardware == 'USRP' or self.hardware == 'Usrp' or self.hardware == 'usrp':
@@ -331,10 +331,10 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.custom_logger = logger.bind(process='gRPC')
         self.config_path = config_path
         self.config = load_conf(config_path=self.config_path)
-        self.data_store = {}
-        self.data_q = Queue(maxsize=5)
+        self.data_q = Queue(maxsize=len(self.config['connections']) * 3)
         self.error_q = Queue()
         self.processes = {}
+        self.data_queues = {}
         self.connections = self.config['connections']
 
     def ServerErrorStream(self, request, context):
@@ -344,30 +344,39 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 print(error:=self.error_q.get())
                 yield API_pb2.ServerErrorResponse(msg=error)
 
+            for name, process in self.processes.items():
+                if not process.is_alive():
+                    print(f'Process {name} ZOMBIE!!!')
+                    self.custom_logger.info(f'Trying to restart process {name}')
+                    yield API_pb2.ServerErrorResponse(msg=f'Process {name} ZOMBIE!!!')
+                else:
+                    print(f'Process {name} works!')
+
     def ProceedDataStream(self, request, context):
         self.custom_logger.debug(f'Start data stream with detected img status = {request.detected_img} and'
                                  f'clear img status = {request.clear_img}')
         while True:
-            if not self.data_q.empty():
-                res = self.data_q.get()
-                band_name = res['name']
+            for channel_name, queue in self.data_queues.items():
+                if not queue.empty():
+                    res = queue.get()
+                    band_name = res['name']
 
-                Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0], freq=res['frequencies'][0]),
-                          API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1], freq=res['frequencies'][1]),
-                          API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2], freq=res['frequencies'][2]),
-                          API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3], freq=res['frequencies'][3])
-                        ]
+                    Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0], freq=res['frequencies'][0]),
+                              API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1], freq=res['frequencies'][1]),
+                              API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2], freq=res['frequencies'][2]),
+                              API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3], freq=res['frequencies'][3])
+                            ]
 
-                response_data = {'band_name': band_name, 'uavs': Uavs}
-                if request.clear_img:
-                    response_data['clear_img'] = res['clear_img'].tobytes()
-                if request.detected_img:
-                    response_data['detected_img'] = res['detected_img'].tobytes()
-                if request.spectrum:
-                    response_data['spectrum'] = res['spectrum'].tobytes()
+                    response_data = {'band_name': band_name, 'uavs': Uavs}
+                    if request.clear_img:
+                        response_data['clear_img'] = res['clear_img'].tobytes()
+                    if request.detected_img:
+                        response_data['detected_img'] = res['detected_img'].tobytes()
+                    if request.spectrum:
+                        response_data['spectrum'] = res['spectrum'].tobytes()
 
-                yield API_pb2.DataResponse(**response_data)
-                self.custom_logger.trace(f'Data was send from band {band_name}')
+                    yield API_pb2.DataResponse(**response_data)
+                    self.custom_logger.trace(f'Data was send from band {band_name}')
 
     def GetAvailableChannels(self, request, context):
         available_channels = tuple(self.connections.keys())
@@ -400,29 +409,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             conn_name = request.connection_name
             connection = self.connections[conn_name]
             try:
-                cl = Client(name=conn_name,
-                            address=(str(connection['ip']), int(connection['port'])),
-                            hardware_type=str(connection['hardware_type']),
-                            weights_path=connection['neural_network_settings']['weights_path'],
-                            project_path=connection['neural_network_settings']['project_path'],
-                            sample_rate=int(connection['signal_settings']['sample_rate']),
-                            signal_width=int(connection['signal_settings']['signal_width']),
-                            signal_height=int(connection['signal_settings']['signal_height']),
-                            img_size=tuple(connection['neural_network_settings']['img_size']),
-                            all_classes=tuple(connection['detection_settings']['all_classes']),
-                            map_list=tuple(connection['detection_settings']['map_list']),
-                            z_min=int(connection['neural_network_settings']['z_min']),
-                            z_max=int(connection['neural_network_settings']['z_max']),
-                            threshold=float(connection['detection_settings']['threshold']),
-                            accumulation_size=int(connection['detection_settings']['accumulation_size']),
-                            exceedance=float(connection['detection_settings']['exceedance']),
-                            data_queue=self.data_q,
-                            error_queue=self.error_q,
-                            logger_=self.custom_logger.bind(process=str(conn_name)))
-                cl.start()
-                self.custom_logger.debug('Client started!')
-                self.processes[conn_name] = cl
-                self.custom_logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
+                self.init_nn_client(conn_name=conn_name)
                 return API_pb2.StartChannelResponse(
                     connection_status=f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
             except Exception as e:
@@ -433,6 +420,34 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             self.custom_logger.warning(f'Unknown name {request.connection_name} or already exists')
             return API_pb2.StartChannelResponse(connection_status=f'Unknown channel: {request.connection_name} '
                                                                   f'or already exists!')
+
+    def init_nn_client(self, conn_name: str):
+        connection = self.connections[conn_name]
+        queue = Queue(maxsize=3)
+        cl = Client(name=conn_name,
+                    address=(str(connection['ip']), int(connection['port'])),
+                    hardware_type=str(connection['hardware_type']),
+                    weights_path=connection['neural_network_settings']['weights_path'],
+                    project_path=connection['neural_network_settings']['project_path'],
+                    sample_rate=int(connection['signal_settings']['sample_rate']),
+                    signal_width=int(connection['signal_settings']['signal_width']),
+                    signal_height=int(connection['signal_settings']['signal_height']),
+                    img_size=tuple(connection['neural_network_settings']['img_size']),
+                    all_classes=tuple(connection['detection_settings']['all_classes']),
+                    map_list=tuple(connection['detection_settings']['map_list']),
+                    z_min=int(connection['neural_network_settings']['z_min']),
+                    z_max=int(connection['neural_network_settings']['z_max']),
+                    threshold=float(connection['detection_settings']['threshold']),
+                    accumulation_size=int(connection['detection_settings']['accumulation_size']),
+                    exceedance=float(connection['detection_settings']['exceedance']),
+                    data_queue=queue,
+                    error_queue=self.error_q,
+                    logger_=self.custom_logger.bind(process=str(conn_name)))
+        cl.start()
+        self.custom_logger.debug(f'Client {conn_name} started!')
+        self.processes[conn_name] = cl
+        self.data_queues[conn_name] = queue
+        self.custom_logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
 
     def ZScaleChanging(self, request, context):
         name = request.band_name
@@ -515,6 +530,35 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         for name, process in self.processes.items():
             process.control_q.put({'func': 'change_accum_status', 'args': (accum_status, )})
         return API_pb2.OnOffAccumulationResponse(accum_status=f'Accumulation status was changed on {accum_status}')
+
+    def GetProcessStatus(self, request, context):
+        channel_name = request.channel_name
+        process_status = self.processes[channel_name].is_alive()
+        return API_pb2.GetProcessStatusResponse(status=process_status)
+
+    def RestartProcess(self, request, context):
+        channel_name = request.channel_name
+        if channel_name in self.processes:
+            try:
+                self.processes[channel_name].terminate()
+                del self.processes[channel_name]
+                del self.data_queues[channel_name]
+                self.custom_logger.info(f'Process {channel_name} was terminated.')
+            except Exception as e:
+                self.custom_logger.error(f'Error with terminate process {channel_name}\n{e}')
+            try:
+                try:
+                    self.init_nn_client(conn_name=channel_name)
+                except Exception as e:
+                    self.custom_logger.error(f'Connection error: {e}')
+                self.custom_logger.info(f'Process {channel_name} was started.')
+            except Exception as e:
+                self.custom_logger.error(f'Error with start process {channel_name}\n{e}')
+            process_status = self.processes[channel_name].is_alive()
+            return API_pb2.RestartProcessResponse(status=process_status)
+        else:
+            self.custom_logger.error(f'Unknown process {channel_name}!')
+            return API_pb2.RestartProcessResponse(status=False)
 
 
 def serve():

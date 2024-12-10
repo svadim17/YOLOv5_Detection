@@ -118,6 +118,22 @@ message OnOffAccumulationResponse {
     string accum_status = 1;
 }
 
+message GetProcessStatusRequest {
+    string channel_name = 1;
+}
+
+message GetProcessStatusResponse {
+    bool status=1;
+}
+
+message RestartProcessRequest {
+    string channel_name=1;
+}
+
+message RestartProcessResponse {
+    bool status=1;
+}
+
 // Сервис обработки данных
 service DataProcessingService {
     rpc ProceedDataStream (ProceedDataStreamRequest) returns (stream DataResponse); // RPC для отправки данных
@@ -131,6 +147,8 @@ service DataProcessingService {
     rpc GetRecognitionSettings (GetRecognitionSettingsRequest) returns (GetRecognitionSettingsResponse);
     rpc GetCurrentZScale (CurrentZScaleRequest) returns (CurrentZScaleResponse);
     rpc OnOffAccumulation (OnOffAccumulationRequest) returns (OnOffAccumulationResponse);
+    rpc GetProcessStatus (GetProcessStatusRequest) returns (GetProcessStatusResponse);
+    rpc RestartProcess (RestartProcessRequest) returns (RestartProcessResponse);
 }
 
 

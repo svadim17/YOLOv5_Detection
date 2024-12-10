@@ -9,6 +9,7 @@ from collections import deque
 import time
 import pyqtgraph
 from recognition_options import RecognitionOptions
+from process_options import ProcessOptions
 
 
 class RecognitionWidget(QDockWidget, QWidget):
@@ -40,14 +41,19 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.img_width, self.img_height = 320, 320
         self.drons_btns = {}
         self.drons_freq = {}
-        self.last_fps = deque(maxlen=10)
+        self.last_fps = deque(maxlen=5)
+        self.last_fps_2 = deque(maxlen=5)
         self.last_time = 0
+        self.last_time_2 = 0
 
-        self.recogn_options = RecognitionOptions(name=self.name,
-                                                 zscale_settings=zscale_settings,
-                                                 current_recogn_settings=self.recogn_options_dict)
-        self.accum_size = self.recogn_options.spb_accum_size.value()
-        self.recogn_options.spb_accum_size.valueChanged.connect(self.change_accum_size)
+        self.recognOptions = RecognitionOptions(name=self.name,
+                                                zscale_settings=zscale_settings,
+                                                current_recogn_settings=self.recogn_options_dict)
+        self.accum_size = self.recognOptions.spb_accum_size.value()
+        self.recognOptions.spb_accum_size.valueChanged.connect(self.change_accum_size)
+
+        self.processOptions = ProcessOptions(name=self.name)
+
         self.hist_deques = {name: deque(maxlen=self.accum_size) for name in self.map_list}
         self.create_widgets()
 
@@ -60,9 +66,15 @@ class RecognitionWidget(QDockWidget, QWidget):
 
     def context_menu(self):
         self.menu = QMenu(self)
-        self.act_options = QAction('Options')
-        self.act_options.triggered.connect(self.recogn_options.show)
+
+        self.act_options = QAction('Recognition options')
+        self.act_options.triggered.connect(self.recognOptions.show)
+
+        self.act_process_status = QAction('Process options')
+        self.act_process_status.triggered.connect(self.processOptions.show)
+
         self.menu.addAction(self.act_options)
+        self.menu.addAction(self.act_process_status)
         self.menu.exec(QCursor.pos())
 
     def create_widgets(self):
@@ -235,6 +247,11 @@ class RecognitionWidget(QDockWidget, QWidget):
 
     @pyqtSlot(dict)
     def update_state(self, info: dict):
+        self.last_fps_2.append(1 / (time.time() - self.last_time_2))
+        current_fps = f'FPS: {sum(self.last_fps_2) / len(self.last_fps_2):.1f}'
+        self.last_time_2 = time.time()
+        self.setWindowTitle(self.name + f' {current_fps}')
+
         band_name = info['band_name']
         for drone_dict in info['drones']:
             if drone_dict['state']:
