@@ -66,6 +66,9 @@ class MainTab(QWidget):
         self.chb_accumulation = QCheckBox('Enable accumulation')
         self.chb_accumulation.setChecked(True)
 
+        self.chb_watchdog = QCheckBox('Watchdog')
+        self.chb_watchdog.setChecked(self.config['watchdog'])
+
         self.btn_save_client_config = QPushButton('Save client config')
 
         self.btn_save_server_config = QPushButton('Save server config')
@@ -92,6 +95,7 @@ class MainTab(QWidget):
         controls_layout.addWidget(self.chb_show_zscale)
         controls_layout.addWidget(self.chb_show_frequencies)
         controls_layout.addWidget(self.chb_accumulation)
+        controls_layout.addWidget(self.chb_watchdog)
 
         widgets_states_layout = QVBoxLayout()
         widgets_states_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)

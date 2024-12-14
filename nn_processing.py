@@ -153,7 +153,6 @@ class NNProcessing(object):
         detected_img = result.render()[0]
         return img, df_result, detected_img
 
-
     def convert_result(self, df: pandas.DataFrame, return_data_type='list'):
         labels_to_combine = ['autel_lite', 'autel_max', 'autel_pro_v3', 'autel_tag', 'autel_max_4n(t)']
 
@@ -232,7 +231,6 @@ class NNProcessing(object):
                     result_dict[name] = {'confidence': 0, 'ymin': 0, 'ymax': 0}
 
             return result_dict
-
 
         # elif return_data_type == 'dict_with_freq':
         #     result_dict = {}

@@ -5,7 +5,7 @@ import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
 import socket
 import time
-from multiprocessing import Process, Queue, Pipe
+from multiprocessing import Process, Queue, Pipe, Lock
 import cv2
 import numpy as np
 from loguru import logger
@@ -312,7 +312,7 @@ class Client(Process):
                                 func(*args)
 
                 except queue.Full as e:
-                    self.logger.debug('IMGQueue full.')
+                    self.logger.debug('Queue full.')
                 except socket.error as e:
                     s.close()
                     self.logger.error(f'Connection error! {e}')
@@ -324,6 +324,7 @@ class Client(Process):
                     s.close()
                     break
         self.logger.debug(f'Port №{self.address} finished work')
+        self.error_queue.put(f'{self.name} ({self.address}) finished work')
 
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
@@ -331,23 +332,25 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.custom_logger = logger.bind(process='gRPC')
         self.config_path = config_path
         self.config = load_conf(config_path=self.config_path)
-        self.data_q = Queue(maxsize=len(self.config['connections']) * 3)
         self.error_q = Queue()
         self.processes = {}
         self.data_queues = {}
+        self.error_queues = {}
         self.connections = self.config['connections']
 
     def ServerErrorStream(self, request, context):
         self.custom_logger.debug(f'Start server error stream ')
         while True:
-            if not self.error_q.empty():
-                print(error:=self.error_q.get())
-                yield API_pb2.ServerErrorResponse(msg=error)
+            for error_q in self.error_queues.values():
+                if not error_q.empty():
+                    print(error:=error_q.get())
+                    yield API_pb2.ServerErrorResponse(msg=error)
 
             for name, process in self.processes.items():
                 if not process.is_alive():
                     print(f'Process {name} ZOMBIE!!!')
                     self.custom_logger.info(f'Trying to restart process {name}')
+                    self.restart_process(channel_name=name)
                     yield API_pb2.ServerErrorResponse(msg=f'Process {name} ZOMBIE!!!')
                 else:
                     print(f'Process {name} works!')
@@ -423,7 +426,8 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
     def init_nn_client(self, conn_name: str):
         connection = self.connections[conn_name]
-        queue = Queue(maxsize=3)
+        data_queue = Queue(maxsize=3)
+        error_queue = Queue(maxsize=3)
         cl = Client(name=conn_name,
                     address=(str(connection['ip']), int(connection['port'])),
                     hardware_type=str(connection['hardware_type']),
@@ -440,13 +444,14 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                     threshold=float(connection['detection_settings']['threshold']),
                     accumulation_size=int(connection['detection_settings']['accumulation_size']),
                     exceedance=float(connection['detection_settings']['exceedance']),
-                    data_queue=queue,
-                    error_queue=self.error_q,
+                    data_queue=data_queue,
+                    error_queue=error_queue,
                     logger_=self.custom_logger.bind(process=str(conn_name)))
         cl.start()
         self.custom_logger.debug(f'Client {conn_name} started!')
         self.processes[conn_name] = cl
-        self.data_queues[conn_name] = queue
+        self.data_queues[conn_name] = data_queue
+        self.error_queues[conn_name] = error_queue
         self.custom_logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
 
     def ZScaleChanging(self, request, context):
@@ -539,27 +544,27 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
     def RestartProcess(self, request, context):
         channel_name = request.channel_name
         if channel_name in self.processes:
-            try:
-                self.processes[channel_name].terminate()
-                del self.processes[channel_name]
-                del self.data_queues[channel_name]
-                self.custom_logger.info(f'Process {channel_name} was terminated.')
-            except Exception as e:
-                self.custom_logger.error(f'Error with terminate process {channel_name}\n{e}')
-            try:
-                try:
-                    self.init_nn_client(conn_name=channel_name)
-                except Exception as e:
-                    self.custom_logger.error(f'Connection error: {e}')
-                self.custom_logger.info(f'Process {channel_name} was started.')
-            except Exception as e:
-                self.custom_logger.error(f'Error with start process {channel_name}\n{e}')
+            self.restart_process(channel_name=channel_name)
             process_status = self.processes[channel_name].is_alive()
             return API_pb2.RestartProcessResponse(status=process_status)
         else:
             self.custom_logger.error(f'Unknown process {channel_name}!')
             return API_pb2.RestartProcessResponse(status=False)
 
+    def restart_process(self, channel_name: str):
+        try:
+            self.processes[channel_name].terminate()
+            del self.processes[channel_name]
+            del self.data_queues[channel_name]
+            self.custom_logger.info(f'Process {channel_name} was terminated.')
+        except Exception as e:
+            self.custom_logger.error(f'Error with terminate process {channel_name}\n{e}')
+        try:
+            self.init_nn_client(conn_name=channel_name)
+            self.custom_logger.info(f'Process {channel_name} was started.')
+        except Exception as e:
+            self.custom_logger.error(f'Connection error: {e}')
+            self.custom_logger.error(f'Error with start process {channel_name}\n{e}')
 
 def serve():
     gRPC_PORT = 51234

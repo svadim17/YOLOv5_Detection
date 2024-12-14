@@ -38,6 +38,7 @@ class MainWindow(QMainWindow):
         self.show_img_status = bool(self.config['show_images'])
         self.show_histogram_status = bool(self.config['show_histogram'])
         self.show_spectrum_status = bool(self.config['show_spectrum'])
+        self.watchdog = bool(self.config['watchdog'])
 
         self.clear_img_status = False
 
@@ -48,15 +49,15 @@ class MainWindow(QMainWindow):
         for name in self.map_list:
             self.sound_classes_states[name] = True
 
-
         gRPC_channel = connect_to_gRPC_server(ip=self.config['server_addr'], port=self.config['server_port'])
         self.gRPCThread = gRPCThread(channel=gRPC_channel,
                                      map_list=self.map_list,
                                      detected_img_status=self.show_img_status,
                                      clear_img_status=self.clear_img_status,
                                      spectrum_status=self.show_spectrum_status,
+                                     watchdog=self.watchdog,
                                      logger_=self.logger_)
-        self.gRPCErrorTread = gRPCServerErrorThread(gRPC_channel, self.logger_)
+        # self.gRPCErrorTread = gRPCServerErrorThread(gRPC_channel, self.logger_)
         self.available_channels = self.gRPCThread.getAvailableChannelsRequest()
 
         self.connectWindow = ConnectWindow(ip=self.config['server_addr'], available_channels=self.available_channels)
@@ -78,6 +79,7 @@ class MainWindow(QMainWindow):
 
     def connect_window_closed(self):
         self.enabled_channels = self.connectWindow.enabled_channels
+        self.gRPCThread.init_enabled_channels(enabled_channels=self.enabled_channels)
 
         for channel in self.enabled_channels:
             self.sound_states[channel] = self.config['sound_status']
@@ -89,6 +91,7 @@ class MainWindow(QMainWindow):
                                              config=self.config,
                                              logger_=self.logger_)
         self.settingsWidget.mainTab.chb_accumulation.stateChanged.connect(self.gRPCThread.onOffAccumulationRequest)
+        self.settingsWidget.mainTab.chb_watchdog.stateChanged.connect(self.gRPCThread.change_watchdog_status)
         self.settingsWidget.mainTab.chb_img_show.stateChanged.connect(self.change_img_status)
         self.settingsWidget.mainTab.chb_histogram_show.stateChanged.connect(self.change_histogram_status)
         self.settingsWidget.mainTab.chb_spectrum_show.stateChanged.connect(self.change_spectrum_status)
@@ -193,7 +196,8 @@ class MainWindow(QMainWindow):
                     self.gRPCThread.startChannelRequest(channel_name=channel)
                 except:
                     self.logger_.warning(f'Error with starting gRPC channel {channel} or channel is already started.')
-                self.gRPCThread.start()
+            self.gRPCThread.start()
+
         else:
             self.act_start.setIcon(QIcon('assets/icons/btn_start.png'))
             if self.gRPCThread.isRunning():

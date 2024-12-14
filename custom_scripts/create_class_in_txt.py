@@ -10,7 +10,7 @@ map_dict = {'dji': '0',
             'fpv': '5',
             '3G/4G': '6'}
 
-filepath_annotations = r"D:\YOLOv5 DATASET\STEP 9\ImgLab MARKED\dji_part1\labels"
+filepath_annotations = r"D:\YOLOv5 DATASET\STEP 10 (Mozyr)\ImgLab MARKED\wifi\labels"
 # created_class = 'autel_lite'
 
 
@@ -30,9 +30,9 @@ def rename_class(filepath):
         text = f.readlines()
         for string in text:
             fake_class = string[0]
-            if fake_class == '2':
+            if fake_class == '0':
                 print(filepath)
-                new_string = map_dict['dji'] + string[1:]
+                new_string = map_dict['wifi'] + string[1:]
                 print(f'Old string: {string}')
                 print(f'New string: {new_string}')
                 new_correct_lines.append(new_string)        # append lines if there are more than one

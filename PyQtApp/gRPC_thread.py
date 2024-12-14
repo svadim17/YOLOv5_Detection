@@ -1,3 +1,5 @@
+import time
+
 import grpc
 from grpc import StatusCode
 import neuro_pb2_grpc as API_pb2_grpc
@@ -51,15 +53,18 @@ class gRPCThread(QtCore.QThread):
                  detected_img_status: bool,
                  clear_img_status: bool,
                  spectrum_status: bool,
+                 watchdog: bool,
                  logger_):
         QtCore.QThread.__init__(self)
         self.map_list = map_list
         self.gRPC_channel = channel
         self.max_gRPC_retries = 55555
         self.available_channels = None
+        self.enabled_channels_counter = {}
         self.show_img_status = detected_img_status
         self.clear_img_status = clear_img_status
         self.show_spectrum_status = spectrum_status
+        self.watchdog = watchdog
         self.logger_ = logger_
 
     def getAvailableChannelsRequest(self):
@@ -122,7 +127,7 @@ class gRPCThread(QtCore.QThread):
             self.logger_.error(f'Error with getting current ZScale! \n{e}')
 
     def sendRecognitionSettings(self, channel_name: str, accum_size: int, threshold: float, exceedance: float):
-        print('SEND RECOGN SETTINGS ', channel_name)
+        self.logger_.info('SEND RECOGN SETTINGS ', channel_name)
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
             response = stub.RecognitionSettings(API_pb2.RecognitionSettingsRequest(band_name=channel_name,
@@ -177,29 +182,55 @@ class gRPCThread(QtCore.QThread):
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
             response = stub.RestartProcess(API_pb2.RestartProcessRequest(channel_name=name))
             self.signal_process_status.emit(response.status)
-            self.logger_.info(f'Process "{name}" status is {response.status} after restart.')
+            self.logger_.info(f'Restarting process "{name}" !')
             return response
         except Exception as e:
             self.logger_.error(f'Error with restarting process "{name}"! \n{e}')
 
+    def init_enabled_channels(self, enabled_channels: list):
+        for channel in enabled_channels:
+            self.enabled_channels_counter[channel] = time.time()
+
+    def check_channels_time(self):
+        current_time = time.time()
+        for key, value in self.enabled_channels_counter.items():
+            if current_time - value > 30:
+                self.logger_.warning(f'Data from the {key} has not arrived for {(current_time - value):.1f} seconds. '
+                                     f'Restarting {key}...')
+                self.restartProcess(name=key)
+                self.enabled_channels_counter[key] = time.time()
+
+    def change_watchdog_status(self, status: int):
+        self.watchdog = bool(status)
+
     def run(self):
         stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
         retry_count = 0
+
         while retry_count < self.max_gRPC_retries:
             if self.isInterruptionRequested():                  # stop thread
                 self.logger_.info('gRPCThread is interrupted.')
                 break
             try:
+                # print('refresh channels time')
+                # for channel in self.enabled_channels_counter.keys():
+                #     self.enabled_channels_counter[channel] = time.time()
                 responses = stub.ProceedDataStream(API_pb2.ProceedDataStreamRequest(detected_img=self.show_img_status,
                                                                                     clear_img=self.clear_img_status,
                                                                                     spectrum=self.show_spectrum_status))
 
                 for response in responses:                  # Обработка каждой порции данных
+                    # print('start receiveng responses')
                     if self.isInterruptionRequested():
                         self.logger_.info('gRPCThread is interrupted.')
                         break
                     band_name = response.band_name
                     if band_name in self.available_channels:
+                        if self.watchdog:
+                            if band_name in self.enabled_channels_counter:
+                                self.enabled_channels_counter[band_name] = time.time()
+                                self.check_channels_time()
+
                         response_dict = {'band_name': band_name}
                         drones_list = []
                         for uav in response.uavs:
@@ -218,7 +249,6 @@ class gRPCThread(QtCore.QThread):
                         self.signal_dataStream_response.emit(response_dict)
                         self.msleep(5)
 
-
             except grpc.RpcError as rpc_error:
                 if rpc_error.code() == grpc.StatusCode.UNAVAILABLE:
                     self.logger_.warning(f"Сервер недоступен. Попытка переподключения... {rpc_error}")
@@ -228,6 +258,5 @@ class gRPCThread(QtCore.QThread):
                     self.logger_.error(rpc_error)
             else:
                 break
-
 
 
