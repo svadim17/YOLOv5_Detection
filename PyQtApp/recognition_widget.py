@@ -18,12 +18,14 @@ class RecognitionWidget(QDockWidget, QWidget):
                  map_list: list,
                  zscale_settings: list,
                  recogn_options: dict,
+                 show_recogn_options: bool,
                  **widgets_statuses):
         super().__init__()
         self.name = window_name
         self.map_list = map_list
         self.zscale_settings = zscale_settings
         self.recogn_options_dict = recogn_options
+        self.show_recogn_options = show_recogn_options
 
         self.show_img_status = widgets_statuses.get('show_images', False)
         self.show_histogram_status = widgets_statuses.get('show_histogram', False)
@@ -64,7 +66,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         label_style = {"color": "#EEE", "font-size": "10pt"}
         self.histogram_plot.setLabel("left", f"% of {self.accum_size} accumulation", **label_style)
 
-    def context_menu(self):
+    def create_context_menu(self):
         self.menu = QMenu(self)
 
         self.act_options = QAction('Recognition options')
@@ -73,9 +75,17 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.act_process_status = QAction('Process options')
         self.act_process_status.triggered.connect(self.processOptions.show)
 
-        self.menu.addAction(self.act_options)
         self.menu.addAction(self.act_process_status)
+        self.add_remove_recogn_options(status=int(self.show_recogn_options))
+
+    def context_menu_requested(self):
         self.menu.exec(QCursor.pos())
+
+    def add_remove_recogn_options(self, status):
+        if status:
+            self.menu.addAction(self.act_options)
+        else:
+            self.menu.removeAction(self.act_options)
 
     def create_widgets(self):
         self.tab = QTabWidget()
@@ -89,6 +99,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.create_spectrogram_tab()
         self.create_histogram_tab()
         self.create_spectrum_tab()
+        self.create_context_menu()
 
     def create_buttons(self):
         for name in self.map_list:
@@ -113,7 +124,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.img_frame.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Центрирование изображения
         # self.img_frame.setScaledContents(True)  # масштабирование изображения по размеру виджета
         self.img_frame.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.img_frame.customContextMenuRequested.connect(self.context_menu)
+        self.img_frame.customContextMenuRequested.connect(self.context_menu_requested)
 
         self.fps_painter = QPainter()
         self.fps_painter.setRenderHint(QPainter.RenderHint.Antialiasing)

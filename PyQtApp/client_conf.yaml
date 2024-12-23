@@ -1,10 +1,23 @@
-map_list: ['Autel', 'Fpv', 'Dji', 'WiFi']
+map_list:
+- Autel
+- Fpv
+- Dji
+- WiFi
 server_port: '51234'
-#server_addr: '192.168.1.246'
-server_addr: 'localhost'
-show_images: True
-show_histogram: False
-show_spectrum: False
-sound_status: True
-sound_name: 'Rus Man Object detected.mp3'
-watchdog: True
+server_addr: localhost
+settings_main:
+  show_recogn_options: true
+  show_frequencies: true
+  enable_accumulation: true
+  watchdog: true
+  show_spectrogram: true
+  show_histogram: false
+  show_spectrum: false
+settings_sound:
+  sound_status: true
+  classes_sound:
+    Autel: true
+    Fpv: true
+    Dji: true
+    WiFi: false
+  sound_name: Rus Man Object detected.mp3

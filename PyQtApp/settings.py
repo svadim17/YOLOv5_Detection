@@ -21,9 +21,7 @@ class SettingsWidget(QWidget):
         self.mainTab = MainTab(config=config)
         self.saveTab = SaveTab(enabled_channels=enabled_channels, map_list=config['map_list'])
         self.soundTab = SoundTab(enabled_channels=enabled_channels,
-                                 sound_status=config['sound_status'],
-                                 sound_name=config['sound_name'],
-                                 map_list=config['map_list'],
+                                 config=config,
                                  logger_=self.logger)
 
         self.tab = QTabWidget()
@@ -31,7 +29,18 @@ class SettingsWidget(QWidget):
         self.tab.addTab(self.saveTab, 'Images saving')
         self.tab.addTab(self.soundTab, 'Sound')
 
+        self.btn_save_client_config = QPushButton('Save client config')
+        self.btn_save_server_config = QPushButton('Save server config')
+
+        self.add_widgets_to_layout()
+
+    def add_widgets_to_layout(self):
         self.main_layout.addWidget(self.tab)
+
+        btns_layout = QHBoxLayout()
+        btns_layout.addWidget(self.btn_save_client_config)
+        btns_layout.addWidget(self.btn_save_server_config)
+        self.main_layout.addLayout(btns_layout)
 
 
 class MainTab(QWidget):
@@ -57,8 +66,8 @@ class MainTab(QWidget):
         self.cb_spectrogram_resolution.addItem('640x640', (640, 640))
         self.cb_spectrogram_resolution.setCurrentIndex(1)
 
-        self.chb_show_zscale = QCheckBox('Show ZScale settings')
-        self.chb_show_zscale.setChecked(True)
+        self.chb_show_recogn_options = QCheckBox('Show recognition options')
+        self.chb_show_recogn_options.setChecked(True)
 
         self.chb_show_frequencies = QCheckBox('Show frequencies')
         self.chb_show_frequencies.setChecked(True)
@@ -67,22 +76,18 @@ class MainTab(QWidget):
         self.chb_accumulation.setChecked(True)
 
         self.chb_watchdog = QCheckBox('Watchdog')
-        self.chb_watchdog.setChecked(self.config['watchdog'])
-
-        self.btn_save_client_config = QPushButton('Save client config')
-
-        self.btn_save_server_config = QPushButton('Save server config')
+        self.chb_watchdog.setChecked(self.config['settings_main']['watchdog'])
 
         self.box_widgets_states = QGroupBox('Widgets states')
 
-        self.chb_img_show = QCheckBox('Show spectrogram')
-        self.chb_img_show.setChecked(self.config['show_images'])
+        self.chb_spectrogram_show = QCheckBox('Show spectrogram')
+        self.chb_spectrogram_show.setChecked(self.config['settings_main']['show_spectrogram'])
 
         self.chb_histogram_show = QCheckBox('Show histogram')
-        self.chb_histogram_show.setChecked(self.config['show_histogram'])
+        self.chb_histogram_show.setChecked(self.config['settings_main']['show_histogram'])
 
         self.chb_spectrum_show = QCheckBox('Show spectrum')
-        self.chb_spectrum_show.setChecked(self.config['show_spectrum'])
+        self.chb_spectrum_show.setChecked(self.config['settings_main']['show_spectrum'])
 
     def add_widgets_to_layout(self):
         spectr_layout = QVBoxLayout()
@@ -92,14 +97,14 @@ class MainTab(QWidget):
 
         controls_layout = QVBoxLayout()
         controls_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        controls_layout.addWidget(self.chb_show_zscale)
+        controls_layout.addWidget(self.chb_show_recogn_options)
         controls_layout.addWidget(self.chb_show_frequencies)
         controls_layout.addWidget(self.chb_accumulation)
         controls_layout.addWidget(self.chb_watchdog)
 
         widgets_states_layout = QVBoxLayout()
         widgets_states_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        widgets_states_layout.addWidget(self.chb_img_show)
+        widgets_states_layout.addWidget(self.chb_spectrogram_show)
         widgets_states_layout.addWidget(self.chb_histogram_show)
         widgets_states_layout.addWidget(self.chb_spectrum_show)
 
@@ -109,16 +114,23 @@ class MainTab(QWidget):
         central_layout.addLayout(controls_layout)
         central_layout.addWidget(self.box_widgets_states)
 
-        btns_layout = QHBoxLayout()
-        btns_layout.addWidget(self.btn_save_client_config)
-        btns_layout.addWidget(self.btn_save_server_config)
-
         spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         self.main_layout.addLayout(spectr_layout)
         self.main_layout.addLayout(central_layout)
         self.main_layout.addSpacerItem(spacer)
-        self.main_layout.addLayout(btns_layout)
+
+    def collect_config(self):
+        config = {'settings_main': {'show_recogn_options': self.chb_show_recogn_options.isChecked(),
+                                    'show_frequencies': self.chb_show_frequencies.isChecked(),
+                                    'enable_accumulation': self.chb_accumulation.isChecked(),
+                                    'watchdog': self.chb_watchdog.isChecked(),
+                                    'show_spectrogram': self.chb_spectrogram_show.isChecked(),
+                                    'show_histogram': self.chb_histogram_show.isChecked(),
+                                    'show_spectrum': self.chb_spectrum_show.isChecked()
+                                    }
+                  }
+        return config
 
 
 class SaveTab(QWidget):
@@ -246,12 +258,14 @@ class SoundTab(QWidget):
     signal_sound_states = pyqtSignal(dict)
     signal_sound_classes_states = pyqtSignal(dict)
 
-    def __init__(self, enabled_channels: list, sound_status: bool, sound_name: str, map_list: list, logger_):
+    def __init__(self, enabled_channels: list, config: dict, logger_):
         super().__init__()
         self.enabled_channels = enabled_channels
-        self.sound_status = sound_status
-        self.input_sound_name = sound_name
-        self.map_list = map_list
+        self.config = config
+        self.sound_status = self.config['settings_sound']['sound_status']
+        self.input_sound_name = self.config['settings_sound']['sound_name']
+        self.map_list = self.config['map_list']
+
         self.logger = logger_
         self.sound_path = 'assets/sounds'
         self.sound_states = {}
@@ -260,7 +274,7 @@ class SoundTab(QWidget):
         for channel in self.enabled_channels:
             self.sound_states[channel] = self.sound_status
         for name in self.map_list:
-            self.sound_classes_states[name] = True
+            self.sound_classes_states[name] = self.config['settings_sound']['classes_sound'][name]
 
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(15)
@@ -299,7 +313,7 @@ class SoundTab(QWidget):
         self.chb_classes_sound = {}
         for name in self.map_list:
             chb = QCheckBox(name)
-            chb.setChecked(True)
+            chb.setChecked(self.sound_classes_states[name])
             chb.stateChanged.connect(self.sound_classes_states_changed)
             self.chb_classes_sound[name] = chb
 
@@ -357,6 +371,18 @@ class SoundTab(QWidget):
         for name in self.map_list:
             self.sound_classes_states[name] = (self.chb_classes_sound[name].checkState() == Qt.CheckState.Checked)
         self.signal_sound_classes_states.emit(self.sound_classes_states)
+
+    def collect_config(self):
+        sound_conf = {}
+        for name in self.map_list:
+            sound_conf[name] = self.chb_classes_sound[name].isChecked()
+
+        config = {'settings_sound': {'sound_status': self.chb_sound.isChecked(),
+                                     'classes_sound': sound_conf,
+                                     'sound_name': self.cb_sound.currentText()
+                                     }
+                  }
+        return config
 
 
 if __name__ == '__main__':

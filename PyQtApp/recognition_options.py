@@ -156,12 +156,6 @@ class RecognitionOptions(QWidget):
                                          self.spb_slider_threshold.value(),
                                          self.spb_exceedance.value())
 
-    def show_zscale_settings(self, state: int):
-        if bool(state):
-            self.box_zscale.show()
-        else:
-            self.box_zscale.hide()
-
     @pyqtSlot(int)
     def slider_zmax_changed(self, value: int):
         self.slider_zscale_max.setValue(value)

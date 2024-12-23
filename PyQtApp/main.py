@@ -35,10 +35,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('NN Recognition v1.0.0')
         self.config = self.load_config()
         self.map_list = list(self.config['map_list'])
-        self.show_img_status = bool(self.config['show_images'])
-        self.show_histogram_status = bool(self.config['show_histogram'])
-        self.show_spectrum_status = bool(self.config['show_spectrum'])
-        self.watchdog = bool(self.config['watchdog'])
+        self.show_img_status = bool(self.config['settings_main']['show_spectrogram'])
+        self.show_histogram_status = bool(self.config['settings_main']['show_histogram'])
+        self.show_spectrum_status = bool(self.config['settings_main']['show_spectrum'])
+        self.watchdog = bool(self.config['settings_main']['watchdog'])
 
         self.clear_img_status = False
 
@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
         self.sound_states = {}
         self.sound_classes_states = {}
         for name in self.map_list:
-            self.sound_classes_states[name] = True
+            self.sound_classes_states[name] = self.config['settings_sound']['classes_sound'][name]
 
         gRPC_channel = connect_to_gRPC_server(ip=self.config['server_addr'], port=self.config['server_port'])
         self.gRPCThread = gRPCThread(channel=gRPC_channel,
@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
         self.gRPCThread.init_enabled_channels(enabled_channels=self.enabled_channels)
 
         for channel in self.enabled_channels:
-            self.sound_states[channel] = self.config['sound_status']
+            self.sound_states[channel] = self.config['settings_sound']['sound_status']
 
 
         self.create_menu()
@@ -92,11 +92,11 @@ class MainWindow(QMainWindow):
                                              logger_=self.logger_)
         self.settingsWidget.mainTab.chb_accumulation.stateChanged.connect(self.gRPCThread.onOffAccumulationRequest)
         self.settingsWidget.mainTab.chb_watchdog.stateChanged.connect(self.gRPCThread.change_watchdog_status)
-        self.settingsWidget.mainTab.chb_img_show.stateChanged.connect(self.change_img_status)
+        self.settingsWidget.mainTab.chb_spectrogram_show.stateChanged.connect(self.change_img_status)
         self.settingsWidget.mainTab.chb_histogram_show.stateChanged.connect(self.change_histogram_status)
         self.settingsWidget.mainTab.chb_spectrum_show.stateChanged.connect(self.change_spectrum_status)
-        self.settingsWidget.mainTab.btn_save_client_config.clicked.connect(self.save_config)
-        self.settingsWidget.mainTab.btn_save_server_config.clicked.connect(lambda: self.gRPCThread.saveConfigRequest('kgbradar'))
+        self.settingsWidget.btn_save_client_config.clicked.connect(self.save_config)
+        self.settingsWidget.btn_save_server_config.clicked.connect(lambda: self.gRPCThread.saveConfigRequest('kgbradar'))
         self.settingsWidget.saveTab.btn_save.clicked.connect(self.change_save_status)
         self.soundThread = SoundThread(sound_name=self.settingsWidget.soundTab.cb_sound.currentText(), logger_=self.logger_)
         self.settingsWidget.soundTab.cb_sound.currentTextChanged.connect(self.soundThread.sound_file_changed)
@@ -130,7 +130,7 @@ class MainWindow(QMainWindow):
         self.act_start.triggered.connect(self.change_connection_state)
 
     def create_toolbar(self):
-        self.toolBar = QToolBar()
+        self.toolBar = QToolBar('Toolbar')
         self.toolBar.addAction(self.act_start)
         self.toolBar.addAction(self.act_settings)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
@@ -144,14 +144,14 @@ class MainWindow(QMainWindow):
                                               img_show_status=self.show_img_status,
                                               zscale_settings=current_zscale_settings_dict[channel],
                                               recogn_options=recogn_settings[channel],
+                                              show_recogn_options=bool(self.config['settings_main']['show_recogn_options']),
                                               show_images=self.show_img_status,
                                               show_histogram=self.show_histogram_status,
                                               show_spectrum=self.show_spectrum_status)
             recogn_widget.recognOptions.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
             recogn_widget.recognOptions.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
-            self.settingsWidget.mainTab.chb_show_zscale.stateChanged.connect(recogn_widget.recognOptions.show_zscale_settings)
+            self.settingsWidget.mainTab.chb_show_recogn_options.stateChanged.connect(recogn_widget.add_remove_recogn_options)
             self.settingsWidget.mainTab.chb_show_frequencies.stateChanged.connect(recogn_widget.show_frequencies)
-
             recogn_widget.processOptions.signal_process_name.connect(self.gRPCThread.getProcessStatusRequest)
             recogn_widget.processOptions.signal_restart_process_name.connect(self.gRPCThread.restartProcess)
             self.gRPCThread.signal_process_status.connect(recogn_widget.processOptions.update_process_status)
@@ -287,10 +287,14 @@ class MainWindow(QMainWindow):
             self.logger_.info('Spectrum showing started.')
 
     def change_sound_states(self):
-        self.sound_states
+        pass
 
     def save_config(self):
-        pass
+        self.config.update(self.settingsWidget.mainTab.collect_config())
+        self.config.update(self.settingsWidget.soundTab.collect_config())
+
+        with open('client_conf.yaml', 'w') as f:
+            yaml.dump(self.config, f, sort_keys=False)
 
     def load_config(self):
         try:
