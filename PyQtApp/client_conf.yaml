@@ -1,7 +1,7 @@
 map_list: ['Autel', 'Fpv', 'Dji', 'WiFi']
 server_port: '51234'
-server_addr: '192.168.1.246'
-#server_addr: 'localhost'
+#server_addr: '192.168.1.246'
+server_addr: 'localhost'
 show_images: True
 show_histogram: False
 show_spectrum: False
