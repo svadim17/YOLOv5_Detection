@@ -32,16 +32,35 @@ class gRPCServerErrorThread(QtCore.QThread):
 
     def __init__(self, channel, logger_):
         QtCore.QThread.__init__(self)
-        self.logger = logger_
+        self.logger_ = logger_
         self.gRPC_channel = channel
-        self.start()
+        self.max_gRPC_retries = 55555
 
     def run(self):
         stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-        error_responses = stub.ServerErrorStream(API_pb2.VoidRequest())
-        for err in error_responses:
-            self.logger.critical(f'SERVER ERROR: {err}')
-            self.msleep(5)
+        retry_count = 0
+
+        while retry_count < self.max_gRPC_retries:
+            if self.isInterruptionRequested():                  # stop thread
+                self.logger_.info('gRPCThread is interrupted.')
+                break
+            try:
+                error_responses = stub.ServerErrorStream(API_pb2.VoidRequest())
+                for err in error_responses:
+                    if self.isInterruptionRequested():
+                        self.logger_.info('gRPCThread is interrupted.')
+                        break
+                    self.logger_.critical(f'SERVER ERROR: {err}')
+                    self.msleep(5)
+            except grpc.RpcError as rpc_error:
+                if rpc_error.code() == grpc.StatusCode.UNAVAILABLE:
+                    self.logger_.warning(f"Сервер недоступен. Попытка переподключения... {rpc_error}")
+                    retry_count += 1
+                    self.msleep(5)
+                else:
+                    self.logger_.error(rpc_error)
+            else:
+                break
 
 
 class gRPCThread(QtCore.QThread):

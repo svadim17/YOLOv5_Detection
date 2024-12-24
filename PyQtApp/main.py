@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
         # central_widget = QWidget(self)
         # self.setCentralWidget(central_widget)
 
-        self.setWindowTitle('NN Recognition v1.0.0')
+        self.setWindowTitle('NN Recognition v1.1.0')
         self.config = self.load_config()
         self.map_list = list(self.config['map_list'])
         self.show_img_status = bool(self.config['settings_main']['show_spectrogram'])
@@ -49,15 +49,15 @@ class MainWindow(QMainWindow):
         for name in self.map_list:
             self.sound_classes_states[name] = self.config['settings_sound']['classes_sound'][name]
 
-        gRPC_channel = connect_to_gRPC_server(ip=self.config['server_addr'], port=self.config['server_port'])
-        self.gRPCThread = gRPCThread(channel=gRPC_channel,
+        self.gRPC_channel = connect_to_gRPC_server(ip=self.config['server_addr'], port=self.config['server_port'])
+        self.gRPCThread = gRPCThread(channel=self.gRPC_channel,
                                      map_list=self.map_list,
                                      detected_img_status=self.show_img_status,
                                      clear_img_status=self.clear_img_status,
                                      spectrum_status=self.show_spectrum_status,
                                      watchdog=self.watchdog,
                                      logger_=self.logger_)
-        # self.gRPCErrorTread = gRPCServerErrorThread(gRPC_channel, self.logger_)
+        self.gRPCErrorTread = gRPCServerErrorThread(self.gRPC_channel, self.logger_)
         self.available_channels = self.gRPCThread.getAvailableChannelsRequest()
 
         self.connectWindow = ConnectWindow(ip=self.config['server_addr'], available_channels=self.available_channels)
@@ -196,15 +196,25 @@ class MainWindow(QMainWindow):
                     self.gRPCThread.startChannelRequest(channel_name=channel)
                 except:
                     self.logger_.warning(f'Error with starting gRPC channel {channel} or channel is already started.')
-            self.gRPCThread.start()
 
+            self.gRPCThread.start()
+            self.gRPCErrorTread.start()
         else:
             self.act_start.setIcon(QIcon('assets/icons/btn_start.png'))
+
+            # Stop gRPC main thread
             if self.gRPCThread.isRunning():
                 self.gRPCThread.requestInterruption()
                 self.logger_.info('gRPCThread is requested to stop.')
             else:
                 self.logger_.warning('gRPCThread is not running.')
+
+            # Stop gRPC Error thread
+            if self.gRPCErrorTread.isRunning():
+                self.gRPCErrorTread.requestInterruption()
+                self.logger_.info('gRPCErrorTread is requested to stop.')
+            else:
+                self.logger_.warning('gRPCErrorTread is not running.')
 
     def open_recognition_settings(self, channel):
         self.recogn_settings_widgets[channel].show()

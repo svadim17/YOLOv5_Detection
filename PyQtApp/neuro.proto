@@ -35,7 +35,8 @@ message VoidRequest {
 }
 
 message ServerErrorResponse {
-    string msg = 1;
+    bool status = 1;
+    string msg = 2;
 }
 
 message StartChannelRequest {           // Запрос на старт канала обработки
@@ -136,11 +137,12 @@ message RestartProcessResponse {
 
 // Сервис обработки данных
 service DataProcessingService {
-    rpc ProceedDataStream (ProceedDataStreamRequest) returns (stream DataResponse); // RPC для отправки данных
-    rpc ServerErrorStream (VoidRequest) returns (stream ServerErrorResponse); // RPC для серверных ошибок
-    rpc StartChannel (StartChannelRequest) returns (StartChannelResponse);   // RPC для старта канала обработки
-    rpc ZScaleChanging (ZScaleRequest) returns (ZScaleResponse);
     rpc GetAvailableChannels (ChannelsRequest) returns (ChannelsResponse);
+    rpc StartChannel (StartChannelRequest) returns (StartChannelResponse);   // RPC для старта канала обработки
+    rpc ProceedDataStream (ProceedDataStreamRequest) returns (stream DataResponse); // RPC для отправки данных
+
+    rpc ServerErrorStream (VoidRequest) returns (stream ServerErrorResponse); // RPC для серверных ошибок
+    rpc ZScaleChanging (ZScaleRequest) returns (ZScaleResponse);
     rpc LoadConfig (LoadConfigRequest) returns (LoadConfigResponse);
     rpc SaveConfig (SaveConfigRequest) returns (SaveConfigResponse);
     rpc RecognitionSettings (RecognitionSettingsRequest) returns (RecognitionSettingsResponse);

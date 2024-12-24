@@ -4,12 +4,12 @@ map_list:
 - Dji
 - WiFi
 server_port: '51234'
-server_addr: localhost
+server_addr: 192.168.1.241
 settings_main:
   show_recogn_options: true
   show_frequencies: true
   enable_accumulation: true
-  watchdog: true
+  watchdog: false
   show_spectrogram: true
   show_histogram: false
   show_spectrum: false

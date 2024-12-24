@@ -40,6 +40,16 @@ class DataProcessingServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.GetAvailableChannels = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/GetAvailableChannels',
+                request_serializer=neuro__pb2.ChannelsRequest.SerializeToString,
+                response_deserializer=neuro__pb2.ChannelsResponse.FromString,
+                _registered_method=True)
+        self.StartChannel = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/StartChannel',
+                request_serializer=neuro__pb2.StartChannelRequest.SerializeToString,
+                response_deserializer=neuro__pb2.StartChannelResponse.FromString,
+                _registered_method=True)
         self.ProceedDataStream = channel.unary_stream(
                 '/NeuroDataProcessing.DataProcessingService/ProceedDataStream',
                 request_serializer=neuro__pb2.ProceedDataStreamRequest.SerializeToString,
@@ -50,20 +60,10 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.VoidRequest.SerializeToString,
                 response_deserializer=neuro__pb2.ServerErrorResponse.FromString,
                 _registered_method=True)
-        self.StartChannel = channel.unary_unary(
-                '/NeuroDataProcessing.DataProcessingService/StartChannel',
-                request_serializer=neuro__pb2.StartChannelRequest.SerializeToString,
-                response_deserializer=neuro__pb2.StartChannelResponse.FromString,
-                _registered_method=True)
         self.ZScaleChanging = channel.unary_unary(
                 '/NeuroDataProcessing.DataProcessingService/ZScaleChanging',
                 request_serializer=neuro__pb2.ZScaleRequest.SerializeToString,
                 response_deserializer=neuro__pb2.ZScaleResponse.FromString,
-                _registered_method=True)
-        self.GetAvailableChannels = channel.unary_unary(
-                '/NeuroDataProcessing.DataProcessingService/GetAvailableChannels',
-                request_serializer=neuro__pb2.ChannelsRequest.SerializeToString,
-                response_deserializer=neuro__pb2.ChannelsResponse.FromString,
                 _registered_method=True)
         self.LoadConfig = channel.unary_unary(
                 '/NeuroDataProcessing.DataProcessingService/LoadConfig',
@@ -111,6 +111,19 @@ class DataProcessingServiceServicer(object):
     """Сервис обработки данных
     """
 
+    def GetAvailableChannels(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def StartChannel(self, request, context):
+        """RPC для старта канала обработки
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def ProceedDataStream(self, request, context):
         """RPC для отправки данных
         """
@@ -125,20 +138,7 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def StartChannel(self, request, context):
-        """RPC для старта канала обработки
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def ZScaleChanging(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def GetAvailableChannels(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -195,6 +195,16 @@ class DataProcessingServiceServicer(object):
 
 def add_DataProcessingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'GetAvailableChannels': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAvailableChannels,
+                    request_deserializer=neuro__pb2.ChannelsRequest.FromString,
+                    response_serializer=neuro__pb2.ChannelsResponse.SerializeToString,
+            ),
+            'StartChannel': grpc.unary_unary_rpc_method_handler(
+                    servicer.StartChannel,
+                    request_deserializer=neuro__pb2.StartChannelRequest.FromString,
+                    response_serializer=neuro__pb2.StartChannelResponse.SerializeToString,
+            ),
             'ProceedDataStream': grpc.unary_stream_rpc_method_handler(
                     servicer.ProceedDataStream,
                     request_deserializer=neuro__pb2.ProceedDataStreamRequest.FromString,
@@ -205,20 +215,10 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     request_deserializer=neuro__pb2.VoidRequest.FromString,
                     response_serializer=neuro__pb2.ServerErrorResponse.SerializeToString,
             ),
-            'StartChannel': grpc.unary_unary_rpc_method_handler(
-                    servicer.StartChannel,
-                    request_deserializer=neuro__pb2.StartChannelRequest.FromString,
-                    response_serializer=neuro__pb2.StartChannelResponse.SerializeToString,
-            ),
             'ZScaleChanging': grpc.unary_unary_rpc_method_handler(
                     servicer.ZScaleChanging,
                     request_deserializer=neuro__pb2.ZScaleRequest.FromString,
                     response_serializer=neuro__pb2.ZScaleResponse.SerializeToString,
-            ),
-            'GetAvailableChannels': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetAvailableChannels,
-                    request_deserializer=neuro__pb2.ChannelsRequest.FromString,
-                    response_serializer=neuro__pb2.ChannelsResponse.SerializeToString,
             ),
             'LoadConfig': grpc.unary_unary_rpc_method_handler(
                     servicer.LoadConfig,
@@ -271,6 +271,60 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
 class DataProcessingService(object):
     """Сервис обработки данных
     """
+
+    @staticmethod
+    def GetAvailableChannels(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/GetAvailableChannels',
+            neuro__pb2.ChannelsRequest.SerializeToString,
+            neuro__pb2.ChannelsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def StartChannel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/StartChannel',
+            neuro__pb2.StartChannelRequest.SerializeToString,
+            neuro__pb2.StartChannelResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def ProceedDataStream(request,
@@ -327,33 +381,6 @@ class DataProcessingService(object):
             _registered_method=True)
 
     @staticmethod
-    def StartChannel(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/NeuroDataProcessing.DataProcessingService/StartChannel',
-            neuro__pb2.StartChannelRequest.SerializeToString,
-            neuro__pb2.StartChannelResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
     def ZScaleChanging(request,
             target,
             options=(),
@@ -370,33 +397,6 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/ZScaleChanging',
             neuro__pb2.ZScaleRequest.SerializeToString,
             neuro__pb2.ZScaleResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetAvailableChannels(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/NeuroDataProcessing.DataProcessingService/GetAvailableChannels',
-            neuro__pb2.ChannelsRequest.SerializeToString,
-            neuro__pb2.ChannelsResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -270,7 +270,7 @@ class Client(Process):
 
         except Exception as e:
             self.logger.error(f'Cant initialize NNProcessing! {e}')
-            self.error_queue.put(f'Cant initialize NNProcessing! {e}')
+            self.error_queue.put({'status': True, 'msg': f'Cant initialize NNProcessing! {e}'}, timeout=0.01)
             return
 
         while True:
@@ -298,13 +298,16 @@ class Client(Process):
                             if self.data_q is not None:
                                 res, freq = self.accumulate_and_make_decision(
                                     self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
+
+                                self.error_queue.put({'status': False, 'msg': ''}, timeout=0.01)
                                 self.data_q.put({'name': self.name,
                                                  'results': res,
                                                  'frequencies': freq,
                                                  'predict_df': df_result,
                                                  'detected_img': detected_img,
                                                  'clear_img': clear_img,
-                                                 'spectrum': spectrum})
+                                                 'spectrum': spectrum},
+                                                timeout=1)
                             if not self.control_q.empty():
                                 cmd_dict = self.control_q.get()
                                 args = cmd_dict['args']
@@ -313,18 +316,19 @@ class Client(Process):
 
                 except queue.Full as e:
                     self.logger.debug('Queue full.')
+                    # self.error_queue.put({'status': True, 'msg': e}, timeout=0.01)
                 except socket.error as e:
                     s.close()
                     self.logger.error(f'Connection error! {e}')
-                    self.error_queue.put(f'Connection error! {e}')
+                    self.error_queue.put({'status': True, 'msg': e}, timeout=0.01)
                     time.sleep(1)
                 except Exception as e:
                     self.logger.error(e)
-                    self.error_queue.put(e)
+                    self.error_queue.put({'status': True, 'msg': e}, timeout=0.01)
                     s.close()
                     break
         self.logger.debug(f'Port №{self.address} finished work')
-        self.error_queue.put(f'{self.name} ({self.address}) finished work')
+        self.error_queue.put({'status': True, 'msg': f'{self.name} ({self.address}) finished work'})
 
 
 class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
@@ -332,28 +336,38 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.custom_logger = logger.bind(process='gRPC')
         self.config_path = config_path
         self.config = load_conf(config_path=self.config_path)
-        self.error_q = Queue()
         self.processes = {}
         self.data_queues = {}
         self.error_queues = {}
         self.connections = self.config['connections']
+        self.last_update_times = {}
 
     def ServerErrorStream(self, request, context):
         self.custom_logger.debug(f'Start server error stream ')
         while True:
-            for error_q in self.error_queues.values():
-                if not error_q.empty():
-                    print(error:=error_q.get())
-                    yield API_pb2.ServerErrorResponse(msg=error)
-
-            for name, process in self.processes.items():
-                if not process.is_alive():
-                    print(f'Process {name} ZOMBIE!!!')
-                    self.custom_logger.info(f'Trying to restart process {name}')
-                    self.restart_process(channel_name=name)
-                    yield API_pb2.ServerErrorResponse(msg=f'Process {name} ZOMBIE!!!')
+            for proc_name, q in self.error_queues.items():
+                if not q.empty():
+                    print(error := q.get())
+                    if error['status']:
+                        yield API_pb2.ServerErrorResponse(status=error['status'], msg=error['msg'])
+                    self.last_update_times[proc_name] = time.time()
                 else:
-                    print(f'Process {name} works!')
+                    if time.time() - self.last_update_times[proc_name] > 30:
+                        yield API_pb2.ServerErrorResponse(status=True, msg=f'Big ping from {proc_name}. '
+                                                                           f'Trying to restart process!')
+                        self.restart_process(channel_name=proc_name)
+                        for name in self.last_update_times.keys():
+                            self.last_update_times[name] = time.time()
+            time.sleep(0.01)
+
+            # for name, process in self.processes.items():
+            #     if not process.is_alive():
+            #         print(f'Process {name} ZOMBIE!!!')
+            #         self.custom_logger.info(f'Trying to restart process {name}')
+            #         self.restart_process(channel_name=name)
+            #         yield API_pb2.ServerErrorResponse(msg=f'Process {name} ZOMBIE!!!')
+            #     else:
+            #         print(f'Process {name} works!')
 
     def ProceedDataStream(self, request, context):
         self.custom_logger.debug(f'Start data stream with detected img status = {request.detected_img} and'
@@ -370,6 +384,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                               API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3], freq=res['frequencies'][3])
                             ]
 
+                    # error_q = self.error_queues[channel_name].get()
                     response_data = {'band_name': band_name, 'uavs': Uavs}
                     if request.clear_img:
                         response_data['clear_img'] = res['clear_img'].tobytes()
@@ -411,6 +426,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         if request.connection_name in self.connections and request.connection_name not in self.processes:
             conn_name = request.connection_name
             connection = self.connections[conn_name]
+            self.last_update_times[conn_name] = time.time()
             try:
                 self.init_nn_client(conn_name=conn_name)
                 return API_pb2.StartChannelResponse(
@@ -426,8 +442,9 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
     def init_nn_client(self, conn_name: str):
         connection = self.connections[conn_name]
-        data_queue = Queue(maxsize=3)
-        error_queue = Queue(maxsize=3)
+        data_queue = Queue(maxsize=4)
+        error_queue = Queue(maxsize=400)
+
         cl = Client(name=conn_name,
                     address=(str(connection['ip']), int(connection['port'])),
                     hardware_type=str(connection['hardware_type']),
@@ -565,6 +582,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         except Exception as e:
             self.custom_logger.error(f'Connection error: {e}')
             self.custom_logger.error(f'Error with start process {channel_name}\n{e}')
+
 
 def serve():
     gRPC_PORT = 51234
