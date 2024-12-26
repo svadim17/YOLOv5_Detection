@@ -39,7 +39,6 @@ class MainWindow(QMainWindow):
         self.show_histogram_status = bool(self.config['settings_main']['show_histogram'])
         self.show_spectrum_status = bool(self.config['settings_main']['show_spectrum'])
         self.watchdog = bool(self.config['settings_main']['watchdog'])
-
         self.clear_img_status = False
 
         self.recogn_widgets = {}
