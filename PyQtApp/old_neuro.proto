@@ -91,17 +91,25 @@ message ChannelsResponse {
     repeated string channels = 1;
 }
 
-// Запрос на сохранение конфига
+// Запрос на загрузку конфига
+message LoadConfigRequest {
+    string config = 1;
+    bytes password_hash = 2;
+}
+
+// Ответ на запрос о загрузке конфиге
+message LoadConfigResponse {
+    string status = 1;
+}
+
 message SaveConfigRequest {
     bytes password_hash = 1;
 }
 
-// Ответ на запрос о сохранении конфига
 message SaveConfigResponse {
     string status = 1;
 }
 
-// Запрос на изменение параметров распознавания
 message RecognitionSettingsRequest {
     string band_name = 1;
     int32 accumulation_size = 2;
@@ -109,16 +117,13 @@ message RecognitionSettingsRequest {
     double exceedance = 4;
 }
 
-// Ответ на запрос об изменении параметров распознавания
 message RecognitionSettingsResponse {
     string status = 1;
 }
 
-// Запрос на получение параметров распознавания
-message GetRecognitionSettingsRequest {
+message GetRecognitionSettingsRequest {       // Запрос параметров при старте клиента
 }
 
-// Ответ на запрос о получении параметров распознавания
 message GetRecognitionSettingsResponse {
     repeated string band_name = 1;
     repeated int32 accumulation_size = 2;
@@ -126,43 +131,39 @@ message GetRecognitionSettingsResponse {
     repeated double exceedance = 4;
 }
 
-// Запрос на включение/выключение накопления
 message OnOffAccumulationRequest {
     bool accum_status = 1;
 }
 
-// Ответ на запрос о включении/выключении накопления
 message OnOffAccumulationResponse {
     string accum_status = 1;
 }
 
-// Запрос о статусе процесса
 message GetProcessStatusRequest {
     string channel_name = 1;
 }
 
-// Ответ на запрос о статусе процесса
 message GetProcessStatusResponse {
     bool status=1;
 }
 
-// Запрос на рестарт процесса
 message RestartProcessRequest {
     string channel_name=1;
 }
 
-// Ответ на запрос о рестарте процесса
 message RestartProcessResponse {
     bool status=1;
 }
 
-// Сервисы обработки данных
+// Сервис обработки данных
 service DataProcessingService {
     rpc GetAvailableChannels (ChannelsRequest) returns (ChannelsResponse);
     rpc StartChannel (StartChannelRequest) returns (StartChannelResponse);   // RPC для старта канала обработки
     rpc ProceedDataStream (ProceedDataStreamRequest) returns (stream DataResponse); // RPC для отправки данных
+
     rpc ServerErrorStream (VoidRequest) returns (stream ServerErrorResponse); // RPC для серверных ошибок
     rpc ZScaleChanging (ZScaleRequest) returns (ZScaleResponse);
+    rpc LoadConfig (LoadConfigRequest) returns (LoadConfigResponse);
     rpc SaveConfig (SaveConfigRequest) returns (SaveConfigResponse);
     rpc RecognitionSettings (RecognitionSettingsRequest) returns (RecognitionSettingsResponse);
     rpc GetRecognitionSettings (GetRecognitionSettingsRequest) returns (GetRecognitionSettingsResponse);
@@ -171,3 +172,5 @@ service DataProcessingService {
     rpc GetProcessStatus (GetProcessStatusRequest) returns (GetProcessStatusResponse);
     rpc RestartProcess (RestartProcessRequest) returns (RestartProcessResponse);
 }
+
+

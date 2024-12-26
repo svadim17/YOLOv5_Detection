@@ -101,7 +101,7 @@ class gRPCThread(QtCore.QThread):
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
             response = stub.StartChannel(API_pb2.StartChannelRequest(connection_name=channel_name))
-            self.logger_.info(response.connection_status)
+            self.logger_.info(response.description)
             return response
         except Exception as e:
             self.logger_.error(f'Error with getting response from StartChannelRequest! \n{e}')

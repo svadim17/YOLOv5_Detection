@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
         # central_widget = QWidget(self)
         # self.setCentralWidget(central_widget)
 
-        self.setWindowTitle('NN Recognition v1.1.0')
+        self.setWindowTitle('NN Recognition v1.2.0')
         self.config = self.load_config()
         self.map_list = list(self.config['map_list'])
         self.show_img_status = bool(self.config['settings_main']['show_spectrogram'])

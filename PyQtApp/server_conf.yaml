@@ -10,7 +10,7 @@ connections:
       calculate_log: false
     neural_network_settings:
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\best.pt
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
       - 640
       - 640
@@ -43,7 +43,7 @@ connections:
       calculate_log: false
     neural_network_settings:
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\best.pt
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
       - 640
       - 640
@@ -76,7 +76,7 @@ connections:
       calculate_log: false
     neural_network_settings:
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\best.pt
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
       - 640
       - 640
@@ -109,7 +109,7 @@ connections:
       calculate_log: false
     neural_network_settings:
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\best.pt
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
       - 640
       - 640

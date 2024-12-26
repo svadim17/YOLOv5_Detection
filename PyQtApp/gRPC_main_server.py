@@ -429,16 +429,16 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             self.last_update_times[conn_name] = time.time()
             try:
                 self.init_nn_client(conn_name=conn_name)
-                return API_pb2.StartChannelResponse(
-                    connection_status=f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
+                return API_pb2.StartChannelResponse(channelConnectionState=API_pb2.ConnectionState.Connected,
+                            description=f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
             except Exception as e:
                 self.custom_logger.error(f'Connection error: {e}')
-                return API_pb2.StartChannelResponse(
-                    connection_status=f'Error with connecting to {str(connection["ip"])}:{str(connection["port"])}')
+                return API_pb2.StartChannelResponse(channelConnectionState=API_pb2.ConnectionState.Disconnected,
+                             description=f'Error with connecting to {str(connection["ip"])}:{str(connection["port"])}')
         else:
             self.custom_logger.warning(f'Unknown name {request.connection_name} or already exists')
-            return API_pb2.StartChannelResponse(connection_status=f'Unknown channel: {request.connection_name} '
-                                                                  f'or already exists!')
+            return API_pb2.StartChannelResponse(channelConnectionState=API_pb2.ConnectionState.Disconnected,
+                                          description=f'Unknown channel: {request.connection_name} or already exists!')
 
     def init_nn_client(self, conn_name: str):
         connection = self.connections[conn_name]

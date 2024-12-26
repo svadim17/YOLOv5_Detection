@@ -31,7 +31,7 @@ if _version_not_supported:
 
 
 class DataProcessingServiceStub(object):
-    """Сервис обработки данных
+    """Сервисы обработки данных
     """
 
     def __init__(self, channel):
@@ -64,11 +64,6 @@ class DataProcessingServiceStub(object):
                 '/NeuroDataProcessing.DataProcessingService/ZScaleChanging',
                 request_serializer=neuro__pb2.ZScaleRequest.SerializeToString,
                 response_deserializer=neuro__pb2.ZScaleResponse.FromString,
-                _registered_method=True)
-        self.LoadConfig = channel.unary_unary(
-                '/NeuroDataProcessing.DataProcessingService/LoadConfig',
-                request_serializer=neuro__pb2.LoadConfigRequest.SerializeToString,
-                response_deserializer=neuro__pb2.LoadConfigResponse.FromString,
                 _registered_method=True)
         self.SaveConfig = channel.unary_unary(
                 '/NeuroDataProcessing.DataProcessingService/SaveConfig',
@@ -108,7 +103,7 @@ class DataProcessingServiceStub(object):
 
 
 class DataProcessingServiceServicer(object):
-    """Сервис обработки данных
+    """Сервисы обработки данных
     """
 
     def GetAvailableChannels(self, request, context):
@@ -139,12 +134,6 @@ class DataProcessingServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def ZScaleChanging(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def LoadConfig(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -220,11 +209,6 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     request_deserializer=neuro__pb2.ZScaleRequest.FromString,
                     response_serializer=neuro__pb2.ZScaleResponse.SerializeToString,
             ),
-            'LoadConfig': grpc.unary_unary_rpc_method_handler(
-                    servicer.LoadConfig,
-                    request_deserializer=neuro__pb2.LoadConfigRequest.FromString,
-                    response_serializer=neuro__pb2.LoadConfigResponse.SerializeToString,
-            ),
             'SaveConfig': grpc.unary_unary_rpc_method_handler(
                     servicer.SaveConfig,
                     request_deserializer=neuro__pb2.SaveConfigRequest.FromString,
@@ -269,7 +253,7 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class DataProcessingService(object):
-    """Сервис обработки данных
+    """Сервисы обработки данных
     """
 
     @staticmethod
@@ -397,33 +381,6 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/ZScaleChanging',
             neuro__pb2.ZScaleRequest.SerializeToString,
             neuro__pb2.ZScaleResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def LoadConfig(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/NeuroDataProcessing.DataProcessingService/LoadConfig',
-            neuro__pb2.LoadConfigRequest.SerializeToString,
-            neuro__pb2.LoadConfigResponse.FromString,
             options,
             channel_credentials,
             insecure,
