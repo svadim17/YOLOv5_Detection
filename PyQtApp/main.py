@@ -4,6 +4,7 @@ from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt
 import qdarktheme
 from gRPC_thread import gRPCThread, connect_to_gRPC_server, gRPCServerErrorThread
+from welcome_window import WelcomeWindow
 from connection_window import ConnectWindow
 from recognition_widget import RecognitionWidget
 from settings import SettingsWidget
@@ -34,6 +35,8 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle('NN Recognition v1.2.0')
         self.config = self.load_config()
+        self.server_ip = self.config['server_addr']
+        self.grpc_port = self.config['server_port']
         self.map_list = list(self.config['map_list'])
         self.show_img_status = bool(self.config['settings_main']['show_spectrogram'])
         self.show_histogram_status = bool(self.config['settings_main']['show_histogram'])
@@ -48,7 +51,20 @@ class MainWindow(QMainWindow):
         for name in self.map_list:
             self.sound_classes_states[name] = self.config['settings_sound']['classes_sound'][name]
 
-        self.gRPC_channel = connect_to_gRPC_server(ip=self.config['server_addr'], port=self.config['server_port'])
+        self.welcomeWindow = WelcomeWindow(server_addr=self.server_ip, server_port=self.grpc_port)
+        self.welcomeWindow.signal_connect_to_server.connect(self.connect_to_server)
+        self.welcomeWindow.finished.connect(self.welcome_window_closed)
+
+    def connect_to_server(self, server_ip: str, grpc_port: str):
+        try:
+            self.gRPC_channel = connect_to_gRPC_server(ip=server_ip, port=grpc_port)
+            self.logger_.success(f'Successfully connected to {server_ip}:{grpc_port}!')
+            self.welcomeWindow.close()
+        except Exception as e:
+            self.logger_.critical(f'Error with connecting to {server_ip}:{grpc_port}! \n{e}')
+            self.welcomeWindow.connection_error()
+
+    def welcome_window_closed(self):
         self.gRPCThread = gRPCThread(channel=self.gRPC_channel,
                                      map_list=self.map_list,
                                      detected_img_status=self.show_img_status,
@@ -60,6 +76,7 @@ class MainWindow(QMainWindow):
         self.available_channels = self.gRPCThread.getAvailableChannelsRequest()
 
         self.connectWindow = ConnectWindow(ip=self.config['server_addr'], available_channels=self.available_channels)
+        self.connectWindow.show()
         self.connectWindow.finished.connect(self.connect_window_closed)
 
         self.create_actions()
@@ -69,12 +86,6 @@ class MainWindow(QMainWindow):
         self.link_events()
 
         self.adjustSize()
-
-        # self.scroll = QScrollArea()
-        # self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        # self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        # self.scroll.setWidgetResizable(True)
-        # self.scroll.setWidget(self)
 
     def connect_window_closed(self):
         self.enabled_channels = self.connectWindow.enabled_channels
@@ -340,7 +351,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     qdarktheme.setup_theme()
     main_window = MainWindow()
-    main_window.connectWindow.show()
+    main_window.welcomeWindow.show()
     sys.exit(app.exec())
 
 

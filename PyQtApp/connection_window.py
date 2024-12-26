@@ -1,6 +1,7 @@
-from PyQt6.QtWidgets import QDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGroupBox
+from PyQt6.QtWidgets import QDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGroupBox, QApplication
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtCore import Qt
+import qdarktheme
 
 
 class ConnectWindow(QDialog):
@@ -27,7 +28,6 @@ class ConnectWindow(QDialog):
         self.enabled_channels = []
 
         self.create_connect_controls()
-
 
     def create_connect_controls(self):
         self.btn_connect = QPushButton('Connect to channels')
@@ -56,5 +56,11 @@ class ConnectWindow(QDialog):
         self.close()
 
 
+if __name__ == '__main__':
+    app = QApplication([])
+    qdarktheme.setup_theme()
+    window = ConnectWindow(ip='127.0.0.1', available_channels=['2G4', '5G8'])
+    window.show()
+    app.exec()
 
 
