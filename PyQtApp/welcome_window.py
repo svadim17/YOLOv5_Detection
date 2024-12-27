@@ -15,7 +15,7 @@ class WelcomeWindow(QDialog):
         self.server_port = server_port
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setWindowTitle('Welcome window')
-        self.setMinimumWidth(240)
+        self.setMinimumWidth(350)
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 

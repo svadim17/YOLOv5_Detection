@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
         self.welcomeWindow.finished.connect(self.welcome_window_closed)
 
     def connect_to_server(self, server_ip: str, grpc_port: str):
+        self.server_ip = server_ip
         try:
             self.gRPC_channel = connect_to_gRPC_server(ip=server_ip, port=grpc_port)
             self.logger_.success(f'Successfully connected to {server_ip}:{grpc_port}!')
@@ -63,6 +64,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger_.critical(f'Error with connecting to {server_ip}:{grpc_port}! \n{e}')
             self.welcomeWindow.connection_error()
+
 
     def welcome_window_closed(self):
         self.gRPCThread = gRPCThread(channel=self.gRPC_channel,
@@ -310,8 +312,11 @@ class MainWindow(QMainWindow):
         pass
 
     def save_config(self):
+        config = {'server_addr': self.server_ip}
+
         self.config.update(self.settingsWidget.mainTab.collect_config())
         self.config.update(self.settingsWidget.soundTab.collect_config())
+        self.config.update(config)
 
         with open('client_conf.yaml', 'w') as f:
             yaml.dump(self.config, f, sort_keys=False)
