@@ -65,7 +65,6 @@ class MainWindow(QMainWindow):
             self.logger_.critical(f'Error with connecting to {server_ip}:{grpc_port}! \n{e}')
             self.welcomeWindow.connection_error()
 
-
     def welcome_window_closed(self):
         self.gRPCThread = gRPCThread(channel=self.gRPC_channel,
                                      map_list=self.map_list,
