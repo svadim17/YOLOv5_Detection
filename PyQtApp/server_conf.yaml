@@ -66,6 +66,7 @@ connections:
       threshold: 0.4
       exceedance: 0.5
 
+#connections:
 #  2G437_USRP:
 #    ip: 127.0.0.1
 #    port: 10091

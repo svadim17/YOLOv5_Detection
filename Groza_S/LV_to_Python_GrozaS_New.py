@@ -167,7 +167,7 @@ class Client(Process):
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as self.socket:
-            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, b"eth0\0")
+            # self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, b"eth0\0")
             self.start_nn()
             for _ in range(4):
                 try:
