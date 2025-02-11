@@ -10,6 +10,7 @@ import time
 import pyqtgraph
 from recognition_options import RecognitionOptions
 from process_options import ProcessOptions
+from gRPC_thread import ChannelInfo
 
 
 class RecognitionWidget(QDockWidget, QWidget):
@@ -19,6 +20,7 @@ class RecognitionWidget(QDockWidget, QWidget):
                  zscale_settings: list,
                  recogn_options: dict,
                  show_recogn_options: bool,
+                 channel_info: ChannelInfo,
                  **widgets_statuses):
         super().__init__()
         self.name = window_name
@@ -26,6 +28,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.zscale_settings = zscale_settings
         self.recogn_options_dict = recogn_options
         self.show_recogn_options = show_recogn_options
+        self.channel_info = channel_info
 
         self.show_img_status = widgets_statuses.get('show_images', False)
         self.show_histogram_status = widgets_statuses.get('show_histogram', False)
@@ -50,7 +53,8 @@ class RecognitionWidget(QDockWidget, QWidget):
 
         self.recognOptions = RecognitionOptions(name=self.name,
                                                 zscale_settings=zscale_settings,
-                                                current_recogn_settings=self.recogn_options_dict)
+                                                current_recogn_settings=self.recogn_options_dict,
+                                                channel_info=self.channel_info)
         self.accum_size = self.recognOptions.spb_accum_size.value()
         self.recognOptions.spb_accum_size.valueChanged.connect(self.change_accum_size)
 

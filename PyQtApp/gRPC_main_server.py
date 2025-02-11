@@ -36,7 +36,7 @@ logger.add("server_logs/file_{time}.log",
            diagnose=True,
            rotation='10 MB',
            # retention='12 days',
-           retention=300,
+           retention=600,
            enqueue=True)
 ORIGINAL_HASH_PASSWORD = b'\xac\x00\xeb\xf5+2\xd2\xa4\x90\x0e&\x84rz-O=b\xee\xf0:\xa0g\x01w\x8b\x9aD\x1e<\x94\xbb'
 
@@ -127,7 +127,7 @@ class Client(Process):
         elif self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
             self.msg_len = self.signal_width * self.signal_height * 2 + 16
         else:
-            self.logger.error('Unknown Device Type !')
+            self.logger.error(f'Unknown Device Type: {self.hardware} !')
 
         self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
         self.record_images_status = False
@@ -197,7 +197,7 @@ class Client(Process):
 
     def change_record_images_status(self, status: bool):
         self.record_images_status = status
-        self.logger.debug(f'Record images status was changed on {status}.')
+        self.logger.info(f'Record images status was changed on {status}.')
 
     def change_accum_status(self, accum_status: bool):
         self.accum_status = accum_status
@@ -235,7 +235,7 @@ class Client(Process):
             img_arr = self.nn.normalization(np.fft.fftshift(arr_resh, axes=(1,)))
             return img_arr, spectrum
         else:
-            self.logger.warning(f'Packet size = {len(arr)} missed.')
+            self.logger.trace(f'Packet size = {len(arr)} missed.')
             raise custom_utils.AlinxException()
 
     def receive_from_USRP(self, sock):
@@ -258,8 +258,26 @@ class Client(Process):
             img_arr = self.nn.normalization(arr_resh)
             return img_arr, spectrum
         else:
-            self.logger.warning(f'Packet size = {np_arr.size} missed.')
+            self.logger.trace(f'Packet size = {np_arr.size} missed.')
             return None
+
+    def create_socket_connection(self, address):
+        """ Creates socket connection for control Rx channel (gain, frequency) """
+        self.rx_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.rx_socket.settimeout(10)
+            self.rx_socket.connect(address)
+            self.logger.success(f'Connected to {address}!')
+        except Exception as e:
+            self.logger.error(f'Error with connecting to {self.address}! \n{e}')
+
+    def send_command(self, command):
+        if self.rx_socket:
+            try:
+                self.rx_socket.send(command)
+                self.logger.info(f'Sent command {command}')
+            except Exception as e:
+                self.logger.error(f'Error with sending command! \n{e}')
 
     @logger.catch
     def run(self):
@@ -297,7 +315,7 @@ class Client(Process):
                     elif self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
                         receive = self.receive_from_Alinx
                     else:
-                        self.logger.critical('Unknown Device Type!')
+                        self.logger.critical(f'Unknown Device Type: {self.hardware}')
                         self.send_error('Unknown Device Type!')
                         return
 
@@ -415,11 +433,16 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                     for name in self.last_update_times.keys():
                         self.last_update_times[name] = time.time()
 
-
     def GetAvailableChannels(self, request, context):
         available_channels = tuple(self.connections.keys())
-        self.custom_logger.debug(f'Client connected {context.peer()}. Send avaliable channels: {available_channels}')
-        return API_pb2.ChannelsResponse(channels=available_channels)
+        channels = []
+        for name, fields in self.connections.items():
+            channels.append(API_pb2.ChannelObject(name=name,
+                                                  hardware_type=fields['hardware']['type'],
+                                                  central_freq=fields['hardware']['central_freq']))
+        self.custom_logger.debug(f'Client connected {context.peer()}. '
+                                 f'Sent avaliable channels: {available_channels} ')
+        return API_pb2.ChannelsResponse(channels=available_channels, info=channels)
 
     def GetRecognitionSettings(self, request, context):
         chan_names = tuple(self.connections.keys())
@@ -475,7 +498,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
         cl = Client(name=conn_name,
                     address=(str(connection['ip']), int(connection['port'])),
-                    hardware_type=str(connection['hardware_type']),
+                    hardware_type=str(connection['hardware']['type']),
                     weights_path=connection['neural_network_settings']['weights_path'],
                     project_path=connection['neural_network_settings']['project_path'],
                     sample_rate=int(connection['signal_settings']['sample_rate']),
@@ -517,7 +540,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 new_config = dict(yaml.load(request.config, Loader=yaml.SafeLoader))
                 dump_conf(config_path=self.config_path, config=new_config)
             except Exception as e:
-                self.custom_logger.error('Config did not load! Error: {e}')
+                self.custom_logger.error(f'Config did not load! Error: {e}')
                 return API_pb2.LoadConfigResponse(status=f'Config did not load! Error: {e}')
             self.custom_logger.success('Config loaded successfully!')
             return API_pb2.LoadConfigResponse(status='Config loaded successfully!')
@@ -580,6 +603,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         accum_status = request.accum_status
         for name, process in self.processes.items():
             process.control_q.put({'func': 'change_accum_status', 'args': (accum_status,)})
+        self.custom_logger.debug(f'Accumulation status was changed on {accum_status}')
         return API_pb2.OnOffAccumulationResponse(accum_status=f'Accumulation status was changed on {accum_status}')
 
     def GetProcessStatus(self, request, context):
@@ -611,6 +635,22 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         except Exception as e:
             self.custom_logger.error(f'Connection error: {e}')
             self.custom_logger.error(f'Error with start process {channel_name}\n{e}')
+
+    def SetFrequency(self, request, context):
+        channel_name = request.channel_name
+        freq = request.value
+        # # # тут должна быть перестройка частоты # # #
+        return API_pb2.SetFrequencyResponse(status=f'You sent freq {freq} for {channel_name}.')
+
+    def SetGain(self, request, context):
+        channel_name = request.channel_name
+        gain = request.value
+        # # # тут должна быть смена усиления # # #
+        return API_pb2.SetGainResponse(status=f'You sent gain {gain} for {channel_name}.')
+
+    def AlinxSoftVer(self, request, context):
+        # # # тут должен быть запрос о версии ПО Alinx # # #
+        return API_pb2.AlinxSoftVerResponse(version='We are working on it...')
 
 
 def serve():

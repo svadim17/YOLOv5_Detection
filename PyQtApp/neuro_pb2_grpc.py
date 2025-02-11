@@ -100,6 +100,21 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.RestartProcessRequest.SerializeToString,
                 response_deserializer=neuro__pb2.RestartProcessResponse.FromString,
                 _registered_method=True)
+        self.SetFrequency = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/SetFrequency',
+                request_serializer=neuro__pb2.SetFrequencyRequest.SerializeToString,
+                response_deserializer=neuro__pb2.SetFrequencyResponse.FromString,
+                _registered_method=True)
+        self.SetGain = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/SetGain',
+                request_serializer=neuro__pb2.SetGainRequest.SerializeToString,
+                response_deserializer=neuro__pb2.SetGainResponse.FromString,
+                _registered_method=True)
+        self.AlinxSoftVer = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/AlinxSoftVer',
+                request_serializer=neuro__pb2.AlinxSoftVerRequest.SerializeToString,
+                response_deserializer=neuro__pb2.AlinxSoftVerResponse.FromString,
+                _registered_method=True)
 
 
 class DataProcessingServiceServicer(object):
@@ -181,6 +196,24 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SetFrequency(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SetGain(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AlinxSoftVer(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataProcessingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -243,6 +276,21 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.RestartProcess,
                     request_deserializer=neuro__pb2.RestartProcessRequest.FromString,
                     response_serializer=neuro__pb2.RestartProcessResponse.SerializeToString,
+            ),
+            'SetFrequency': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetFrequency,
+                    request_deserializer=neuro__pb2.SetFrequencyRequest.FromString,
+                    response_serializer=neuro__pb2.SetFrequencyResponse.SerializeToString,
+            ),
+            'SetGain': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetGain,
+                    request_deserializer=neuro__pb2.SetGainRequest.FromString,
+                    response_serializer=neuro__pb2.SetGainResponse.SerializeToString,
+            ),
+            'AlinxSoftVer': grpc.unary_unary_rpc_method_handler(
+                    servicer.AlinxSoftVer,
+                    request_deserializer=neuro__pb2.AlinxSoftVerRequest.FromString,
+                    response_serializer=neuro__pb2.AlinxSoftVerResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -570,6 +618,87 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/RestartProcess',
             neuro__pb2.RestartProcessRequest.SerializeToString,
             neuro__pb2.RestartProcessResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetFrequency(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/SetFrequency',
+            neuro__pb2.SetFrequencyRequest.SerializeToString,
+            neuro__pb2.SetFrequencyResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetGain(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/SetGain',
+            neuro__pb2.SetGainRequest.SerializeToString,
+            neuro__pb2.SetGainResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AlinxSoftVer(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/AlinxSoftVer',
+            neuro__pb2.AlinxSoftVerRequest.SerializeToString,
+            neuro__pb2.AlinxSoftVerResponse.FromString,
             options,
             channel_credentials,
             insecure,

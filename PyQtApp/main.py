@@ -74,9 +74,10 @@ class MainWindow(QMainWindow):
                                      watchdog=self.watchdog,
                                      logger_=self.logger_)
         self.gRPCErrorTread = gRPCServerErrorThread(self.gRPC_channel, self.logger_)
-        self.available_channels = self.gRPCThread.getAvailableChannelsRequest()
-
-        self.connectWindow = ConnectWindow(ip=self.config['server_addr'], available_channels=self.available_channels)
+        self.available_channels, self.channels_info = self.gRPCThread.getAvailableChannelsRequest()
+        self.connectWindow = ConnectWindow(ip=self.config['server_addr'],
+                                           available_channels=self.available_channels,
+                                           channels_info=self.channels_info)
         self.connectWindow.show()
         self.connectWindow.finished.connect(self.connect_window_closed)
 
@@ -95,11 +96,11 @@ class MainWindow(QMainWindow):
         for channel in self.enabled_channels:
             self.sound_states[channel] = self.config['settings_sound']['sound_status']
 
-
         self.create_menu()
         self.create_toolbar()
         self.settingsWidget = SettingsWidget(enabled_channels=self.enabled_channels,
                                              config=self.config,
+                                             channels_info=self.channels_info,
                                              logger_=self.logger_)
         self.settingsWidget.mainTab.chb_accumulation.stateChanged.connect(self.gRPCThread.onOffAccumulationRequest)
         self.settingsWidget.mainTab.chb_watchdog.stateChanged.connect(self.gRPCThread.change_watchdog_status)
@@ -114,6 +115,8 @@ class MainWindow(QMainWindow):
         self.settingsWidget.soundTab.btn_play_sound.clicked.connect(self.soundThread.play_sound)
         self.settingsWidget.soundTab.signal_sound_states.connect(self.processor.init_sound_states)
         self.settingsWidget.soundTab.signal_sound_classes_states.connect(self.processor.init_sound_classes_states)
+        self.settingsWidget.alinxTab.btn_get_soft_ver.clicked.connect(self.gRPCThread.getAlinxSoftVer)
+        self.gRPCThread.signal_alinx_soft_ver.connect(self.settingsWidget.alinxTab.update_soft_ver)
         self.init_recognition_widgets()
         self.processor.init_sound_states(sound_states=self.sound_states)
         self.processor.init_sound_classes_states(sound_classes_states=self.sound_classes_states)
@@ -149,25 +152,29 @@ class MainWindow(QMainWindow):
     def init_recognition_widgets(self):
         current_zscale_settings_dict = self.gRPCThread.getCurrentZScaleRequest()
         recogn_settings = self.gRPCThread.gerCurrentRecognitionSettings()
-        for channel in self.enabled_channels:
-            recogn_widget = RecognitionWidget(window_name=channel,
-                                              map_list=self.map_list,
-                                              img_show_status=self.show_img_status,
-                                              zscale_settings=current_zscale_settings_dict[channel],
-                                              recogn_options=recogn_settings[channel],
-                                              show_recogn_options=bool(self.config['settings_main']['show_recogn_options']),
-                                              show_images=self.show_img_status,
-                                              show_histogram=self.show_histogram_status,
-                                              show_spectrum=self.show_spectrum_status)
-            recogn_widget.recognOptions.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
-            recogn_widget.recognOptions.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
-            self.settingsWidget.mainTab.chb_show_recogn_options.stateChanged.connect(recogn_widget.add_remove_recogn_options)
-            self.settingsWidget.mainTab.chb_show_frequencies.stateChanged.connect(recogn_widget.show_frequencies)
-            recogn_widget.processOptions.signal_process_name.connect(self.gRPCThread.getProcessStatusRequest)
-            recogn_widget.processOptions.signal_restart_process_name.connect(self.gRPCThread.restartProcess)
-            self.gRPCThread.signal_process_status.connect(recogn_widget.processOptions.update_process_status)
+        for channel_info in self.channels_info:
+            if channel_info.name in self.enabled_channels:
+                recogn_widget = RecognitionWidget(window_name=channel_info.name,
+                                                  map_list=self.map_list,
+                                                  img_show_status=self.show_img_status,
+                                                  zscale_settings=current_zscale_settings_dict[channel_info.name],
+                                                  recogn_options=recogn_settings[channel_info.name],
+                                                  show_recogn_options=bool(self.config['settings_main']['show_recogn_options']),
+                                                  show_images=self.show_img_status,
+                                                  show_histogram=self.show_histogram_status,
+                                                  show_spectrum=self.show_spectrum_status,
+                                                  channel_info=channel_info)
+                recogn_widget.recognOptions.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
+                recogn_widget.recognOptions.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
+                recogn_widget.recognOptions.signal_freq_changed.connect(self.gRPCThread.setFrequency)
+                recogn_widget.recognOptions.signal_gain_changed.connect(self.gRPCThread.setGain)
+                self.settingsWidget.mainTab.chb_show_recogn_options.stateChanged.connect(recogn_widget.add_remove_recogn_options)
+                self.settingsWidget.mainTab.chb_show_frequencies.stateChanged.connect(recogn_widget.show_frequencies)
+                recogn_widget.processOptions.signal_process_name.connect(self.gRPCThread.getProcessStatusRequest)
+                recogn_widget.processOptions.signal_restart_process_name.connect(self.gRPCThread.restartProcess)
+                self.gRPCThread.signal_process_status.connect(recogn_widget.processOptions.update_process_status)
 
-            self.recogn_widgets[channel] = recogn_widget
+                self.recogn_widgets[channel_info.name] = recogn_widget
         self.add_recogn_widgets(type_of_adding='left')
         self.processor.init_recogn_widgets(recogn_widgets=self.recogn_widgets)
 

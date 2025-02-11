@@ -1,201 +1,223 @@
-connections:
-  2G437:
-    ip: 192.168.1.3
-    port: 16024
-    hardware_type: Alinx
-    signal_settings:
-      signal_width: 1024
-      signal_height: 3072
-      sample_rate: 12880000
-      calculate_log: false
-    neural_network_settings:
-      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
-      img_size:
-        - 640
-        - 640
-      z_min: -48
-      z_max: 83
-    detection_settings:
-      all_classes:
-        - dji
-        - wifi
-        - autel_lite
-        - autel_max_4n(t)
-        - autel_tag
-        - fpv
-      map_list:
-        - autel
-        - fpv
-        - dji
-        - wifi
-      accumulation_size: 10
-      threshold: 0.4
-      exceedance: 0.5
-  5G7865:
-    ip: 192.168.1.3
-    port: 16058
-    hardware_type: Alinx
-    signal_settings:
-      signal_width: 1024
-      signal_height: 3072
-      sample_rate: 12880000
-      calculate_log: false
-    neural_network_settings:
-      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
-      img_size:
-        - 640
-        - 640
-      z_min: -48
-      z_max: 83
-    detection_settings:
-      all_classes:
-        - dji
-        - wifi
-        - autel_lite
-        - autel_max_4n(t)
-        - autel_tag
-        - fpv
-      map_list:
-        - autel
-        - fpv
-        - dji
-        - wifi
-      accumulation_size: 10
-      threshold: 0.4
-      exceedance: 0.5
-
 #connections:
-#  2G437_USRP:
-#    ip: 127.0.0.1
-#    port: 10091
-#    hardware_type: USRP
+#  2G437:
+#    ip: 192.168.1.3
+#    port: 16024
+#    hardware_type: Alinx
 #    signal_settings:
 #      signal_width: 1024
-#      signal_height: 2048
-#      sample_rate: 80000000
+#      signal_height: 3072
+#      sample_rate: 12880000
 #      calculate_log: false
 #    neural_network_settings:
 #      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
 #      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
 #      img_size:
-#      - 640
-#      - 640
+#        - 640
+#        - 640
 #      z_min: -48
 #      z_max: 83
 #    detection_settings:
 #      all_classes:
-#      - dji
-#      - wifi
-#      - autel_lite
-#      - autel_max_4n(t)
-#      - autel_tag
-#      - fpv
+#        - dji
+#        - wifi
+#        - autel_lite
+#        - autel_max_4n(t)
+#        - autel_tag
+#        - fpv
 #      map_list:
-#      - autel
-#      - fpv
-#      - dji
-#      - wifi
+#        - autel
+#        - fpv
+#        - dji
+#        - wifi
 #      accumulation_size: 10
 #      threshold: 0.4
 #      exceedance: 0.5
-#  1G4_USRP:
-#    ip: 127.0.0.1
-#    port: 10092
-#    hardware_type: USRP
+#  5G7865:
+#    ip: 192.168.1.3
+#    port: 16058
+#    hardware_type: Alinx
 #    signal_settings:
 #      signal_width: 1024
-#      signal_height: 2048
-#      sample_rate: 80000000
+#      signal_height: 3072
+#      sample_rate: 12880000
 #      calculate_log: false
 #    neural_network_settings:
 #      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
 #      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
 #      img_size:
-#      - 640
-#      - 640
-#      z_min: -38
-#      z_max: 101
+#        - 640
+#        - 640
+#      z_min: -48
+#      z_max: 83
 #    detection_settings:
 #      all_classes:
-#      - dji
-#      - wifi
-#      - autel_lite
-#      - autel_max_4n(t)
-#      - autel_tag
-#      - fpv
+#        - dji
+#        - wifi
+#        - autel_lite
+#        - autel_max_4n(t)
+#        - autel_tag
+#        - fpv
 #      map_list:
-#      - autel
-#      - fpv
-#      - dji
-#      - wifi
+#        - autel
+#        - fpv
+#        - dji
+#        - wifi
 #      accumulation_size: 10
 #      threshold: 0.4
 #      exceedance: 0.5
-#  5G8_USRP:
-#    ip: 127.0.0.1
-#    port: 10093
-#    hardware_type: USRP
-#    signal_settings:
-#      signal_width: 1024
-#      signal_height: 2048
-#      sample_rate: 80000000
-#      calculate_log: false
-#    neural_network_settings:
-#      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-#      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
-#      img_size:
-#      - 640
-#      - 640
-#      z_min: -47
-#      z_max: 65
-#    detection_settings:
-#      all_classes:
-#      - dji
-#      - wifi
-#      - autel_lite
-#      - autel_max_4n(t)
-#      - autel_tag
-#      - fpv
-#      map_list:
-#      - autel
-#      - fpv
-#      - dji
-#      - wifi
-#      accumulation_size: 10
-#      threshold: 0.4
-#      exceedance: 0.5
-#  5G2_USRP:
-#    ip: 127.0.0.1
-#    port: 10094
-#    hardware_type: USRP
-#    signal_settings:
-#      signal_width: 1024
-#      signal_height: 2048
-#      sample_rate: 80000000
-#      calculate_log: false
-#    neural_network_settings:
-#      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-#      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
-#      img_size:
-#      - 640
-#      - 640
-#      z_min: -51
-#      z_max: 74
-#    detection_settings:
-#      all_classes:
-#      - dji
-#      - wifi
-#      - autel_lite
-#      - autel_max_4n(t)
-#      - autel_tag
-#      - fpv
-#      map_list:
-#      - autel
-#      - fpv
-#      - dji
-#      - wifi
-#      accumulation_size: 10
-#      threshold: 0.4
-#      exceedance: 0.5
+
+connections:
+  2G437:
+    ip: 127.0.0.1
+    port: 10091
+    hardware:
+      type: USRP
+      central_freq: [2_437_000_000]
+    signal_settings:
+      signal_width: 1024
+      signal_height: 2048
+      sample_rate: 80000000
+      calculate_log: false
+    neural_network_settings:
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      img_size:
+      - 640
+      - 640
+      z_min: -48
+      z_max: 83
+    detection_settings:
+      all_classes:
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
+      map_list:
+      - autel
+      - fpv
+      - dji
+      - wifi
+      accumulation_size: 10
+      threshold: 0.4
+      exceedance: 0.5
+  1G4:
+    ip: 127.0.0.1
+    port: 10092
+    hardware:
+      type: USRP
+      central_freq: [1_400_000_000, 1_800_000_000]
+    signal_settings:
+      signal_width: 1024
+      signal_height: 2048
+      sample_rate: 80000000
+      calculate_log: false
+    neural_network_settings:
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      img_size:
+      - 640
+      - 640
+      z_min: -38
+      z_max: 101
+    detection_settings:
+      all_classes:
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
+      map_list:
+      - autel
+      - fpv
+      - dji
+      - wifi
+      accumulation_size: 10
+      threshold: 0.4
+      exceedance: 0.5
+  5G8:
+    ip: 127.0.0.1
+    port: 10093
+    hardware:
+      type: USRP
+      central_freq: [5_786_500_000]
+    signal_settings:
+      signal_width: 1024
+      signal_height: 2048
+      sample_rate: 80000000
+      calculate_log: false
+    neural_network_settings:
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      img_size:
+      - 640
+      - 640
+      z_min: -47
+      z_max: 65
+    detection_settings:
+      all_classes:
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
+      map_list:
+      - autel
+      - fpv
+      - dji
+      - wifi
+      accumulation_size: 10
+      threshold: 0.4
+      exceedance: 0.5
+  5G2:
+    ip: 127.0.0.1
+    port: 10094
+    hardware:
+      type: USRP
+      central_freq: [5_200_000_000]
+    signal_settings:
+      signal_width: 1024
+      signal_height: 2048
+      sample_rate: 80000000
+      calculate_log: false
+    neural_network_settings:
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      img_size:
+      - 640
+      - 640
+      z_min: -51
+      z_max: 74
+    detection_settings:
+      all_classes:
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
+      map_list:
+      - autel
+      - fpv
+      - dji
+      - wifi
+      accumulation_size: 10
+      threshold: 0.4
+      exceedance: 0.5
+
+freq_codes:
+  4_986_500_000: '00'
+  5_086_500_000: '01'
+  5_186_500_000: '02'
+  5_286_500_000: '03'
+  5_386_500_000: '04'
+  5_486_500_000: '05'
+  5_586_500_000: '06'
+  5_686_500_000: '07'
+  5_786_500_000: '08'
+  5_886_500_000: '09'
+  5_986_500_000: '0A'
+  6_086_500_000: '0B'

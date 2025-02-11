@@ -59,7 +59,10 @@ class Client(Process):
             self.colormap = self.config['colormap']
             self.width = self.config['width']
             self.height = self.config['height']
+        except KeyError as e:
+            logger.error(f'Cant initialize parameters from config!')
 
+        try:
             self.nn = NNProcessing(name=str(self.address),
                                    weights=self.weights_path,
                                    project_path=self.project_path,
@@ -90,17 +93,23 @@ class Client(Process):
                 self.logger.debug(f'Save images status is {status}')
 
     def set_zscale(self, data):
-        z_min = int.from_bytes(data[:2], byteorder='big', signed=True)
-        z_max = int.from_bytes(data[2:4], byteorder='big', signed=True)
-        self.nn.z_min, self.z_min = z_min, z_min
-        self.nn.z_max, self.z_max = z_max, z_max
+        try:
+            z_min = int.from_bytes(data[:2], byteorder='big', signed=True)
+            z_max = int.from_bytes(data[2:4], byteorder='big', signed=True)
+            self.nn.z_min, self.z_min = z_min, z_min
+            self.nn.z_max, self.z_max = z_max, z_max
 
-        self.logger.debug(f'New ZScale: [{z_min}, {z_max}]')
+            self.logger.debug(f'New ZScale: [{z_min}, {z_max}]')
+        except Exception as e:
+            logger.error(f'Error with setting new ZScale! {e}')
 
     def set_imgshow_status(self, data):
-        status = bool(data[0])
-        self.nn.show_detected_img_status = status
-        self.logger.debug(f'Image show status is {status}')
+        try:
+            status = bool(data[0])
+            self.nn.show_detected_img_status = status
+            self.logger.debug(f'Image show status is {status}')
+        except Exception as e:
+            logger.error(f'Error with changing image show status! {e}')
 
     def set_spectrogram_size(self, data):
         fft_size = int.from_bytes(data[:2], byteorder='big')
@@ -110,21 +119,23 @@ class Client(Process):
         self.logger.debug(f'New spectrogram size is {fft_size} x {numb_of_slices}')
 
     def save_config(self):
-        full_config = load_config(config_path='config.yaml')
-
-        info = {self.port: {'project_path': self.project_path,
-                            'weights_path': self.nn.weights,
-                            'save_img_path': self.nn.img_save_path,
-                            'map_list': list(self.nn.map_list),
-                            'z_min': self.z_min,
-                            'z_max': self.z_max,
-                            'colormap': self.nn.colormap,
-                            'width': self.nn.width,
-                            'height': self.nn.height}}
-        self.logger.debug(f'Data for saving in config: {info}')
-        self.config = deep_update(full_config, info)
-        dump_conf('config.yaml', self.config)
-        self.logger.debug('Config saved!')
+        try:
+            full_config = load_config(config_path='config.yaml')
+            info = {self.port: {'project_path': self.project_path,
+                                'weights_path': self.nn.weights,
+                                'save_img_path': self.nn.img_save_path,
+                                'map_list': list(self.nn.map_list),
+                                'z_min': self.z_min,
+                                'z_max': self.z_max,
+                                'colormap': self.nn.colormap,
+                                'width': self.nn.width,
+                                'height': self.nn.height}}
+            self.logger.debug(f'Data for saving in config: {info}')
+            self.config = deep_update(full_config, info)
+            dump_conf('config.yaml', self.config)
+            self.logger.debug('Config saved!')
+        except Exception as e:
+            logger.error(f'Error with saving config! {e}')
 
     def get_current_zscale(self):
         zmin = self.nn.z_min.to_bytes(length=2, byteorder='big', signed=True)

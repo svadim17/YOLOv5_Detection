@@ -1,3 +1,4 @@
+import loguru
 from PyQt6.QtWidgets import (QWidget, QListWidget, QApplication, QSpacerItem, QSizePolicy,
                              QStackedWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QSlider, QTabWidget, QComboBox, QGroupBox)
@@ -8,26 +9,27 @@ from os import walk
 
 
 class SettingsWidget(QWidget):
-    def __init__(self, enabled_channels: list, config: dict, logger_):
+    def __init__(self, enabled_channels: list, config: dict, channels_info: list, logger_):
         super().__init__()
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         self.setWindowTitle('Settings')
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(15)
         self.setLayout(self.main_layout)
+        self.channels_info = channels_info
 
         self.logger = logger_
 
         self.mainTab = MainTab(config=config)
         self.saveTab = SaveTab(enabled_channels=enabled_channels, map_list=config['map_list'])
-        self.soundTab = SoundTab(enabled_channels=enabled_channels,
-                                 config=config,
-                                 logger_=self.logger)
+        self.soundTab = SoundTab(enabled_channels=enabled_channels, config=config, logger_=self.logger)
+        self.alinxTab = AlinxInfoTab(logger_=self.logger)
 
         self.tab = QTabWidget()
         self.tab.addTab(self.mainTab, 'Main')
         self.tab.addTab(self.saveTab, 'Images saving')
         self.tab.addTab(self.soundTab, 'Sound')
+        self.tab.addTab(self.alinxTab, 'Alinx info')
 
         self.btn_save_client_config = QPushButton('Save client config')
         self.btn_save_server_config = QPushButton('Save server config')
@@ -149,12 +151,13 @@ class SaveTab(QWidget):
         self.add_widgets_to_layout()
 
     def create_widgets(self):
-        self.chb_save_detected = QCheckBox()
-        self.l_save_detected = QLabel('Save detected')
-        self.l_save_detected.setStyleSheet("font-size: 14px")
+        self.chb_save_detected = QCheckBox('Save detected')
+
+        self.box_channels = QGroupBox('Channels')
 
         self.channels_list = QListWidget()
-        self.channels_list.setMinimumWidth(200)
+        self.channels_list.setFixedHeight(90)
+        self.channels_list.setMinimumWidth(110)
         self.stack = QStackedWidget()
 
         i = 0
@@ -165,6 +168,7 @@ class SaveTab(QWidget):
             self.stack.addWidget(stack_widget)
             i += 1
         self.channels_list.currentRowChanged.connect(self.show_current_stack)
+        # self.channels_list.setMinimumWidth(100)
 
         self.btn_save = QPushButton('Start saving')
         self.btn_save.setCheckable(True)
@@ -172,16 +176,22 @@ class SaveTab(QWidget):
         self.btn_save.clicked.connect(self.btn_save_clicked)
 
     def add_widgets_to_layout(self):
+        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
         save_detected_layout = QHBoxLayout()
         save_detected_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         save_detected_layout.addWidget(self.chb_save_detected)
-        save_detected_layout.addWidget(self.l_save_detected)
+
+        box_layout = QVBoxLayout()
+        box_layout.addWidget(self.channels_list, alignment=Qt.AlignmentFlag.AlignTop)
+        self.box_channels.setLayout(box_layout)
 
         central_layout = QHBoxLayout()
-        central_layout.addWidget(self.channels_list)
-        central_layout.addWidget(self.stack)
+        central_layout.addWidget(self.box_channels, alignment=Qt.AlignmentFlag.AlignTop)
+        central_layout.addWidget(self.stack, alignment=Qt.AlignmentFlag.AlignTop)
 
         self.main_layout.addLayout(save_detected_layout)
+        self.main_layout.addSpacing(20)
         self.main_layout.addLayout(central_layout)
         self.main_layout.addWidget(self.btn_save)
 
@@ -210,12 +220,8 @@ class SaveStack(QWidget):
         self.add_widgets_to_layout()
 
     def create_widgets(self):
-        self.l_stack = QLabel(self.name)
-        self.l_stack.setStyleSheet("font-size: 16px;")
-
-        self.l_classes = QLabel('Classes to save')
-        self.l_classes.setStyleSheet("font-size: 14px")
-
+        self.box_classes = QGroupBox(f'Classes to save ({self.name})')
+        self.box_classes.setMinimumWidth(170)
         checkbox_all_classes = QCheckBox('All images')
         checkbox_all_classes.stateChanged.connect(self.chb_all_classes_clicked)
         self.checkboxes['All'] = checkbox_all_classes
@@ -235,13 +241,9 @@ class SaveStack(QWidget):
             classes_layout.addLayout(chb_layout)
 
         central_layout = QHBoxLayout()
-        central_layout.addWidget(self.l_classes, alignment=Qt.AlignmentFlag.AlignTop)
-        central_layout.addSpacing(50)
         central_layout.addLayout(classes_layout)
-
-        self.main_layout.addWidget(self.l_stack, alignment=Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop)
-        self.main_layout.addSpacing(20)
-        self.main_layout.addLayout(central_layout)
+        self.box_classes.setLayout(central_layout)
+        self.main_layout.addWidget(self.box_classes)
         spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.main_layout.addSpacerItem(spacer)
 
@@ -385,6 +387,53 @@ class SoundTab(QWidget):
         return config
 
 
+class AlinxInfoTab(QWidget):
+
+    def __init__(self, logger_):
+        super().__init__()
+        self.logger = logger_
+
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setSpacing(15)
+        self.setLayout(self.main_layout)
+
+        self.create_widgets()
+        self.add_widgets_to_layout()
+
+    def create_widgets(self):
+        self.box_soft = QGroupBox('Software')
+        self.l_soft_ver = QLabel('Software version: ')
+        self.l_curr_soft_ver = QLabel('Unknown')
+        self.btn_get_soft_ver = QPushButton('Get software version')
+
+        self.box_loadDetect = QGroupBox('Load Detect')
+        self.l_loadDetect = QLabel('Load Detect state: ')
+        self.l_curr_loadDetect_ver = QLabel('Unknown')
+        #self.btn_
+
+    def add_widgets_to_layout(self):
+        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        label_soft_layout = QHBoxLayout()
+        label_soft_layout.addWidget(self.l_soft_ver, alignment=Qt.AlignmentFlag.AlignLeft)
+        label_soft_layout.addWidget(self.l_curr_soft_ver, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        soft_layout = QVBoxLayout()
+        soft_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        soft_layout.setContentsMargins(15, 15, 15, 10)
+        soft_layout.addLayout(label_soft_layout)
+        soft_layout.addSpacing(10)
+        soft_layout.addWidget(self.btn_get_soft_ver)
+
+        self.box_soft.setLayout(soft_layout)
+
+        self.main_layout.addWidget(self.box_soft, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.main_layout.addSpacerItem(spacer)
+
+    def update_soft_ver(self, message: str):
+        self.l_curr_soft_ver.setText(message)
+
+
 if __name__ == '__main__':
     app = QApplication([])
     qdarktheme.setup_theme()
@@ -393,6 +442,7 @@ if __name__ == '__main__':
                                     'show_images': True,
                                     'show_histogram': False,
                                     'show_spectrum': False,
-                                    'sound_status': False})
+                                    'sound_status': False,},
+                            logger_=loguru.logger)
     window.show()
     app.exec()

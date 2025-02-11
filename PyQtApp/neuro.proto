@@ -22,6 +22,12 @@ message UavObject {
     int32 freq = 3;
 }
 
+message ChannelObject {
+    string name = 1;
+    string hardware_type = 2;
+    repeated int64 central_freq = 3;
+}
+
 // Сообщение для стрима данных
 message DataResponse {
     string band_name = 1;
@@ -46,6 +52,16 @@ message VoidRequest {
 message ServerErrorResponse {
     bool status = 1;
     string msg = 2;
+}
+
+// Запрос о доступных каналах обработки
+message ChannelsRequest {
+}
+
+// Ответ на запрос о доступных каналах обработки
+message ChannelsResponse {
+    repeated string channels = 1;
+    repeated ChannelObject info = 2;
 }
 
 // Запрос на старт канала обработки
@@ -80,15 +96,6 @@ message CurrentZScaleResponse {
    repeated string band_names = 1;
    repeated int32 z_min = 2;
    repeated int32 z_max = 3;
-}
-
-// Запрос о доступных каналах обработки
-message ChannelsRequest {
-}
-
-// Ответ на запрос о доступных каналах обработки
-message ChannelsResponse {
-    repeated string channels = 1;
 }
 
 // Запрос на сохранение конфига
@@ -143,18 +150,44 @@ message GetProcessStatusRequest {
 
 // Ответ на запрос о статусе процесса
 message GetProcessStatusResponse {
-    bool status=1;
+    bool status = 1;
 }
 
 // Запрос на рестарт процесса
 message RestartProcessRequest {
-    string channel_name=1;
+    string channel_name = 1;
 }
 
 // Ответ на запрос о рестарте процесса
 message RestartProcessResponse {
-    bool status=1;
+    bool status = 1;
 }
+
+message SetFrequencyRequest {
+    string channel_name = 1;
+    int64 value = 2;
+}
+
+message SetFrequencyResponse {
+    string status = 1;
+}
+
+message SetGainRequest {
+    string channel_name = 1;
+    int32 value = 2;
+}
+
+message SetGainResponse {
+    string status = 1;
+}
+
+message AlinxSoftVerRequest {
+}
+
+message AlinxSoftVerResponse {
+    string version = 1;
+}
+
 
 // Сервисы обработки данных
 service DataProcessingService {
@@ -170,4 +203,7 @@ service DataProcessingService {
     rpc OnOffAccumulation (OnOffAccumulationRequest) returns (OnOffAccumulationResponse);
     rpc GetProcessStatus (GetProcessStatusRequest) returns (GetProcessStatusResponse);
     rpc RestartProcess (RestartProcessRequest) returns (RestartProcessResponse);
+    rpc SetFrequency (SetFrequencyRequest) returns (SetFrequencyResponse);
+    rpc SetGain (SetGainRequest) returns (SetGainResponse);
+    rpc AlinxSoftVer (AlinxSoftVerRequest) returns (AlinxSoftVerResponse);
 }

@@ -1,5 +1,4 @@
 import time
-
 import grpc
 from grpc import StatusCode
 import neuro_pb2_grpc as API_pb2_grpc
@@ -7,6 +6,9 @@ import neuro_pb2 as API_pb2
 import custom_utils
 from PyQt6 import QtCore
 from PyQt6.QtCore import pyqtSignal
+from collections import namedtuple
+
+ChannelInfo = namedtuple('ChannelInfo', ['name', 'hardware_type', 'central_freq'])
 
 
 gRPC_channel_options = [
@@ -66,6 +68,7 @@ class gRPCServerErrorThread(QtCore.QThread):
 class gRPCThread(QtCore.QThread):
     signal_dataStream_response = pyqtSignal(dict)
     signal_process_status = pyqtSignal(bool)
+    signal_alinx_soft_ver = pyqtSignal(str)
 
     def __init__(self, channel: int,
                  map_list: list,
@@ -79,6 +82,7 @@ class gRPCThread(QtCore.QThread):
         self.gRPC_channel = channel
         self.max_gRPC_retries = 55555
         self.available_channels = None
+        self.hardware = None
         self.enabled_channels_counter = {}
         self.show_img_status = detected_img_status
         self.clear_img_status = clear_img_status
@@ -90,19 +94,33 @@ class gRPCThread(QtCore.QThread):
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
             response = stub.GetAvailableChannels(API_pb2.ChannelsRequest())
-            self.logger_.info(f'Available channels: {response.channels}')
             self.available_channels = list(response.channels)
-            return tuple(response.channels)
+            channels_info = []
+            for channel in response.info:
+                ch = ChannelInfo(name=channel.name,
+                                 hardware_type=channel.hardware_type,
+                                 central_freq=tuple(channel.central_freq))
+                channels_info.append(ch)
+            self.logger_.info(f'Available channels: {response.channels}.')
+            return self.available_channels, channels_info
         except Exception as e:
             self.logger_.error(f'Error with getting available channels! \n{e}')
-            self.logger_.debug(f'Response = {response}')
+
+    def getHardwareInfoRequest(self, channel_name: str):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.HardwareInfo(API_pb2.HardwareInfoRequest(connection_name=channel_name))
+            dict_info = {'hardware': response.hardware_type, 'freq': response.central_freq, 'static': response.static}
+            self.logger_.info(f'Hardware info for {channel_name}: {dict_info}')
+            return dict_info
+        except Exception as e:
+            self.logger_.error(f'Error with getting hardware info for {channel_name}! \n{e}')
 
     def startChannelRequest(self, channel_name: str):
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
             response = stub.StartChannel(API_pb2.StartChannelRequest(connection_name=channel_name))
             self.logger_.info(response.description)
-            return response
         except Exception as e:
             self.logger_.error(f'Error with getting response from StartChannelRequest! \n{e}')
 
@@ -205,6 +223,32 @@ class gRPCThread(QtCore.QThread):
             return response
         except Exception as e:
             self.logger_.error(f'Error with restarting process "{name}"! \n{e}')
+
+    def getAlinxSoftVer(self):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.AlinxSoftVer(API_pb2.AlinxSoftVerRequest())
+            version = response.version
+            self.logger_.info(f'Alinx software version: {version}')
+            self.signal_alinx_soft_ver.emit(version)
+        except Exception as e:
+            self.logger_.error(f'Error with getting Alinx software version! \n{e}')
+
+    def setFrequency(self, channel_name: str, freq: int):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
+            self.logger_.info(response.status)
+        except Exception as e:
+            self.logger_.error(f'Error with setting frequency! \n{e}')
+
+    def setGain(self, channel_name: str, gain: int):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.SetGain(API_pb2.SetGainRequest(channel_name=channel_name, value=gain))
+            self.logger_.info(response.status)
+        except Exception as e:
+            self.logger_.error(f'Error with setting frequency! \n{e}')
 
     def init_enabled_channels(self, enabled_channels: list):
         for channel in enabled_channels:
