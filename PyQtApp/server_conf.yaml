@@ -79,8 +79,9 @@ connections:
       sample_rate: 80000000
       calculate_log: false
     neural_network_settings:
+      version: v10
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10s_6classes_BIG_AUGMENTATED_ver1\weights\best.pt
       img_size:
       - 640
       - 640
@@ -114,8 +115,9 @@ connections:
       sample_rate: 80000000
       calculate_log: false
     neural_network_settings:
+      version: v10
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10s_6classes_BIG_AUGMENTATED_ver1\weights\best.pt
       img_size:
       - 640
       - 640
@@ -137,7 +139,7 @@ connections:
       accumulation_size: 10
       threshold: 0.4
       exceedance: 0.5
-  5G8:
+  5G7865:
     ip: 127.0.0.1
     port: 10093
     hardware:
@@ -149,6 +151,7 @@ connections:
       sample_rate: 80000000
       calculate_log: false
     neural_network_settings:
+      version: v5
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
       weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
@@ -184,6 +187,7 @@ connections:
       sample_rate: 80000000
       calculate_log: false
     neural_network_settings:
+      version: v5
       project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
       weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:

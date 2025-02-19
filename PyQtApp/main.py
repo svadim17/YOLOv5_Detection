@@ -92,7 +92,7 @@ class MainWindow(QMainWindow):
     def connect_window_closed(self):
         self.enabled_channels = self.connectWindow.enabled_channels
         self.gRPCThread.init_enabled_channels(enabled_channels=self.enabled_channels)
-
+        self.signal_settings = self.gRPCThread.signalSettings(enabled_channels=self.enabled_channels)
         for channel in self.enabled_channels:
             self.sound_states[channel] = self.config['settings_sound']['sound_status']
 
@@ -116,7 +116,9 @@ class MainWindow(QMainWindow):
         self.settingsWidget.soundTab.signal_sound_states.connect(self.processor.init_sound_states)
         self.settingsWidget.soundTab.signal_sound_classes_states.connect(self.processor.init_sound_classes_states)
         self.settingsWidget.alinxTab.btn_get_soft_ver.clicked.connect(self.gRPCThread.getAlinxSoftVer)
+        self.settingsWidget.nnTab.btn_get_nn_info.clicked.connect(lambda: self.gRPCThread.nnInfo(self.enabled_channels))
         self.gRPCThread.signal_alinx_soft_ver.connect(self.settingsWidget.alinxTab.update_soft_ver)
+        self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
         self.init_recognition_widgets()
         self.processor.init_sound_states(sound_states=self.sound_states)
         self.processor.init_sound_classes_states(sound_classes_states=self.sound_classes_states)
@@ -159,6 +161,7 @@ class MainWindow(QMainWindow):
                                                   img_show_status=self.show_img_status,
                                                   zscale_settings=current_zscale_settings_dict[channel_info.name],
                                                   recogn_options=recogn_settings[channel_info.name],
+                                                  signal_settings=self.signal_settings[channel_info.name],
                                                   show_recogn_options=bool(self.config['settings_main']['show_recogn_options']),
                                                   show_images=self.show_img_status,
                                                   show_histogram=self.show_histogram_status,

@@ -47,7 +47,10 @@ COLORMAP_DICT = {
 
 class NNProcessing(object):
 
-    def __init__(self, name: str,
+    def __init__(self,
+                 name: str,
+                 all_classes: tuple,
+                 version: str,
                  weights: str,
                  project_path: str,
                  map_list: tuple,
@@ -63,6 +66,8 @@ class NNProcessing(object):
         super().__init__()
 
         self.name = name
+        self.all_classes = all_classes
+        self.version = version
         self.weights = weights
         self.project_path = project_path
         self.map_list = map_list
@@ -86,18 +91,24 @@ class NNProcessing(object):
         self.load_model()
 
     def load_model(self):
-        self.model = torch.hub.load(self.project_path,
-                                    model='custom',
-                                    path=self.weights,
-                                    source='local')
+        match self.version:
+            case 'v5':
+                self.model = torch.hub.load(self.project_path,
+                                            model='custom',
+                                            path=self.weights,
+                                            source='local')
 
-        self.model.iou = 0.8
-        self.model.conf = 0.4
-        # self.model.augment = True
-        self.model.agnostic = True
+                self.model.iou = 0.8
+                self.model.conf = 0.4
+                # self.model.augment = True
+                self.model.agnostic = True
+            case 'v10':
+                self.model = YOLO(self.weights)
+            case _:
+                raise Exception(f"Unknown model version {self.version}")
 
     def normalization(self, data):
-        #data = np.transpose(data + 122)
+        # data = np.transpose(data + 122)
         data = np.transpose(data)
         norm_data = 255 * (data - self.z_min) / (self.z_max - self.z_min)
         norm_data = norm_data.astype(np.uint8)
@@ -119,9 +130,26 @@ class NNProcessing(object):
         color_image = cv2.applyColorMap(norm_data, self.colormap)   # create a color image from normalized data
         img = cv2.resize(color_image, self.img_size)
         clear_img = copy.copy(img)
-        result = self.model(img, size=self.img_size[0])       # set the model use the screen
-        df_result = result.pandas().xyxy[0]
-        detected_img = result.render()[0]
+        match self.version:
+            case 'v5':
+                result = self.model(img, size=self.img_size[0])
+                df_result = result.pandas().xyxy[0]
+                detected_img = result.render()[0]
+
+            case 'v10':
+                middle_result = self.model(img)
+                df_result = self.convert_result_to_pandas(results=middle_result)
+                detected_img = img.copy()
+                for result in middle_result:
+                    for box in result.boxes:
+                        cv2.rectangle(detected_img, (int(box.xyxy[0][0]), int(box.xyxy[0][1])),
+                                      (int(box.xyxy[0][2]), int(box.xyxy[0][3])), (255, 255, 255), 2)
+                        cv2.putText(detected_img, f"{result.names[int(box.cls[0])]}",
+                                    (int(box.xyxy[0][0]), int(box.xyxy[0][1]) - 10),
+                                    cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
+
+            case _:
+                raise Exception(f"Unknown model version {self.version}")
         return clear_img, df_result, detected_img
 
     def processing(self, norm_data, save_images=False):
@@ -145,11 +173,33 @@ class NNProcessing(object):
 
         return result
 
+    def convert_result_to_pandas(self, results):
+        columns = ['xmin', 'ymin', 'xmax', 'ymax', 'confidence', 'class', 'name']
+
+        xyxy_data = []
+        results_copy = results.copy()
+        for r in results_copy:
+            if not r.boxes:
+                return pandas.DataFrame(columns=columns)
+            else:
+                for box in r.boxes:
+                    xyxy_data.append({
+                        'name': self.all_classes[int(box.cls.item())],
+                        'xmin': box.xyxy[0][0].item(),
+                        'ymin': box.xyxy[0][1].item(),
+                        'xmax': box.xyxy[0][2].item(),
+                        'ymax': box.xyxy[0][3].item(),
+                        'confidence': box.conf.item(),
+                        'class': box.cls.item()
+                    })
+
+        df_result = pandas.DataFrame(xyxy_data)
+        return df_result
+
     def processing_calc_power(self, norm_data):
         img = cv2.imread(r"D:\2\input.jpg")
         result = self.model(img, size=self.img_size[0])  # set the model use the screen
         df_result = result.pandas().xyxy[0]
-        print(df_result)
         detected_img = result.render()[0]
         return img, df_result, detected_img
 

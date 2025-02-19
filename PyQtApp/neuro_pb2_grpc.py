@@ -115,6 +115,16 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.AlinxSoftVerRequest.SerializeToString,
                 response_deserializer=neuro__pb2.AlinxSoftVerResponse.FromString,
                 _registered_method=True)
+        self.NNInfo = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/NNInfo',
+                request_serializer=neuro__pb2.NNInfoRequest.SerializeToString,
+                response_deserializer=neuro__pb2.NNInfoResponse.FromString,
+                _registered_method=True)
+        self.SignalSettings = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/SignalSettings',
+                request_serializer=neuro__pb2.SignalSettingsRequest.SerializeToString,
+                response_deserializer=neuro__pb2.SignalSettingsResponse.FromString,
+                _registered_method=True)
 
 
 class DataProcessingServiceServicer(object):
@@ -214,6 +224,18 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def NNInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SignalSettings(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataProcessingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -291,6 +313,16 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.AlinxSoftVer,
                     request_deserializer=neuro__pb2.AlinxSoftVerRequest.FromString,
                     response_serializer=neuro__pb2.AlinxSoftVerResponse.SerializeToString,
+            ),
+            'NNInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.NNInfo,
+                    request_deserializer=neuro__pb2.NNInfoRequest.FromString,
+                    response_serializer=neuro__pb2.NNInfoResponse.SerializeToString,
+            ),
+            'SignalSettings': grpc.unary_unary_rpc_method_handler(
+                    servicer.SignalSettings,
+                    request_deserializer=neuro__pb2.SignalSettingsRequest.FromString,
+                    response_serializer=neuro__pb2.SignalSettingsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -699,6 +731,60 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/AlinxSoftVer',
             neuro__pb2.AlinxSoftVerRequest.SerializeToString,
             neuro__pb2.AlinxSoftVerResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def NNInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/NNInfo',
+            neuro__pb2.NNInfoRequest.SerializeToString,
+            neuro__pb2.NNInfoResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SignalSettings(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/SignalSettings',
+            neuro__pb2.SignalSettingsRequest.SerializeToString,
+            neuro__pb2.SignalSettingsResponse.FromString,
             options,
             channel_credentials,
             insecure,

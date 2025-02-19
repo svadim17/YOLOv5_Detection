@@ -24,12 +24,14 @@ class SettingsWidget(QWidget):
         self.saveTab = SaveTab(enabled_channels=enabled_channels, map_list=config['map_list'])
         self.soundTab = SoundTab(enabled_channels=enabled_channels, config=config, logger_=self.logger)
         self.alinxTab = AlinxInfoTab(logger_=self.logger)
+        self.nnTab = NNTab(logger_=self.logger, enabled_channels=enabled_channels)
 
         self.tab = QTabWidget()
         self.tab.addTab(self.mainTab, 'Main')
         self.tab.addTab(self.saveTab, 'Images saving')
         self.tab.addTab(self.soundTab, 'Sound')
         self.tab.addTab(self.alinxTab, 'Alinx info')
+        self.tab.addTab(self.nnTab, 'NN')
 
         self.btn_save_client_config = QPushButton('Save client config')
         self.btn_save_server_config = QPushButton('Save server config')
@@ -385,6 +387,48 @@ class SoundTab(QWidget):
                                      }
                   }
         return config
+
+
+class NNTab(QWidget):
+
+    def __init__(self, logger_, enabled_channels: list):
+        super().__init__()
+        self.logger = logger_
+        self.enabled_channels = enabled_channels
+
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setSpacing(15)
+        self.setLayout(self.main_layout)
+
+        self.create_widgets()
+        self.add_widgets_to_layout()
+
+    def create_widgets(self):
+        self.box_versions = QGroupBox('Models info')
+        self.model_ver_dict = {}
+        for channel in self.enabled_channels:
+            self.model_ver_dict[channel] = QLabel(f'{channel}:\tUnknown')
+
+        self.btn_get_nn_info = QPushButton('Get NN info')
+
+    def add_widgets_to_layout(self):
+        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        box_layout = QVBoxLayout()
+        box_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        box_layout.setContentsMargins(15, 15, 15, 10)
+        for label in self.model_ver_dict.values():
+            box_layout.addWidget(label)
+        box_layout.addSpacing(10)
+        box_layout.addWidget(self.btn_get_nn_info)
+
+        self.box_versions.setLayout(box_layout)
+        self.main_layout.addWidget(self.box_versions, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.main_layout.addSpacerItem(spacer)
+
+    def update_models_info(self, nn_info: dict):
+        for channel in nn_info.keys():
+            self.model_ver_dict[channel].setText(f"{channel}:\t{nn_info[channel]['name']} ({nn_info[channel]['version']})")
 
 
 class AlinxInfoTab(QWidget):

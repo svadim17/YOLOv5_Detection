@@ -69,6 +69,7 @@ class gRPCThread(QtCore.QThread):
     signal_dataStream_response = pyqtSignal(dict)
     signal_process_status = pyqtSignal(bool)
     signal_alinx_soft_ver = pyqtSignal(str)
+    signal_nn_info = pyqtSignal(dict)
 
     def __init__(self, channel: int,
                  map_list: list,
@@ -249,6 +250,36 @@ class gRPCThread(QtCore.QThread):
             self.logger_.info(response.status)
         except Exception as e:
             self.logger_.error(f'Error with setting frequency! \n{e}')
+
+    def nnInfo(self, enabled_channels: list):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.NNInfo(API_pb2.NNInfoRequest(channels=enabled_channels))
+
+            nn_info = {}
+            i = 0
+            for channel in response.band_name:
+                nn_info[channel] = {'version': response.versions[i], 'name': response.names[i]}
+                i += 1
+            self.signal_nn_info.emit(nn_info)
+            self.logger_.trace(f'NN models info: {nn_info}')
+        except Exception as e:
+            self.logger_.error(f'Error with getting NN models info! \n{e}')
+
+    def signalSettings(self, enabled_channels: list):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.SignalSettings(API_pb2.SignalSettingsRequest(channels=enabled_channels))
+
+            signal_settings = {}
+            i = 0
+            for channel in response.band_name:
+                signal_settings[channel] = {'width': response.width[i], 'height': response.height[i], 'fs': response.fs[i]}
+                i += 1
+            self.logger_.trace(f'Signal settings: {signal_settings}')
+            return signal_settings
+        except Exception as e:
+            self.logger_.error(f'Error with getting NN models info! \n{e}')
 
     def init_enabled_channels(self, enabled_channels: list):
         for channel in enabled_channels:

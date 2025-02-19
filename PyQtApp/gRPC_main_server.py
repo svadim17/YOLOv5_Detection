@@ -71,6 +71,7 @@ class Client(Process):
                  name: str,
                  address: tuple,
                  hardware_type: str,
+                 model_version: str,
                  weights_path: str,
                  project_path: str,
                  sample_rate: int,
@@ -92,6 +93,7 @@ class Client(Process):
         self.name = name
         self.address = address
         self.hardware = hardware_type
+        self.model_version = model_version
         self.weights_path = weights_path
         self.project_path = project_path
         self.sample_rate = sample_rate
@@ -283,6 +285,8 @@ class Client(Process):
     def run(self):
         try:
             self.nn = NNProcessing(name=self.name,
+                                   all_classes=self.all_classes,
+                                   version=self.model_version,
                                    weights=self.weights_path,
                                    sample_rate=self.sample_rate,
                                    width=self.signal_width,
@@ -499,6 +503,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         cl = Client(name=conn_name,
                     address=(str(connection['ip']), int(connection['port'])),
                     hardware_type=str(connection['hardware']['type']),
+                    model_version=str(connection['neural_network_settings']['version']),
                     weights_path=connection['neural_network_settings']['weights_path'],
                     project_path=connection['neural_network_settings']['project_path'],
                     sample_rate=int(connection['signal_settings']['sample_rate']),
@@ -652,6 +657,24 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         # # # тут должен быть запрос о версии ПО Alinx # # #
         return API_pb2.AlinxSoftVerResponse(version='We are working on it...')
 
+    def NNInfo(self, request, context):
+        chan_names = request.channels
+        versions, names = [], []
+        for conn_name in chan_names:
+            versions.append(self.connections[conn_name]['neural_network_settings']['version'])
+            model_name = os.path.basename(self.connections[conn_name]['neural_network_settings']['weights_path'])
+            names.append(model_name)
+        return API_pb2.NNInfoResponse(band_name=chan_names, versions=versions, names=names)
+
+    def SignalSettings(self, request, context):
+        chan_names = request.channels
+        width, height, fs = [], [], []
+        for conn_name in chan_names:
+            width.append(self.connections[conn_name]['signal_settings']['signal_width'])
+            height.append(self.connections[conn_name]['signal_settings']['signal_height'])
+            fs.append(self.connections[conn_name]['signal_settings']['sample_rate'])
+
+        return API_pb2.SignalSettingsResponse(band_name=chan_names, width=width, height=height, fs=fs)
 
 def serve():
     gRPC_PORT = 51234
@@ -672,10 +695,3 @@ def serve():
 
 if __name__ == "__main__":
     serve()
-
-
-
-
-
-
-

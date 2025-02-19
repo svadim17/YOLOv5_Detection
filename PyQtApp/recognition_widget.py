@@ -19,6 +19,7 @@ class RecognitionWidget(QDockWidget, QWidget):
                  map_list: list,
                  zscale_settings: list,
                  recogn_options: dict,
+                 signal_settings: dict,
                  show_recogn_options: bool,
                  channel_info: ChannelInfo,
                  **widgets_statuses):
@@ -27,6 +28,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.map_list = map_list
         self.zscale_settings = zscale_settings
         self.recogn_options_dict = recogn_options
+        self.signal_settings = signal_settings
         self.show_recogn_options = show_recogn_options
         self.channel_info = channel_info
 
@@ -174,7 +176,7 @@ class RecognitionWidget(QDockWidget, QWidget):
     def create_spectrum_tab(self):
         self.spectrum_plot = pyqtgraph.PlotWidget()
         self.spectrum_curve = self.spectrum_plot.plot(pen=(229, 165, 10))
-
+        self.spectrum_plot.setXRange(0, self.signal_settings['width'], padding=0.03)
         if self.show_spectrum_status:
             self.tab.addTab(self.spectrum_plot, 'Spectrum')
         else:
