@@ -73,6 +73,7 @@ connections:
     hardware:
       type: USRP
       central_freq: [2_437_000_000]
+      send_freq: true
     signal_settings:
       signal_width: 1024
       signal_height: 2048

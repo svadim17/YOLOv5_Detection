@@ -319,13 +319,14 @@ class gRPCThread(QtCore.QThread):
                         self.logger_.info('gRPCThread is interrupted.')
                         break
                     band_name = response.band_name
+                    channel_freq = response.channel_central_freq
                     if band_name in self.available_channels:
                         if self.watchdog:
                             if band_name in self.enabled_channels_counter:
                                 self.enabled_channels_counter[band_name] = time.time()
                                 self.check_channels_time()
 
-                        response_dict = {'band_name': band_name}
+                        response_dict = {'band_name': band_name, 'channel_freq': channel_freq}
                         drones_list = []
                         for uav in response.uavs:
                             drone_name = self.map_list[uav.type]

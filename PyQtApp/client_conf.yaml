@@ -10,9 +10,9 @@ settings_main:
   show_frequencies: true
   enable_accumulation: true
   watchdog: false
-  show_spectrogram: true
+  show_spectrogram: false
   show_histogram: false
-  show_spectrum: true
+  show_spectrum: false
 settings_sound:
   sound_status: true
   classes_sound:

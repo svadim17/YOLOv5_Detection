@@ -264,12 +264,15 @@ class RecognitionWidget(QDockWidget, QWidget):
 
     @pyqtSlot(dict)
     def update_state(self, info: dict):
+        band_name = info['band_name']
+        channel_freq = info['channel_freq']
+        freq_ghz = channel_freq / 1_000_000_000
+
         self.last_fps_2.append(1 / (time.time() - self.last_time_2))
         current_fps = f'FPS: {sum(self.last_fps_2) / len(self.last_fps_2):.1f}'
         self.last_time_2 = time.time()
-        self.setWindowTitle(self.name + f' {current_fps}')
+        self.setWindowTitle(f'{self.name}  |  Fc = {freq_ghz:.4f} GHz  |  {current_fps}')
 
-        band_name = info['band_name']
         for drone_dict in info['drones']:
             if drone_dict['state']:
                 self.drons_btns[drone_dict['name']].setStyleSheet("background-color: #F0483C; "
@@ -308,6 +311,10 @@ class RecognitionWidget(QDockWidget, QWidget):
 
     def update_spectrum_plot(self, data):
         self.spectrum_curve.setData(y=data)
+
+    def update_channel_freq(self, new_freq):
+        freq_ghz = new_freq / 1_000_000_000
+        self.setWindowTitle(f'{self.name} | Fc = {freq_ghz:.4f} GHz')
 
 
 if __name__ == '__main__':

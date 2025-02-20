@@ -71,6 +71,8 @@ class Client(Process):
                  name: str,
                  address: tuple,
                  hardware_type: str,
+                 send_freq_status: bool,
+                 central_freq: int,
                  model_version: str,
                  weights_path: str,
                  project_path: str,
@@ -93,6 +95,8 @@ class Client(Process):
         self.name = name
         self.address = address
         self.hardware = hardware_type
+        self.send_freq_status = send_freq_status
+        self.central_freq = central_freq
         self.model_version = model_version
         self.weights_path = weights_path
         self.project_path = project_path
@@ -108,6 +112,7 @@ class Client(Process):
         self.threshold = threshold
         self.accumulation_size = accumulation_size
         self.exceedance = exceedance
+
         self.accum_status = True
         self.global_threshold = self.threshold * self.accumulation_size * self.exceedance
         self.pipe_control_child, self.pipe_control_parent = Pipe()
@@ -126,6 +131,8 @@ class Client(Process):
 
         if self.hardware == 'USRP' or self.hardware == 'Usrp' or self.hardware == 'usrp':
             self.msg_len = self.signal_width * self.signal_height
+            if self.send_freq_status:
+                self.freq_len = 8
         elif self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
             self.msg_len = self.signal_width * self.signal_height * 2 + 16
         else:
@@ -175,14 +182,12 @@ class Client(Process):
                 state = bool(key_dict['confidence'] > self.threshold)
             accumed_results.append(state)
             if state:
-                freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
-                if '2G437' in self.name:
-                    freq = int(freq_shift / 1000000 + 2437)
-                elif '5G7865' in self.name:
-                    freq = int(freq_shift / 1000000 + 5786.5)
-                else:
+                try:
+                    freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
+                    freq = int((freq_shift + self.central_freq) / 1_000_000)
+                except Exception as e:
                     freq = 0
-                    self.logger.trace(f"Can\'t calculate frequency for {self.name}!")
+                    self.logger.trace(f"Can\'t calculate frequency for {self.name}! \n{e}")
                 frequencies.append(freq)
             else:
                 frequencies.append(0)
@@ -243,6 +248,11 @@ class Client(Process):
     def receive_from_USRP(self, sock):
         res_1 = np.arange(len(self.map_list) * 4)  # array of bytes to send (4 bytes for one class (float32)
         sock.send(res_1.tobytes())
+
+        if self.send_freq_status:           # receive central freq of channel if status is true
+            freq = sock.recv(self.freq_len)
+            self.central_freq = int.from_bytes(freq, byteorder='big')
+
         arr = sock.recv(self.msg_len)
         self.logger.trace(f'Received {self.msg_len} bytes.')
         i = 0
@@ -313,7 +323,8 @@ class Client(Process):
                     s.connect(self.address)
                     self.logger.success(f'Connected to {self.address}!')
                     if self.hardware == 'USRP' or self.hardware == 'Usrp' or self.hardware == 'usrp':
-                        nn_type = s.recv(2)
+                        nn_type = s.recv(2)     # nn type
+
                         self.logger.debug(f'NN type: {nn_type}')
                         receive = self.receive_from_USRP
                     elif self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
@@ -341,7 +352,8 @@ class Client(Process):
                                                      'predict_df': df_result,
                                                      'detected_img': detected_img,
                                                      'clear_img': clear_img,
-                                                     'spectrum': spectrum},
+                                                     'spectrum': spectrum,
+                                                     'channel_freq': self.central_freq},
                                                     timeout=10)
                                 except queue.Full as e:
                                     self.logger.error(f'data_queue is full. {e}')
@@ -397,7 +409,6 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 # else:
                 #     self.custom_logger.trace(f'Ping in {proc_name} is ok!')
 
-
     def ProceedDataStream(self, request, context):
         self.custom_logger.debug(f'Start data stream with detected img status = {request.detected_img} and '
                                  f'clear img status = {request.clear_img}')
@@ -407,7 +418,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                     res = queue.get()
                     if res is not None:
                         band_name = res['name']
-
+                        channel_freq = res['channel_freq']
                         Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0],
                                                   freq=res['frequencies'][0]),
                                 API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1],
@@ -419,7 +430,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                                 ]
 
                         # error_q = self.error_queues[channel_name].get()
-                        response_data = {'band_name': band_name, 'uavs': Uavs}
+                        response_data = {'band_name': band_name, 'uavs': Uavs, 'channel_central_freq': channel_freq}
                         if request.clear_img:
                             response_data['clear_img'] = res['clear_img'].tobytes()
                         if request.detected_img:
@@ -503,6 +514,8 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         cl = Client(name=conn_name,
                     address=(str(connection['ip']), int(connection['port'])),
                     hardware_type=str(connection['hardware']['type']),
+                    send_freq_status=bool(connection['hardware']['send_freq']),
+                    central_freq=int(list(connection['hardware']['central_freq'])[0]),
                     model_version=str(connection['neural_network_settings']['version']),
                     weights_path=connection['neural_network_settings']['weights_path'],
                     project_path=connection['neural_network_settings']['project_path'],
@@ -675,6 +688,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             fs.append(self.connections[conn_name]['signal_settings']['sample_rate'])
 
         return API_pb2.SignalSettingsResponse(band_name=chan_names, width=width, height=height, fs=fs)
+
 
 def serve():
     gRPC_PORT = 51234

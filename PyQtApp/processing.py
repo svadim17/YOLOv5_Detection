@@ -33,9 +33,7 @@ class Processor(QtCore.QObject):
                             spectrum: value}           """
 
         band_name = info['band_name']
-
         if band_name in self.recogn_widgets:
-
             self.recogn_widgets[band_name].update_state(info)     # обновление кнопок в конкретном канале
 
             if 'clear_img' in info:

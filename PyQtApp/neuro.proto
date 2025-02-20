@@ -35,6 +35,7 @@ message DataResponse {
     optional bytes detected_img = 3;
     optional bytes clear_img = 4;
     optional bytes spectrum = 5;
+    int64 channel_central_freq = 6;
 }
 
 // Запрос на начало стрима с результатами распознавания
