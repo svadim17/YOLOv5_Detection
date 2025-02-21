@@ -10,7 +10,7 @@ settings_main:
   show_frequencies: true
   enable_accumulation: true
   watchdog: false
-  show_spectrogram: false
+  show_spectrogram: true
   show_histogram: false
   show_spectrum: false
 settings_sound:

@@ -13,6 +13,8 @@ class Processor(QtCore.QObject):
         super().__init__()
         self.logger_ = logger_
 
+        self.channels_central_freq = {}
+
         if not os.path.isdir('saved_images'):
             os.mkdir('saved_images')
 

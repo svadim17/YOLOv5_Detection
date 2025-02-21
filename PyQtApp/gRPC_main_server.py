@@ -71,7 +71,7 @@ class Client(Process):
                  name: str,
                  address: tuple,
                  hardware_type: str,
-                 send_freq_status: bool,
+                 receive_freq_status: bool,
                  central_freq: int,
                  model_version: str,
                  weights_path: str,
@@ -95,7 +95,7 @@ class Client(Process):
         self.name = name
         self.address = address
         self.hardware = hardware_type
-        self.send_freq_status = send_freq_status
+        self.receive_freq_status = receive_freq_status
         self.central_freq = central_freq
         self.model_version = model_version
         self.weights_path = weights_path
@@ -131,7 +131,7 @@ class Client(Process):
 
         if self.hardware == 'USRP' or self.hardware == 'Usrp' or self.hardware == 'usrp':
             self.msg_len = self.signal_width * self.signal_height
-            if self.send_freq_status:
+            if self.receive_freq_status:
                 self.freq_len = 8
         elif self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
             self.msg_len = self.signal_width * self.signal_height * 2 + 16
@@ -249,7 +249,7 @@ class Client(Process):
         res_1 = np.arange(len(self.map_list) * 4)  # array of bytes to send (4 bytes for one class (float32)
         sock.send(res_1.tobytes())
 
-        if self.send_freq_status:           # receive central freq of channel if status is true
+        if self.receive_freq_status:           # receive central freq of channel if status is true
             freq = sock.recv(self.freq_len)
             self.central_freq = int.from_bytes(freq, byteorder='big')
 
@@ -514,7 +514,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         cl = Client(name=conn_name,
                     address=(str(connection['ip']), int(connection['port'])),
                     hardware_type=str(connection['hardware']['type']),
-                    send_freq_status=bool(connection['hardware']['send_freq']),
+                    receive_freq_status=bool(connection['hardware']['receive_freq']),
                     central_freq=int(list(connection['hardware']['central_freq'])[0]),
                     model_version=str(connection['neural_network_settings']['version']),
                     weights_path=connection['neural_network_settings']['weights_path'],

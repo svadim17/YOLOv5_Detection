@@ -1,7 +1,7 @@
 import loguru
 from PyQt6.QtWidgets import (QWidget, QListWidget, QApplication, QSpacerItem, QSizePolicy,
                              QStackedWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton,
-                             QLabel, QSlider, QTabWidget, QComboBox, QGroupBox)
+                             QLabel, QSlider, QTabWidget, QComboBox, QGroupBox, QSpinBox)
 from PyQt6.QtGui import QPixmap, QImage, QFont, QIcon
 from PyQt6.QtCore import pyqtSlot, Qt, pyqtSignal
 import qdarktheme
@@ -25,6 +25,7 @@ class SettingsWidget(QWidget):
         self.soundTab = SoundTab(enabled_channels=enabled_channels, config=config, logger_=self.logger)
         self.alinxTab = AlinxInfoTab(logger_=self.logger)
         self.nnTab = NNTab(logger_=self.logger, enabled_channels=enabled_channels)
+        self.rxChannelsTab = RXChannelsTab(enabled_channels=enabled_channels, logger_=self.logger)
 
         self.tab = QTabWidget()
         self.tab.addTab(self.mainTab, 'Main')
@@ -32,6 +33,7 @@ class SettingsWidget(QWidget):
         self.tab.addTab(self.soundTab, 'Sound')
         self.tab.addTab(self.alinxTab, 'Alinx info')
         self.tab.addTab(self.nnTab, 'NN')
+        self.tab.addTab(self.rxChannelsTab, 'RX Channels')
 
         self.btn_save_client_config = QPushButton('Save client config')
         self.btn_save_server_config = QPushButton('Save server config')
@@ -159,7 +161,7 @@ class SaveTab(QWidget):
 
         self.channels_list = QListWidget()
         self.channels_list.setFixedHeight(90)
-        self.channels_list.setMinimumWidth(110)
+        self.channels_list.setMinimumWidth(80)
         self.stack = QStackedWidget()
 
         i = 0
@@ -245,7 +247,7 @@ class SaveStack(QWidget):
         central_layout = QHBoxLayout()
         central_layout.addLayout(classes_layout)
         self.box_classes.setLayout(central_layout)
-        self.main_layout.addWidget(self.box_classes)
+        self.main_layout.addWidget(self.box_classes, alignment=Qt.AlignmentFlag.AlignLeft)
         spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.main_layout.addSpacerItem(spacer)
 
@@ -476,6 +478,103 @@ class AlinxInfoTab(QWidget):
 
     def update_soft_ver(self, message: str):
         self.l_curr_soft_ver.setText(message)
+
+
+class RXChannelsTab(QWidget):
+
+    def __init__(self, enabled_channels: list, logger_):
+        super().__init__()
+        self.enabled_channels = enabled_channels
+        self.logger = logger_
+
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setSpacing(15)
+        self.setLayout(self.main_layout)
+
+        self.channels_stacks = {}
+
+        self.create_widgets()
+        self.add_widgets_to_layout()
+
+    def create_widgets(self):
+        self.chb_autoscan = QCheckBox('Auto rebuild frequency')
+        self.chb_autoscan.stateChanged.connect(self.chb_autoscan_changed)
+
+        self.box_channels = QGroupBox('Channels')
+
+        self.channels_list = QListWidget()
+        self.stack = QStackedWidget()
+
+        i = 0
+        for channel in self.enabled_channels:
+            self.channels_list.insertItem(i, channel)
+            stack_widget = FrequencyStack(channel_name=channel, central_freq=1111)
+            self.channels_stacks[channel] = stack_widget
+            self.stack.addWidget(stack_widget)
+            i += 1
+        self.channels_list.currentRowChanged.connect(self.show_current_stack)
+
+    def add_widgets_to_layout(self):
+        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        box_layout = QVBoxLayout()
+        box_layout.addWidget(self.channels_list, alignment=Qt.AlignmentFlag.AlignTop)
+        self.box_channels.setLayout(box_layout)
+
+        central_layout = QHBoxLayout()
+        central_layout.addWidget(self.box_channels, alignment=Qt.AlignmentFlag.AlignTop)
+        central_layout.addWidget(self.stack, alignment=Qt.AlignmentFlag.AlignTop)
+
+        self.main_layout.addWidget(self.chb_autoscan, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.main_layout.addSpacing(20)
+        self.main_layout.addLayout(central_layout)
+
+        self.main_layout.addItem(spacer)
+
+    def chb_autoscan_changed(self, state: int):
+        if bool(state):
+            for stack in self.channels_stacks.values():
+                stack.spb_freq.setDisabled(True)
+        else:
+            for stack in self.channels_stacks.values():
+                stack.spb_freq.setDisabled(False)
+
+    def show_current_stack(self, i):
+        self.stack.setCurrentIndex(i)
+
+
+
+
+class FrequencyStack(QWidget):
+    def __init__(self, channel_name: str, central_freq: int):
+        super().__init__()
+        self.name = channel_name
+        self.central_freq = central_freq
+
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
+
+        self.create_widgets()
+        self.add_widgets_to_layout()
+
+    def create_widgets(self):
+        self.box_freq = QGroupBox(f'Central frequency ({self.name})')
+        self.box_freq.setMinimumWidth(170)
+
+        self.spb_freq = QSpinBox()
+        self.spb_freq.setRange(300, 6000)
+        self.spb_freq.setSingleStep(10)
+        self.spb_freq.setValue(self.central_freq)
+        self.spb_freq.setSuffix(' MHz')
+
+    def add_widgets_to_layout(self):
+        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        box_layout = QVBoxLayout()
+        box_layout.addWidget(self.spb_freq)
+        self.box_freq.setLayout(box_layout)
+        self.main_layout.addWidget(self.box_freq, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.main_layout.addSpacerItem(spacer)
 
 
 if __name__ == '__main__':
