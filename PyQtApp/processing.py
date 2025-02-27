@@ -8,6 +8,7 @@ import numpy as np
 
 class Processor(QtCore.QObject):
     signal_play_sound = pyqtSignal(bool)
+    signal_channel_central_freq = pyqtSignal(dict)
 
     def __init__(self, logger_):
         super().__init__()
@@ -35,6 +36,15 @@ class Processor(QtCore.QObject):
                             spectrum: value}           """
 
         band_name = info['band_name']
+        channel_freq = info['channel_freq']
+        if band_name in self.channels_central_freq.keys():
+            if self.channels_central_freq[band_name] != channel_freq:
+                self.signal_channel_central_freq.emit({'band_name': band_name, 'central_freq': channel_freq})
+        else:
+            self.signal_channel_central_freq.emit({'band_name': band_name, 'central_freq': channel_freq})
+
+        self.channels_central_freq[band_name] = channel_freq
+
         if band_name in self.recogn_widgets:
             self.recogn_widgets[band_name].update_state(info)     # обновление кнопок в конкретном канале
 

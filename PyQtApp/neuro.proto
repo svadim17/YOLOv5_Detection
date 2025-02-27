@@ -189,6 +189,13 @@ message AlinxSoftVerResponse {
     string version = 1;
 }
 
+message AlinxLoadDetectRequest {
+}
+
+message AlinxLoadDetectResponse {
+    string state = 1;
+}
+
 message NNInfoRequest {
     repeated string channels = 1;
 }
@@ -228,6 +235,7 @@ service DataProcessingService {
     rpc SetFrequency (SetFrequencyRequest) returns (SetFrequencyResponse);
     rpc SetGain (SetGainRequest) returns (SetGainResponse);
     rpc AlinxSoftVer (AlinxSoftVerRequest) returns (AlinxSoftVerResponse);
+    rpc AlinxLoadDetectState (AlinxLoadDetectRequest) returns (AlinxLoadDetectResponse);
     rpc NNInfo (NNInfoRequest) returns (NNInfoResponse);
     rpc SignalSettings (SignalSettingsRequest) returns (SignalSettingsResponse);
 }

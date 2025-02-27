@@ -115,6 +115,11 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.AlinxSoftVerRequest.SerializeToString,
                 response_deserializer=neuro__pb2.AlinxSoftVerResponse.FromString,
                 _registered_method=True)
+        self.AlinxLoadDetectState = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/AlinxLoadDetectState',
+                request_serializer=neuro__pb2.AlinxLoadDetectRequest.SerializeToString,
+                response_deserializer=neuro__pb2.AlinxLoadDetectResponse.FromString,
+                _registered_method=True)
         self.NNInfo = channel.unary_unary(
                 '/NeuroDataProcessing.DataProcessingService/NNInfo',
                 request_serializer=neuro__pb2.NNInfoRequest.SerializeToString,
@@ -224,6 +229,12 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def AlinxLoadDetectState(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def NNInfo(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -313,6 +324,11 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.AlinxSoftVer,
                     request_deserializer=neuro__pb2.AlinxSoftVerRequest.FromString,
                     response_serializer=neuro__pb2.AlinxSoftVerResponse.SerializeToString,
+            ),
+            'AlinxLoadDetectState': grpc.unary_unary_rpc_method_handler(
+                    servicer.AlinxLoadDetectState,
+                    request_deserializer=neuro__pb2.AlinxLoadDetectRequest.FromString,
+                    response_serializer=neuro__pb2.AlinxLoadDetectResponse.SerializeToString,
             ),
             'NNInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.NNInfo,
@@ -731,6 +747,33 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/AlinxSoftVer',
             neuro__pb2.AlinxSoftVerRequest.SerializeToString,
             neuro__pb2.AlinxSoftVerResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AlinxLoadDetectState(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/AlinxLoadDetectState',
+            neuro__pb2.AlinxLoadDetectRequest.SerializeToString,
+            neuro__pb2.AlinxLoadDetectResponse.FromString,
             options,
             channel_credentials,
             insecure,

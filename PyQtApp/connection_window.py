@@ -31,6 +31,7 @@ class ConnectWindow(QDialog):
 
         self.channels = []
         self.enabled_channels = []
+        self.enabled_channels_info = None
         self.checkboxes = {}
 
         self.create_connect_controls()
@@ -65,6 +66,8 @@ class ConnectWindow(QDialog):
         for chb in self.checkboxes.values():
             if chb.isChecked():
                 self.enabled_channels.append(chb.text())
+
+        self.enabled_channels_info = [channel for channel in self.channels_info if channel.name in self.enabled_channels]
         self.close()
 
 

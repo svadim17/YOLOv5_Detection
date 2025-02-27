@@ -69,6 +69,7 @@ class gRPCThread(QtCore.QThread):
     signal_dataStream_response = pyqtSignal(dict)
     signal_process_status = pyqtSignal(bool)
     signal_alinx_soft_ver = pyqtSignal(str)
+    signal_alinx_load_detect_state = pyqtSignal(str)
     signal_nn_info = pyqtSignal(dict)
 
     def __init__(self, channel: int,
@@ -235,8 +236,29 @@ class gRPCThread(QtCore.QThread):
         except Exception as e:
             self.logger_.error(f'Error with getting Alinx software version! \n{e}')
 
+    def getLoadDetectState(self):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.AlinxLoadDetectState(API_pb2.AlinxLoadDetectRequest())
+            state = response.state
+            self.logger_.info(f'Alinx Load Detect state: {state}')
+            self.signal_alinx_load_detect_state.emit(state)
+        except Exception as e:
+            self.logger_.error(f'Error with getting Alinx Load Detect state! \n{e}')
+
     def setFrequency(self, channel_name: str, freq: int):
         try:
+            print('set_frequency', channel_name, freq)
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
+            self.logger_.info(response.status)
+        except Exception as e:
+            self.logger_.error(f'Error with setting frequency! \n{e}')
+
+    def setCustomFrequency(self, channel_name: str, freq: float):
+        try:
+            freq = int(freq * 1_000_000)
+            print('set_custom_frequency', channel_name, freq)
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
             response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
             self.logger_.info(response.status)

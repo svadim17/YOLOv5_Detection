@@ -1,7 +1,7 @@
 import loguru
 from PyQt6.QtWidgets import (QWidget, QListWidget, QApplication, QSpacerItem, QSizePolicy,
                              QStackedWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton,
-                             QLabel, QSlider, QTabWidget, QComboBox, QGroupBox, QSpinBox)
+                             QLabel, QSlider, QTabWidget, QComboBox, QGroupBox, QSpinBox, QDoubleSpinBox)
 from PyQt6.QtGui import QPixmap, QImage, QFont, QIcon
 from PyQt6.QtCore import pyqtSlot, Qt, pyqtSignal
 import qdarktheme
@@ -9,31 +9,42 @@ from os import walk
 
 
 class SettingsWidget(QWidget):
-    def __init__(self, enabled_channels: list, config: dict, channels_info: list, logger_):
+    def __init__(self, enabled_channels: list, config: dict, enabled_channels_info: list, logger_):
         super().__init__()
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         self.setWindowTitle('Settings')
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(15)
         self.setLayout(self.main_layout)
-        self.channels_info = channels_info
-
+        self.enabled_channels_info = enabled_channels_info
         self.logger = logger_
+
+        # Проверка, есть ли 'alinx' в hardware_type какого-либо объекта
+        alinx_hardware_status = any(channel.hardware_type.lower() == 'alinx' or
+                                    channel.hardware_type.lower() == 'Alinx' or
+                                    channel.hardware_type.lower() == 'ALINX' for channel in self.enabled_channels_info)
+
+        # Проверка, есть ли 'usrp' в hardware_type какого-либо объекта
+        usrp_hardware_status = any(channel.hardware_type.lower() == 'usrp' or
+                                   channel.hardware_type.lower() == 'Usrp' or
+                                   channel.hardware_type.lower() == 'USRP' for channel in self.enabled_channels_info)
 
         self.mainTab = MainTab(config=config)
         self.saveTab = SaveTab(enabled_channels=enabled_channels, map_list=config['map_list'])
         self.soundTab = SoundTab(enabled_channels=enabled_channels, config=config, logger_=self.logger)
-        self.alinxTab = AlinxInfoTab(logger_=self.logger)
         self.nnTab = NNTab(logger_=self.logger, enabled_channels=enabled_channels)
-        self.rxChannelsTab = RXChannelsTab(enabled_channels=enabled_channels, logger_=self.logger)
+        self.alinxTab = AlinxTab(enabled_channels_info=self.enabled_channels_info, logger_=self.logger)
+        self.usrpTab = USRPTab(enabled_channels=enabled_channels, logger_=self.logger)
 
         self.tab = QTabWidget()
         self.tab.addTab(self.mainTab, 'Main')
         self.tab.addTab(self.saveTab, 'Images saving')
         self.tab.addTab(self.soundTab, 'Sound')
-        self.tab.addTab(self.alinxTab, 'Alinx info')
         self.tab.addTab(self.nnTab, 'NN')
-        self.tab.addTab(self.rxChannelsTab, 'RX Channels')
+        if alinx_hardware_status:
+            self.tab.addTab(self.alinxTab, 'Alinx')
+        if usrp_hardware_status:
+            self.tab.addTab(self.usrpTab, 'USRP')
 
         self.btn_save_client_config = QPushButton('Save client config')
         self.btn_save_server_config = QPushButton('Save server config')
@@ -433,12 +444,12 @@ class NNTab(QWidget):
             self.model_ver_dict[channel].setText(f"{channel}:\t{nn_info[channel]['name']} ({nn_info[channel]['version']})")
 
 
-class AlinxInfoTab(QWidget):
+class AlinxTab(QWidget):
 
-    def __init__(self, logger_):
+    def __init__(self, enabled_channels_info, logger_):
         super().__init__()
+        self.enabled_channels_info = enabled_channels_info
         self.logger = logger_
-
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(15)
         self.setLayout(self.main_layout)
@@ -455,32 +466,93 @@ class AlinxInfoTab(QWidget):
         self.box_loadDetect = QGroupBox('Load Detect')
         self.l_loadDetect = QLabel('Load Detect state: ')
         self.l_curr_loadDetect_ver = QLabel('Unknown')
-        #self.btn_
+        self.btn_get_load_detect = QPushButton('Get Load Detect state')
+
+        self.box_rx_settings = QGroupBox('RX Settings')
+        self.l_central_freq = QLabel('Central frequency')
+        self.cb_central_freq = QComboBox()
+        for channel in self.enabled_channels_info:
+            if len(channel.central_freq) > 1:
+                for freq in channel.central_freq:
+                    self.cb_central_freq.addItem(f'{freq/1_000_000:.1f} MHz', freq)
+                break
+            else:
+                self.cb_central_freq.addItem(f'{2437.0} MHz', 2_437_000_000)
+                self.cb_central_freq.addItem(f'{5786.5} MHz', 5_786_500_000)
+        self.l_attenuation_24 = QLabel('Attenuation 2G4')
+        self.spb_attenuation_24 = QSpinBox()
+        self.spb_attenuation_24.setRange(0, 127)
+        self.spb_attenuation_24.setSingleStep(1)
+        self.spb_attenuation_24.setValue(0)
+        self.spb_attenuation_24.setSuffix(' dB')
+        self.l_attenuation_58 = QLabel('Attenuation 5G8')
+        self.spb_attenuation_58 = QSpinBox()
+        self.spb_attenuation_58.setRange(0, 127)
+        self.spb_attenuation_58.setSingleStep(1)
+        self.spb_attenuation_58.setValue(0)
+        self.spb_attenuation_58.setSuffix(' dB')
 
     def add_widgets_to_layout(self):
         spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        label_soft_layout = QHBoxLayout()
-        label_soft_layout.addWidget(self.l_soft_ver, alignment=Qt.AlignmentFlag.AlignLeft)
-        label_soft_layout.addWidget(self.l_curr_soft_ver, alignment=Qt.AlignmentFlag.AlignLeft)
-
+        l_soft_layout = QHBoxLayout()
+        l_soft_layout.addWidget(self.l_soft_ver, alignment=Qt.AlignmentFlag.AlignLeft)
+        l_soft_layout.addWidget(self.l_curr_soft_ver, alignment=Qt.AlignmentFlag.AlignLeft)
         soft_layout = QVBoxLayout()
         soft_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         soft_layout.setContentsMargins(15, 15, 15, 10)
-        soft_layout.addLayout(label_soft_layout)
+        soft_layout.addLayout(l_soft_layout)
         soft_layout.addSpacing(10)
         soft_layout.addWidget(self.btn_get_soft_ver)
-
         self.box_soft.setLayout(soft_layout)
 
-        self.main_layout.addWidget(self.box_soft, alignment=Qt.AlignmentFlag.AlignLeft)
+        l_load_detect_layout = QHBoxLayout()
+        l_load_detect_layout.addWidget(self.l_loadDetect, alignment=Qt.AlignmentFlag.AlignLeft)
+        l_load_detect_layout.addWidget(self.l_curr_loadDetect_ver, alignment=Qt.AlignmentFlag.AlignLeft)
+        load_detect_layout = QVBoxLayout()
+        load_detect_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        load_detect_layout.setContentsMargins(15, 15, 15, 10)
+        load_detect_layout.addLayout(l_load_detect_layout)
+        load_detect_layout.addSpacing(10)
+        load_detect_layout.addWidget(self.btn_get_load_detect)
+        self.box_loadDetect.setLayout(load_detect_layout)
+
+        l_central_freq_layout = QVBoxLayout()
+        l_central_freq_layout.addWidget(self.l_central_freq)
+        l_central_freq_layout.addWidget(self.cb_central_freq)
+        l_attenuation_24_layout = QVBoxLayout()
+        l_attenuation_24_layout.addWidget(self.l_attenuation_24)
+        l_attenuation_24_layout.addWidget(self.spb_attenuation_24)
+        l_attenuation_58_layout = QVBoxLayout()
+        l_attenuation_58_layout.addWidget(self.l_attenuation_58)
+        l_attenuation_58_layout.addWidget(self.spb_attenuation_58)
+        rx_settings_layout = QVBoxLayout()
+        rx_settings_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        rx_settings_layout.setContentsMargins(15, 15, 15, 10)
+        rx_settings_layout.addLayout(l_central_freq_layout)
+        rx_settings_layout.addLayout(l_attenuation_24_layout)
+        rx_settings_layout.addLayout(l_attenuation_58_layout)
+        self.box_rx_settings.setLayout(rx_settings_layout)
+
+        first_line = QHBoxLayout()
+        first_line.setAlignment(Qt.AlignmentFlag.AlignTop)
+        first_line.addWidget(self.box_soft)
+        first_line.addWidget(self.box_rx_settings)
+
+        self.main_layout.addLayout(first_line)
+        self.main_layout.addWidget(self.box_loadDetect, alignment=Qt.AlignmentFlag.AlignLeft)
         self.main_layout.addSpacerItem(spacer)
 
     def update_soft_ver(self, message: str):
         self.l_curr_soft_ver.setText(message)
 
+    def update_load_detect_state(self, message: str):
+        self.l_curr_loadDetect_ver.setText(message)
 
-class RXChannelsTab(QWidget):
+
+class USRPTab(QWidget):
+
+    signal_central_freq_changed = pyqtSignal(str, float)
 
     def __init__(self, enabled_channels: list, logger_):
         super().__init__()
@@ -509,6 +581,8 @@ class RXChannelsTab(QWidget):
         for channel in self.enabled_channels:
             self.channels_list.insertItem(i, channel)
             stack_widget = FrequencyStack(channel_name=channel, central_freq=1111)
+            stack_widget.spb_freq.valueChanged.connect(lambda:
+                                                       self.central_freq_changed(channel, stack_widget.spb_freq.value()))
             self.channels_stacks[channel] = stack_widget
             self.stack.addWidget(stack_widget)
             i += 1
@@ -542,7 +616,16 @@ class RXChannelsTab(QWidget):
     def show_current_stack(self, i):
         self.stack.setCurrentIndex(i)
 
+    def update_channel_freq(self, cnannel_freq: dict):
+        band = cnannel_freq['band_name']
+        freq = cnannel_freq['central_freq']
+        freq_mhz = freq / 1e6
+        self.channels_stacks[band].spb_freq.setValue(freq_mhz)
 
+    def central_freq_changed(self, channel: str, value: float):
+        # freq = int(value * 1_000_000)
+        print('central_freq_changed', channel, value)
+        self.signal_central_freq_changed.emit(channel, value)       # send frequency in MHz
 
 
 class FrequencyStack(QWidget):
@@ -561,7 +644,8 @@ class FrequencyStack(QWidget):
         self.box_freq = QGroupBox(f'Central frequency ({self.name})')
         self.box_freq.setMinimumWidth(170)
 
-        self.spb_freq = QSpinBox()
+        self.spb_freq = QDoubleSpinBox()
+        self.spb_freq.setDecimals(1)
         self.spb_freq.setRange(300, 6000)
         self.spb_freq.setSingleStep(10)
         self.spb_freq.setValue(self.central_freq)

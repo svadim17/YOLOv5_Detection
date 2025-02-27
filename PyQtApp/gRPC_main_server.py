@@ -5,7 +5,7 @@ import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
 import socket
 import time
-from multiprocessing import Process, Queue, Pipe, Lock
+from multiprocessing import Process, Queue, Pipe, Lock, JoinableQueue
 import cv2
 import numpy as np
 from loguru import logger
@@ -16,6 +16,7 @@ import sys
 from collections.abc import Mapping
 import custom_utils
 import os
+from tcp_control_alinx import TCPControlAlinx
 
 try:
     from nn_processing import NNProcessing
@@ -210,6 +211,9 @@ class Client(Process):
         self.accum_status = accum_status
         self.logger.info(f'Accum status = {self.accum_status}')
 
+    def change_central_freq(self, freq: int):
+        self.central_freq = freq
+
     def average_spectrum(self, arr: np.ndarray):
         spectrum = np.mean(arr, axis=0).astype(np.float16)  # среднее по столбцам (axis=0)
         return spectrum
@@ -224,6 +228,8 @@ class Client(Process):
             self.logger.error(f'error_queue is full. {e}')
 
     def receive_from_Alinx(self, sock):
+
+
         sock.send(b'\x30')
         arr = sock.recv(self.msg_len)
         self.logger.trace(f'Received {self.msg_len} bytes.')
@@ -246,9 +252,7 @@ class Client(Process):
             raise custom_utils.AlinxException()
 
     def receive_from_USRP(self, sock):
-        res_1 = np.arange(len(self.map_list) * 4)  # array of bytes to send (4 bytes for one class (float32)
-        sock.send(res_1.tobytes())
-
+        sock.send(self.central_freq.to_bytes(length=8, byteorder='big'))
         if self.receive_freq_status:           # receive central freq of channel if status is true
             freq = sock.recv(self.freq_len)
             self.central_freq = int.from_bytes(freq, byteorder='big')
@@ -272,24 +276,6 @@ class Client(Process):
         else:
             self.logger.trace(f'Packet size = {np_arr.size} missed.')
             return None
-
-    def create_socket_connection(self, address):
-        """ Creates socket connection for control Rx channel (gain, frequency) """
-        self.rx_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            self.rx_socket.settimeout(10)
-            self.rx_socket.connect(address)
-            self.logger.success(f'Connected to {address}!')
-        except Exception as e:
-            self.logger.error(f'Error with connecting to {self.address}! \n{e}')
-
-    def send_command(self, command):
-        if self.rx_socket:
-            try:
-                self.rx_socket.send(command)
-                self.logger.info(f'Sent command {command}')
-            except Exception as e:
-                self.logger.error(f'Error with sending command! \n{e}')
 
     @logger.catch
     def run(self):
@@ -388,6 +374,8 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.error_queues = {}
         self.connections = self.config['connections']
         self.last_update_times = {}
+        if self.config['freq_conversion_module']['is_used']:
+            self.init_alinxTCPControl()
 
     def ServerErrorStream(self, request, context):
         self.custom_logger.debug(f'Start server error stream ')
@@ -485,7 +473,12 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 conn_name = request.connection_name
                 connection = self.connections[conn_name]
                 self.last_update_times[conn_name] = time.time()
+                hardware_type = str(connection['hardware']['type'])
                 try:
+                    if self.alinxControlThread:
+                        if hardware_type == 'alinx' or hardware_type == 'Alinx' or hardware_type == 'ALINX':
+                            self.init_alinxTCPControl()
+
                     self.init_nn_client(conn_name=conn_name)
                     return API_pb2.StartChannelResponse(channelConnectionState=API_pb2.ConnectionState.Connected,
                                                         description=f'Connected successfully'
@@ -539,6 +532,18 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.data_queues[conn_name] = data_queue
         self.error_queues[conn_name] = error_queue
         self.custom_logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
+
+    def init_alinxTCPControl(self):
+        self.alinxControl_control_q = JoinableQueue(maxsize=10)
+        self.alinxControl_response_q = JoinableQueue(maxsize=10)
+
+        self.alinxControlThread = TCPControlAlinx(address=('127.0.0.1', 65556),
+                                                  freq_codes=self.config['freq_conversion_module']['freq_codes'],
+                                                  response_queue=self.alinxControl_response_q,
+                                                  control_queue=self.alinxControl_control_q,
+                                                  logger_=self.custom_logger)
+
+        self.alinxControlThread.start()
 
     def ZScaleChanging(self, request, context):
         name = request.band_name
@@ -658,6 +663,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         channel_name = request.channel_name
         freq = request.value
         # # # тут должна быть перестройка частоты # # #
+        self.processes[channel_name].control_q.put({'func': 'change_central_freq', 'args': (freq,)})
         return API_pb2.SetFrequencyResponse(status=f'You sent freq {freq} for {channel_name}.')
 
     def SetGain(self, request, context):
@@ -669,6 +675,10 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
     def AlinxSoftVer(self, request, context):
         # # # тут должен быть запрос о версии ПО Alinx # # #
         return API_pb2.AlinxSoftVerResponse(version='We are working on it...')
+
+    def AlinxLoadDetectState(self, request, context):
+        # # # тут должен быть запрос о состоянии Load Detect Alinx # # #
+        return API_pb2.AlinxLoadDetectResponse(state='We are working on it...')
 
     def NNInfo(self, request, context):
         chan_names = request.channels
@@ -693,6 +703,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 def serve():
     gRPC_PORT = 51234
     CONFIG_PATH = 'server_conf.yaml'
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=100), )
     # interceptors=[ConnectionInterceptor()])  # Добавляем наш interceptor
     API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(config_path=CONFIG_PATH), server)

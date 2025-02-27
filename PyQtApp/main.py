@@ -91,6 +91,8 @@ class MainWindow(QMainWindow):
 
     def connect_window_closed(self):
         self.enabled_channels = self.connectWindow.enabled_channels
+        self.enabled_channels_info = self.connectWindow.enabled_channels_info
+
         self.gRPCThread.init_enabled_channels(enabled_channels=self.enabled_channels)
         self.signal_settings = self.gRPCThread.signalSettings(enabled_channels=self.enabled_channels)
         for channel in self.enabled_channels:
@@ -100,7 +102,7 @@ class MainWindow(QMainWindow):
         self.create_toolbar()
         self.settingsWidget = SettingsWidget(enabled_channels=self.enabled_channels,
                                              config=self.config,
-                                             channels_info=self.channels_info,
+                                             enabled_channels_info=self.enabled_channels_info,
                                              logger_=self.logger_)
         self.settingsWidget.mainTab.chb_accumulation.stateChanged.connect(self.gRPCThread.onOffAccumulationRequest)
         self.settingsWidget.mainTab.chb_watchdog.stateChanged.connect(self.gRPCThread.change_watchdog_status)
@@ -116,13 +118,17 @@ class MainWindow(QMainWindow):
         self.settingsWidget.soundTab.signal_sound_states.connect(self.processor.init_sound_states)
         self.settingsWidget.soundTab.signal_sound_classes_states.connect(self.processor.init_sound_classes_states)
         self.settingsWidget.alinxTab.btn_get_soft_ver.clicked.connect(self.gRPCThread.getAlinxSoftVer)
+        self.settingsWidget.alinxTab.btn_get_load_detect.clicked.connect(self.gRPCThread.getLoadDetectState)
         self.settingsWidget.nnTab.btn_get_nn_info.clicked.connect(lambda: self.gRPCThread.nnInfo(self.enabled_channels))
+        self.settingsWidget.usrpTab.signal_central_freq_changed.connect(self.gRPCThread.setCustomFrequency)
         self.gRPCThread.signal_alinx_soft_ver.connect(self.settingsWidget.alinxTab.update_soft_ver)
+        self.gRPCThread.signal_alinx_load_detect_state.connect(self.settingsWidget.alinxTab.update_load_detect_state)
         self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
         self.init_recognition_widgets()
         self.processor.init_sound_states(sound_states=self.sound_states)
         self.processor.init_sound_classes_states(sound_classes_states=self.sound_classes_states)
         self.processor.signal_play_sound.connect(self.soundThread.start_stop_sound_thread)
+        self.processor.signal_channel_central_freq.connect(self.settingsWidget.usrpTab.update_channel_freq)
         self.settingsWidget.mainTab.cb_spectrogram_resolution.currentTextChanged.connect(lambda a:
                      self.set_spectrogram_resolution(self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
 

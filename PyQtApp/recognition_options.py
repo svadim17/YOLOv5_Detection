@@ -36,19 +36,19 @@ class RecognitionOptions(QWidget):
         self.add_widgets_to_layout()
 
     def create_widgets(self):
-        self.box_rx_settings = QGroupBox('RX Settings')
-
-        self.l_freq = QLabel('Central frequency')
-        self.cb_freq = QComboBox()
-        for freq in self.channel_info.central_freq:
-            self.cb_freq.addItem(f'{freq/1_000_000:.1f} MHz', freq)
-
-        self.l_gain = QLabel('Gain')
-        self.spb_gain = QSpinBox()
-        self.spb_gain.setRange(0, 30)
-        self.spb_gain.setSingleStep(1)
-        self.spb_gain.setValue(0)
-        self.spb_gain.setSuffix(' dB')
+        # self.box_rx_settings = QGroupBox('RX Settings')
+        #
+        # self.l_freq = QLabel('Central frequency')
+        # self.cb_freq = QComboBox()
+        # for freq in self.channel_info.central_freq:
+        #     self.cb_freq.addItem(f'{freq/1_000_000:.1f} MHz', freq)
+        #
+        # self.l_gain = QLabel('Gain')
+        # self.spb_gain = QSpinBox()
+        # self.spb_gain.setRange(0, 30)
+        # self.spb_gain.setSingleStep(1)
+        # self.spb_gain.setValue(0)
+        # self.spb_gain.setSuffix(' dB')
 
         self.box_decision = QGroupBox('Decision')
 
@@ -112,22 +112,22 @@ class RecognitionOptions(QWidget):
         self.spb_slider_threshold.valueChanged.connect(self.recognition_settings_changed)
         self.spb_accum_size.valueChanged.connect(self.recognition_settings_changed)
         self.spb_exceedance.valueChanged.connect(self.recognition_settings_changed)
-        self.cb_freq.currentTextChanged.connect(self.cb_freq_changed)
-        self.spb_gain.valueChanged.connect(self.spb_gain_changed)
+        # self.cb_freq.currentTextChanged.connect(self.cb_freq_changed)
+        # self.spb_gain.valueChanged.connect(self.spb_gain_changed)
 
     def add_widgets_to_layout(self):
         spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        freq_layout = QVBoxLayout()
-        freq_layout.addWidget(self.l_freq)
-        freq_layout.addWidget(self.cb_freq)
+        # freq_layout = QVBoxLayout()
+        # freq_layout.addWidget(self.l_freq)
+        # freq_layout.addWidget(self.cb_freq)
 
-        gain_layout = QVBoxLayout()
-        gain_layout.addWidget(self.l_gain)
-        gain_layout.addWidget(self.spb_gain)
-        rx_cntrls_layout = QHBoxLayout()
-        rx_cntrls_layout.addLayout(freq_layout)
-        rx_cntrls_layout.addLayout(gain_layout)
+        # gain_layout = QVBoxLayout()
+        # gain_layout.addWidget(self.l_gain)
+        # gain_layout.addWidget(self.spb_gain)
+        # rx_cntrls_layout = QHBoxLayout()
+        # rx_cntrls_layout.addLayout(freq_layout)
+        # rx_cntrls_layout.addLayout(gain_layout)
 
         threshold_slider_layout = QHBoxLayout()
         threshold_slider_layout.addWidget(self.slider_threshold)
@@ -170,11 +170,11 @@ class RecognitionOptions(QWidget):
         cntrls_layout.addLayout(threshold_layout)
         cntrls_layout.addLayout(accum_and_exceed_layout)
 
-        self.box_rx_settings.setLayout(rx_cntrls_layout)
+        # self.box_rx_settings.setLayout(rx_cntrls_layout)
         self.box_decision.setLayout(cntrls_layout)
         self.box_zscale.setLayout(sliders_layout)
 
-        self.main_layout.addWidget(self.box_rx_settings)
+        # self.main_layout.addWidget(self.box_rx_settings)
         self.main_layout.addWidget(self.box_decision)
         self.main_layout.addWidget(self.box_zscale)
 
