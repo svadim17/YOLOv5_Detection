@@ -16,6 +16,7 @@ import sys
 from collections.abc import Mapping
 import custom_utils
 import os
+import threading
 
 try:
     from nn_processing import NNProcessing
@@ -613,10 +614,38 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             self.custom_logger.error(f'Error with start process {channel_name}\n{e}')
 
 
+class MonitoredThreadPoolExecutor(futures.ThreadPoolExecutor):
+    def __init__(self, max_workers):
+        super().__init__(max_workers)
+        self._active_tasks = 0
+        self._lock = threading.Lock()
+
+    def submit(self, fn, *args, **kwargs):
+        with self._lock:
+            self._active_tasks += 1
+        future = super().submit(fn, *args, **kwargs)
+        future.add_done_callback(self._task_done)
+        return future
+
+    def _task_done(self, future):
+        with self._lock:
+            self._active_tasks -= 1
+
+    def get_active_tasks(self):
+        with self._lock:
+            return self._active_tasks
+
+    def reset_active_tasks(self):
+        with self._lock:
+            self._active_tasks = 0
+
+
 def serve():
     gRPC_PORT = 51234
     CONFIG_PATH = 'server_conf.yaml'
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=100), )
+
+    executor = MonitoredThreadPoolExecutor(max_workers=10)
+    server = grpc.server(executor)
     # interceptors=[ConnectionInterceptor()])  # Добавляем наш interceptor
     API_pb2_grpc.add_DataProcessingServiceServicer_to_server(DataProcessingService(config_path=CONFIG_PATH), server)
     server.add_insecure_port(f'[::]:{gRPC_PORT}')
@@ -625,17 +654,14 @@ def serve():
     print(f"gRPC Server is running on port {gRPC_PORT}...")
     try:
         while True:
-            time.sleep(86400)  # Удерживаем сервер в рабочем состоянии
+            time.sleep(30)  # Удерживаем сервер в рабочем состоянии
+            active_tasks = executor.get_active_tasks()
+            # print(f"Active tasks: {active_tasks}")
+            if active_tasks > 7:
+                executor.reset_active_tasks()
     except KeyboardInterrupt:
         server.stop(0)
 
 
 if __name__ == "__main__":
     serve()
-
-
-
-
-
-
-
