@@ -450,7 +450,7 @@ class AlinxTab(QWidget):
         super().__init__()
         self.enabled_channels_info = enabled_channels_info
         self.logger = logger_
-        self.main_layout = QVBoxLayout()
+        self.main_layout = QHBoxLayout()
         self.main_layout.setSpacing(15)
         self.setLayout(self.main_layout)
 
@@ -469,6 +469,7 @@ class AlinxTab(QWidget):
         self.btn_get_load_detect = QPushButton('Get Load Detect state')
 
         self.box_rx_settings = QGroupBox('RX Settings')
+        self.chb_autoscan_freq = QCheckBox('Autoscan frequency')
         self.l_central_freq = QLabel('Central frequency')
         self.cb_central_freq = QComboBox()
         for channel in self.enabled_channels_info:
@@ -476,9 +477,6 @@ class AlinxTab(QWidget):
                 for freq in channel.central_freq:
                     self.cb_central_freq.addItem(f'{freq/1_000_000:.1f} MHz', freq)
                 break
-            else:
-                self.cb_central_freq.addItem(f'{2437.0} MHz', 2_437_000_000)
-                self.cb_central_freq.addItem(f'{5786.5} MHz', 5_786_500_000)
         self.l_attenuation_24 = QLabel('Attenuation 2G4')
         self.spb_attenuation_24 = QSpinBox()
         self.spb_attenuation_24.setRange(0, 127)
@@ -529,18 +527,23 @@ class AlinxTab(QWidget):
         rx_settings_layout = QVBoxLayout()
         rx_settings_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         rx_settings_layout.setContentsMargins(15, 15, 15, 10)
+        rx_settings_layout.addWidget(self.chb_autoscan_freq)
         rx_settings_layout.addLayout(l_central_freq_layout)
         rx_settings_layout.addLayout(l_attenuation_24_layout)
         rx_settings_layout.addLayout(l_attenuation_58_layout)
         self.box_rx_settings.setLayout(rx_settings_layout)
 
-        first_line = QHBoxLayout()
-        first_line.setAlignment(Qt.AlignmentFlag.AlignTop)
-        first_line.addWidget(self.box_soft)
-        first_line.addWidget(self.box_rx_settings)
+        first_column = QVBoxLayout()
+        first_column.setAlignment(Qt.AlignmentFlag.AlignTop)
+        first_column.addWidget(self.box_soft)
+        first_column.addWidget(self.box_loadDetect)
 
-        self.main_layout.addLayout(first_line)
-        self.main_layout.addWidget(self.box_loadDetect, alignment=Qt.AlignmentFlag.AlignLeft)
+        second_column = QVBoxLayout()
+        second_column.setAlignment(Qt.AlignmentFlag.AlignTop)
+        second_column.addWidget(self.box_rx_settings)
+
+        self.main_layout.addLayout(first_column)
+        self.main_layout.addLayout(second_column)
         self.main_layout.addSpacerItem(spacer)
 
     def update_soft_ver(self, message: str):

@@ -3,7 +3,7 @@ connections:
     ip: 127.0.0.1
     port: 10091
     hardware:
-      type: USRP
+      type: Alinx
       central_freq: [2_437_000_000]
       receive_freq: true
     signal_settings:
@@ -43,6 +43,7 @@ connections:
       type: Alinx
       central_freq: [4_986_500_000, 5_086_500_000, 5_186_500_000, 5_286_500_000, 5_386_500_000, 5_486_500_000,
                      5_586_500_000, 5_686_500_000, 5_786_500_000, 5_886_500_000, 5_986_500_000, 6_086_500_000]
+#      central_freq: [5_786_500_000]
       receive_freq: false
     signal_settings:
       signal_width: 1024
@@ -76,154 +77,154 @@ connections:
       exceedance: 0.5
 
 
-  CH0:
-    ip: 127.0.0.1
-    port: 10091
-    hardware:
-      type: USRP
-      central_freq: [2_400_000_000]
-      receive_freq: true
-    signal_settings:
-      signal_width: 1024
-      signal_height: 2048
-      sample_rate: 80000000
-      calculate_log: false
-    neural_network_settings:
-      version: v10
-      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10m_6classes_BIG_AUGMENTATED_ver1\weights\yolov10m_6classes_BIG_AUGMENTATED_ver1.pt
-      img_size:
-      - 640
-      - 640
-      z_min: -38
-      z_max: 101
-    detection_settings:
-      all_classes:
-      - dji
-      - wifi
-      - autel_lite
-      - autel_max_4n(t)
-      - autel_tag
-      - fpv
-      map_list:
-      - autel
-      - fpv
-      - dji
-      - wifi
-      accumulation_size: 10
-      threshold: 0.4
-      exceedance: 0.5
-  CH1:
-    ip: 127.0.0.1
-    port: 10092
-    hardware:
-      type: USRP
-      central_freq: [1_800_000_000]
-      receive_freq: true
-    signal_settings:
-      signal_width: 1024
-      signal_height: 2048
-      sample_rate: 80000000
-      calculate_log: false
-    neural_network_settings:
-      version: v10
-      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10m_6classes_BIG_AUGMENTATED_ver1\weights\yolov10m_6classes_BIG_AUGMENTATED_ver1.pt
-      img_size:
-      - 640
-      - 640
-      z_min: -38
-      z_max: 101
-    detection_settings:
-      all_classes:
-      - dji
-      - wifi
-      - autel_lite
-      - autel_max_4n(t)
-      - autel_tag
-      - fpv
-      map_list:
-      - autel
-      - fpv
-      - dji
-      - wifi
-      accumulation_size: 10
-      threshold: 0.4
-      exceedance: 0.5
-  CH2:
-    ip: 127.0.0.1
-    port: 10093
-    hardware:
-      type: USRP
-      central_freq: [5_800_500_000]
-      receive_freq: true
-    signal_settings:
-      signal_width: 1024
-      signal_height: 2048
-      sample_rate: 80000000
-      calculate_log: false
-    neural_network_settings:
-      version: v10
-      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10m_6classes_BIG_AUGMENTATED_ver1\weights\yolov10m_6classes_BIG_AUGMENTATED_ver1.pt
-      img_size:
-      - 640
-      - 640
-      z_min: -47
-      z_max: 65
-    detection_settings:
-      all_classes:
-      - dji
-      - wifi
-      - autel_lite
-      - autel_max_4n(t)
-      - autel_tag
-      - fpv
-      map_list:
-      - autel
-      - fpv
-      - dji
-      - wifi
-      accumulation_size: 10
-      threshold: 0.4
-      exceedance: 0.5
-  CH3:
-    ip: 127.0.0.1
-    port: 10094
-    hardware:
-      type: USRP
-      central_freq: [5_200_000_000]
-      receive_freq: true
-    signal_settings:
-      signal_width: 1024
-      signal_height: 2048
-      sample_rate: 80000000
-      calculate_log: false
-    neural_network_settings:
-      version: v10
-      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10m_6classes_BIG_AUGMENTATED_ver1\weights\yolov10m_6classes_BIG_AUGMENTATED_ver1.pt
-      img_size:
-      - 640
-      - 640
-      z_min: -51
-      z_max: 74
-    detection_settings:
-      all_classes:
-      - dji
-      - wifi
-      - autel_lite
-      - autel_max_4n(t)
-      - autel_tag
-      - fpv
-      map_list:
-      - autel
-      - fpv
-      - dji
-      - wifi
-      accumulation_size: 10
-      threshold: 0.4
-      exceedance: 0.5
+#  CH0:
+#    ip: 127.0.0.1
+#    port: 10091
+#    hardware:
+#      type: USRP
+#      central_freq: [2_400_000_000]
+#      receive_freq: true
+#    signal_settings:
+#      signal_width: 1024
+#      signal_height: 2048
+#      sample_rate: 80000000
+#      calculate_log: false
+#    neural_network_settings:
+#      version: v10
+#      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+#      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10m_6classes_BIG_AUGMENTATED_ver1\weights\yolov10m_6classes_BIG_AUGMENTATED_ver1.pt
+#      img_size:
+#      - 640
+#      - 640
+#      z_min: -38
+#      z_max: 101
+#    detection_settings:
+#      all_classes:
+#      - dji
+#      - wifi
+#      - autel_lite
+#      - autel_max_4n(t)
+#      - autel_tag
+#      - fpv
+#      map_list:
+#      - autel
+#      - fpv
+#      - dji
+#      - wifi
+#      accumulation_size: 10
+#      threshold: 0.4
+#      exceedance: 0.5
+#  CH1:
+#    ip: 127.0.0.1
+#    port: 10092
+#    hardware:
+#      type: USRP
+#      central_freq: [1_800_000_000]
+#      receive_freq: true
+#    signal_settings:
+#      signal_width: 1024
+#      signal_height: 2048
+#      sample_rate: 80000000
+#      calculate_log: false
+#    neural_network_settings:
+#      version: v10
+#      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+#      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10m_6classes_BIG_AUGMENTATED_ver1\weights\yolov10m_6classes_BIG_AUGMENTATED_ver1.pt
+#      img_size:
+#      - 640
+#      - 640
+#      z_min: -38
+#      z_max: 101
+#    detection_settings:
+#      all_classes:
+#      - dji
+#      - wifi
+#      - autel_lite
+#      - autel_max_4n(t)
+#      - autel_tag
+#      - fpv
+#      map_list:
+#      - autel
+#      - fpv
+#      - dji
+#      - wifi
+#      accumulation_size: 10
+#      threshold: 0.4
+#      exceedance: 0.5
+#  CH2:
+#    ip: 127.0.0.1
+#    port: 10093
+#    hardware:
+#      type: USRP
+#      central_freq: [5_800_500_000]
+#      receive_freq: true
+#    signal_settings:
+#      signal_width: 1024
+#      signal_height: 2048
+#      sample_rate: 80000000
+#      calculate_log: false
+#    neural_network_settings:
+#      version: v10
+#      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+#      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10m_6classes_BIG_AUGMENTATED_ver1\weights\yolov10m_6classes_BIG_AUGMENTATED_ver1.pt
+#      img_size:
+#      - 640
+#      - 640
+#      z_min: -47
+#      z_max: 65
+#    detection_settings:
+#      all_classes:
+#      - dji
+#      - wifi
+#      - autel_lite
+#      - autel_max_4n(t)
+#      - autel_tag
+#      - fpv
+#      map_list:
+#      - autel
+#      - fpv
+#      - dji
+#      - wifi
+#      accumulation_size: 10
+#      threshold: 0.4
+#      exceedance: 0.5
+#  CH3:
+#    ip: 127.0.0.1
+#    port: 10094
+#    hardware:
+#      type: USRP
+#      central_freq: [5_200_000_000]
+#      receive_freq: true
+#    signal_settings:
+#      signal_width: 1024
+#      signal_height: 2048
+#      sample_rate: 80000000
+#      calculate_log: false
+#    neural_network_settings:
+#      version: v10
+#      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+#      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\train\yolov10m_6classes_BIG_AUGMENTATED_ver1\weights\yolov10m_6classes_BIG_AUGMENTATED_ver1.pt
+#      img_size:
+#      - 640
+#      - 640
+#      z_min: -51
+#      z_max: 74
+#    detection_settings:
+#      all_classes:
+#      - dji
+#      - wifi
+#      - autel_lite
+#      - autel_max_4n(t)
+#      - autel_tag
+#      - fpv
+#      map_list:
+#      - autel
+#      - fpv
+#      - dji
+#      - wifi
+#      accumulation_size: 10
+#      threshold: 0.4
+#      exceedance: 0.5
 
 freq_conversion_module:
   is_used: false
