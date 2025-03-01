@@ -8,7 +8,7 @@ connections:
       receive_freq: true
     signal_settings:
       signal_width: 1024
-      signal_height: 2048
+      signal_height: 3072
       sample_rate: 80000000
       calculate_log: false
     neural_network_settings:
