@@ -659,18 +659,16 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             self.custom_logger.error(f'Connection error: {e}')
             self.custom_logger.error(f'Error with start process {channel_name}\n{e}')
 
-    def SetFrequency(self, request, context):
-        channel_name = request.channel_name
+    def AlinxSetFrequency(self, request, context):
         freq = request.value
         # # # тут должна быть перестройка частоты # # #
-        self.processes[channel_name].control_q.put({'func': 'change_central_freq', 'args': (freq,)})
-        return API_pb2.SetFrequencyResponse(status=f'You sent freq {freq} for {channel_name}.')
+        return API_pb2.AlinxSetFrequencyResponse(status=f'You sent freq {freq}.')
 
-    def SetGain(self, request, context):
+    def AlinxSetAttenuation(self, request, context):
         channel_name = request.channel_name
-        gain = request.value
+        attenuation = request.value
         # # # тут должна быть смена усиления # # #
-        return API_pb2.SetGainResponse(status=f'You sent gain {gain} for {channel_name}.')
+        return API_pb2.SetGainResponse(status=f'You sent attenuation {attenuation} for {channel_name}.')
 
     def AlinxSoftVer(self, request, context):
         # # # тут должен быть запрос о версии ПО Alinx # # #

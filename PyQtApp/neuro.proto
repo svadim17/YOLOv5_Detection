@@ -28,8 +28,7 @@ message ChannelObject {
     repeated int64 central_freq = 3;
 }
 
-// Сообщение для стрима данных
-message DataResponse {
+message DataResponse {                          // Сообщение для стрима данных
     string band_name = 1;
     repeated UavObject uavs = 2;
     optional bytes detected_img = 3;
@@ -38,162 +37,146 @@ message DataResponse {
     int64 channel_central_freq = 6;
 }
 
-// Запрос на начало стрима с результатами распознавания
-message ProceedDataStreamRequest {
+message ProceedDataStreamRequest {              // Запрос на начало стрима с результатами распознавания
     bool detected_img = 1;
     bool clear_img = 2;
     bool spectrum = 3;
 }
 
-// Пустой запрос
-message VoidRequest {
+message VoidRequest {                           // Пустой запрос
 }
 
-// Сообщение для стрима ошибок
-message ServerErrorResponse {
+message ServerErrorResponse {                   // Сообщение для стрима ошибок
     bool status = 1;
     string msg = 2;
 }
 
-// Запрос о доступных каналах обработки
-message ChannelsRequest {
+message ChannelsRequest {                       // Запрос о доступных каналах обработки
 }
 
-// Ответ на запрос о доступных каналах обработки
-message ChannelsResponse {
+message ChannelsResponse {                      // Ответ на запрос о доступных каналах обработки
     repeated string channels = 1;
     repeated ChannelObject info = 2;
 }
 
-// Запрос на старт канала обработки
-message StartChannelRequest {
+message StartChannelRequest {                   // Запрос на старт канала обработки
     string connection_name = 1;
 }
 
-// Ответ на запрос о старте канала обработки
-message StartChannelResponse {
+message StartChannelResponse {                      // Ответ на запрос о старте канала обработки
     ConnectionState channelConnectionState = 1;
     string description = 2;
 }
 
-// Запрос на изменение Z-шкалы
-message ZScaleRequest {
+message ZScaleRequest {                         // Запрос на изменение Z-шкалы
     string band_name = 1;
     int32 z_min = 2;
     int32 z_max = 3;
 }
 
-// Ответ на запрос об изменении Z-шкалы
-message ZScaleResponse {
+message ZScaleResponse {                        // Ответ на запрос об изменении Z-шкалы
     string status = 1;
 }
 
-// Запрос на текущую Z-шкалу
-message CurrentZScaleRequest {
+message CurrentZScaleRequest {                  // Запрос на текущую Z-шкалу
 }
 
-// Ответ на запрос об текущей Z-шкале
-message CurrentZScaleResponse {
+message CurrentZScaleResponse {                 // Ответ на запрос об текущей Z-шкале
    repeated string band_names = 1;
    repeated int32 z_min = 2;
    repeated int32 z_max = 3;
 }
 
-// Запрос на сохранение конфига
-message SaveConfigRequest {
+message SaveConfigRequest {                     // Запрос на сохранение конфига
     bytes password_hash = 1;
 }
 
-// Ответ на запрос о сохранении конфига
-message SaveConfigResponse {
+message SaveConfigResponse {                    // Ответ на запрос о сохранении конфига
     string status = 1;
 }
 
-// Запрос на изменение параметров распознавания
-message RecognitionSettingsRequest {
+message RecognitionSettingsRequest {            // Запрос на изменение параметров распознавания
     string band_name = 1;
     int32 accumulation_size = 2;
     double threshold = 3;
     double exceedance = 4;
 }
 
-// Ответ на запрос об изменении параметров распознавания
-message RecognitionSettingsResponse {
+message RecognitionSettingsResponse {           // Ответ на запрос об изменении параметров распознавания
     string status = 1;
 }
 
-// Запрос на получение параметров распознавания
-message GetRecognitionSettingsRequest {
+message GetRecognitionSettingsRequest {         // Запрос на получение параметров распознавания
 }
 
-// Ответ на запрос о получении параметров распознавания
-message GetRecognitionSettingsResponse {
+message GetRecognitionSettingsResponse {        // Ответ на запрос о получении параметров распознавания
     repeated string band_name = 1;
     repeated int32 accumulation_size = 2;
     repeated double threshold = 3;
     repeated double exceedance = 4;
 }
 
-// Запрос на включение/выключение накопления
-message OnOffAccumulationRequest {
+message OnOffAccumulationRequest {          // Запрос на включение/выключение накопления
     bool accum_status = 1;
 }
 
-// Ответ на запрос о включении/выключении накопления
-message OnOffAccumulationResponse {
+message OnOffAccumulationResponse {         // Ответ на запрос о включении/выключении накопления
     string accum_status = 1;
 }
 
-// Запрос о статусе процесса
-message GetProcessStatusRequest {
+message GetProcessStatusRequest {           // Запрос о статусе процесса
     string channel_name = 1;
 }
 
-// Ответ на запрос о статусе процесса
-message GetProcessStatusResponse {
+message GetProcessStatusResponse {          // Ответ на запрос о статусе процесса
     bool status = 1;
 }
 
-// Запрос на рестарт процесса
-message RestartProcessRequest {
+message RestartProcessRequest {             // Запрос на рестарт процесса
     string channel_name = 1;
 }
 
-// Ответ на запрос о рестарте процесса
-message RestartProcessResponse {
+message RestartProcessResponse {            // Ответ на запрос о рестарте процесса
     bool status = 1;
 }
 
-message SetFrequencyRequest {
-    string channel_name = 1;
-    int64 value = 2;
+message AlinxSetFrequencyRequest {          // Запрос на установку центральной частоты
+    int64 value = 1;
 }
 
-message SetFrequencyResponse {
+message AlinxSetFrequencyResponse {         // Ответ на запрос об установке центральной частоты
     string status = 1;
 }
 
-message SetGainRequest {
+message AlinxSetAttenuationRequest {        // Запрос на установку аттенюации канала
     string channel_name = 1;
     int32 value = 2;
 }
 
-message SetGainResponse {
+message AlinxSetAttenuationResponse {       // Ответ на запрос об установке аттенюации канала
     string status = 1;
 }
 
-message AlinxSoftVerRequest {
+message AlinxSoftVerRequest {               // Запрос на версию ПО в доп коробке для Alinx
 }
 
-message AlinxSoftVerResponse {
+message AlinxSoftVerResponse {              // Ответ на запрос о версии ПО в доп коробке для Alinx
     string version = 1;
 }
 
-message AlinxLoadDetectRequest {
+message AlinxLoadDetectRequest {            // Запрос о состоянии LoadDetect для Alinx
 }
 
-message AlinxLoadDetectResponse {
+message AlinxLoadDetectResponse {           // Ответ на запрос о состоянии LoadDetect для Alinx
     string state = 1;
+}
+
+message SetAutoscanFreqRequest {            // Запрос на установку автосканирования по частотам
+    bool status = 1;
+}
+
+message SetAutoscanFreqResponse {           // Ответ на запрос об установке автосканирования по частотам
+    string status = 1;
 }
 
 message NNInfoRequest {
@@ -206,11 +189,11 @@ message NNInfoResponse {
     repeated string names = 3;
 }
 
-message SignalSettingsRequest {
+message SignalSettingsRequest {             // Запрос о параметрах получаемного сигнала
     repeated string channels = 1;
 }
 
-message SignalSettingsResponse {
+message SignalSettingsResponse {            // Ответ на запрос о параметрах получаемного сигнала
     repeated string band_name = 1;
     repeated int32 width = 2;
     repeated int32 height = 3;
@@ -232,8 +215,8 @@ service DataProcessingService {
     rpc OnOffAccumulation (OnOffAccumulationRequest) returns (OnOffAccumulationResponse);
     rpc GetProcessStatus (GetProcessStatusRequest) returns (GetProcessStatusResponse);
     rpc RestartProcess (RestartProcessRequest) returns (RestartProcessResponse);
-    rpc SetFrequency (SetFrequencyRequest) returns (SetFrequencyResponse);
-    rpc SetGain (SetGainRequest) returns (SetGainResponse);
+    rpc AlinxSetFrequency (AlinxSetFrequencyRequest) returns (AlinxSetFrequencyResponse);
+    rpc AlinxSetAttenuation (AlinxSetAttenuationRequest) returns (AlinxSetAttenuationResponse);
     rpc AlinxSoftVer (AlinxSoftVerRequest) returns (AlinxSoftVerResponse);
     rpc AlinxLoadDetectState (AlinxLoadDetectRequest) returns (AlinxLoadDetectResponse);
     rpc NNInfo (NNInfoRequest) returns (NNInfoResponse);

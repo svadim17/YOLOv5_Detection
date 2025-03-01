@@ -445,6 +445,7 @@ class NNTab(QWidget):
 
 
 class AlinxTab(QWidget):
+    signal_central_freq = pyqtSignal(str)
 
     def __init__(self, enabled_channels_info, logger_):
         super().__init__()
@@ -470,6 +471,7 @@ class AlinxTab(QWidget):
 
         self.box_rx_settings = QGroupBox('RX Settings')
         self.chb_autoscan_freq = QCheckBox('Autoscan frequency')
+        self.chb_autoscan_freq.stateChanged.connect(self.chb_autoscan_freq_changed)
         self.l_central_freq = QLabel('Central frequency')
         self.cb_central_freq = QComboBox()
         for channel in self.enabled_channels_info:
@@ -477,6 +479,7 @@ class AlinxTab(QWidget):
                 for freq in channel.central_freq:
                     self.cb_central_freq.addItem(f'{freq/1_000_000:.1f} MHz', freq)
                 break
+        self.cb_central_freq.currentIndexChanged.connect(self.cb_central_freq_changed)
         self.l_attenuation_24 = QLabel('Attenuation 2G4')
         self.spb_attenuation_24 = QSpinBox()
         self.spb_attenuation_24.setRange(0, 127)
@@ -552,6 +555,15 @@ class AlinxTab(QWidget):
     def update_load_detect_state(self, message: str):
         self.l_curr_loadDetect_ver.setText(message)
 
+    def chb_autoscan_freq_changed(self, state: int):
+        if bool(state):
+            self.cb_central_freq.setDisabled(True)
+        else:
+            self.cb_central_freq.setDisabled(False)
+
+    def cb_central_freq_changed(self, index: int):
+        freq = str(self.cb_central_freq.itemData(index))        # str to emit by signal (big dimension)
+        self.signal_central_freq.emit(freq)
 
 class USRPTab(QWidget):
 

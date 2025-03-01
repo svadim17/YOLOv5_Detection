@@ -246,30 +246,29 @@ class gRPCThread(QtCore.QThread):
         except Exception as e:
             self.logger_.error(f'Error with getting Alinx Load Detect state! \n{e}')
 
-    def setFrequency(self, channel_name: str, freq: int):
+    def setAlinxFrequency(self, freq: str):
         try:
-            print('set_frequency', channel_name, freq)
+            freq = int(freq)
+            print('set_frequency', freq)
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-            response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
+            response = stub.AlinxSetFrequency(API_pb2.AlinxSetFrequencyRequest(value=freq))
             self.logger_.info(response.status)
         except Exception as e:
             self.logger_.error(f'Error with setting frequency! \n{e}')
 
-    def setCustomFrequency(self, channel_name: str, freq: float):
+    def setUSRPFrequency(self, channel_name: str, freq: float):
         try:
             freq = int(freq * 1_000_000)
-            print('set_custom_frequency', channel_name, freq)
-            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-            response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
-            self.logger_.info(response.status)
+            print('set_usrp_frequency', channel_name, freq)
+            # stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            # response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
+            # self.logger_.info(response.status)
         except Exception as e:
             self.logger_.error(f'Error with setting frequency! \n{e}')
 
-    def setGain(self, channel_name: str, gain: int):
+    def setAlinxAttenuation(self, channel_name: str, gain: int):
         try:
-            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-            response = stub.SetGain(API_pb2.SetGainRequest(channel_name=channel_name, value=gain))
-            self.logger_.info(response.status)
+            pass
         except Exception as e:
             self.logger_.error(f'Error with setting frequency! \n{e}')
 
