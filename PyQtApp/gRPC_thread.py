@@ -247,13 +247,14 @@ class gRPCThread(QtCore.QThread):
             self.logger_.error(f'Error with getting Alinx Load Detect state! \n{e}')
 
     def setFrequency(self, channel_name: str, freq: int):
-        try:
-            print('set_frequency', channel_name, freq)
-            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-            response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
-            self.logger_.info(response.status)
-        except Exception as e:
-            self.logger_.error(f'Error with setting frequency! \n{e}')
+        pass
+        # try:
+        #     print('set_frequency', channel_name, freq)
+        #     stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+        #     response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
+        #     self.logger_.info(response.status)
+        # except Exception as e:
+        #     self.logger_.error(f'Error with setting frequency! \n{e}')
 
     def setCustomFrequency(self, channel_name: str, freq: float):
         try:

@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtWidgets import QMainWindow, QApplication, QTabWidget, QToolBar, QPushButton, QMenu, QScrollArea, QWidget
+from PyQt6.QtWidgets import QMainWindow, QApplication, QToolBar
 from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt
 import qdarktheme
@@ -12,7 +12,6 @@ from processing import Processor
 from sound_thread import SoundThread
 import yaml
 from loguru import logger
-
 try:
     logger.remove(0)
 except:
@@ -86,7 +85,6 @@ class MainWindow(QMainWindow):
         self.processor = Processor(logger_=self.logger_)
 
         self.link_events()
-
         self.adjustSize()
 
     def connect_window_closed(self):
@@ -119,8 +117,12 @@ class MainWindow(QMainWindow):
         self.settingsWidget.soundTab.signal_sound_classes_states.connect(self.processor.init_sound_classes_states)
         self.settingsWidget.alinxTab.btn_get_soft_ver.clicked.connect(self.gRPCThread.getAlinxSoftVer)
         self.settingsWidget.alinxTab.btn_get_load_detect.clicked.connect(self.gRPCThread.getLoadDetectState)
+        self.settingsWidget.alinxTab.spb_gain_24.valueChanged.connect(lambda: self.gRPCThread.setGain(channel_name='2G4',
+                                                                                                      gain=self.settingsWidget.alinxTab.spb_gain_24.value()))
+        self.settingsWidget.alinxTab.spb_gain_58.valueChanged.connect(lambda: self.gRPCThread.setGain(channel_name='5G8',
+                                                                                                      gain=self.settingsWidget.alinxTab.spb_gain_58.value()))
         self.settingsWidget.nnTab.btn_get_nn_info.clicked.connect(lambda: self.gRPCThread.nnInfo(self.enabled_channels))
-        self.settingsWidget.usrpTab.signal_central_freq_changed.connect(self.gRPCThread.setCustomFrequency)
+        #self.settingsWidget.usrpTab.signal_central_freq_changed.connect(self.gRPCThread.setCustomFrequency)
         self.gRPCThread.signal_alinx_soft_ver.connect(self.settingsWidget.alinxTab.update_soft_ver)
         self.gRPCThread.signal_alinx_load_detect_state.connect(self.settingsWidget.alinxTab.update_load_detect_state)
         self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
@@ -130,8 +132,7 @@ class MainWindow(QMainWindow):
         self.processor.signal_play_sound.connect(self.soundThread.start_stop_sound_thread)
         self.processor.signal_channel_central_freq.connect(self.settingsWidget.usrpTab.update_channel_freq)
         self.settingsWidget.mainTab.cb_spectrogram_resolution.currentTextChanged.connect(lambda a:
-                     self.set_spectrogram_resolution(self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
-
+        self.set_spectrogram_resolution(self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
         self.show()
         self.move_window_to_center()
 
@@ -175,7 +176,7 @@ class MainWindow(QMainWindow):
                                                   channel_info=channel_info)
                 recogn_widget.recognOptions.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
                 recogn_widget.recognOptions.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
-                recogn_widget.recognOptions.signal_freq_changed.connect(self.gRPCThread.setFrequency)
+                # recogn_widget.recognOptions.signal_freq_changed.connect(self.gRPCThread.setFrequency)
                 recogn_widget.recognOptions.signal_gain_changed.connect(self.gRPCThread.setGain)
                 self.settingsWidget.mainTab.chb_show_recogn_options.stateChanged.connect(recogn_widget.add_remove_recogn_options)
                 self.settingsWidget.mainTab.chb_show_frequencies.stateChanged.connect(recogn_widget.show_frequencies)

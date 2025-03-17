@@ -5,7 +5,7 @@ import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
 import socket
 import time
-from multiprocessing import Process, Queue, Pipe, Lock, JoinableQueue
+from multiprocessing import Process, Queue, Pipe, Lock, JoinableQueue, Event
 import cv2
 import numpy as np
 from loguru import logger
@@ -16,7 +16,15 @@ import sys
 from collections.abc import Mapping
 import custom_utils
 import os
-from tcp_control_alinx import TCPControlAlinx
+from tcp_control_alinx import FCM_Alinx, Task_
+from enum import Enum
+
+
+class ErrorFlag(Enum):
+    no_error = 0
+    error = 1
+    warning = 2
+
 
 try:
     from nn_processing import NNProcessing
@@ -74,6 +82,7 @@ class Client(Process):
                  hardware_type: str,
                  receive_freq_status: bool,
                  central_freq: int,
+                 freq_list: list,
                  model_version: str,
                  weights_path: str,
                  project_path: str,
@@ -90,6 +99,8 @@ class Client(Process):
                  exceedance: float,
                  data_queue=None,
                  error_queue=None,
+                 FCM_control_queue=None,
+                 task_done_event=None,
                  logger_=None):
         super().__init__()
         self.nn = None
@@ -98,6 +109,7 @@ class Client(Process):
         self.hardware = hardware_type
         self.receive_freq_status = receive_freq_status
         self.central_freq = central_freq
+        self.freq_list = freq_list
         self.model_version = model_version
         self.weights_path = weights_path
         self.project_path = project_path
@@ -112,6 +124,7 @@ class Client(Process):
         self.z_max = z_max
         self.threshold = threshold
         self.accumulation_size = accumulation_size
+        self.current_accum_index = 0
         self.exceedance = exceedance
 
         self.accum_status = True
@@ -121,6 +134,8 @@ class Client(Process):
         self.config_q = Queue()
         self.data_q = data_queue
         self.error_queue = error_queue
+        self.FCM_control_queue = FCM_control_queue
+        self.task_done_event = task_done_event
         self.img_save_path = '\\saved_images'
         if not os.path.isdir(self.img_save_path):
             os.mkdir(self.img_save_path)
@@ -139,7 +154,8 @@ class Client(Process):
         else:
             self.logger.error(f'Unknown Device Type: {self.hardware} !')
 
-        self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
+        self.accum_deques = {freq: {i: deque(maxlen=self.accumulation_size) for i in self.map_list} for freq in
+                             self.freq_list}
         self.record_images_status = False
 
     def set_queue(self, data_queue: Queue):
@@ -167,17 +183,18 @@ class Client(Process):
         self.accumulation_size = accumulation_size
         self.threshold = threshold
         self.exceedance = exceedance
-        self.accum_deques = {i: deque(maxlen=self.accumulation_size) for i in self.map_list}
+        self.accum_deques = {freq: {i: deque(maxlen=self.accumulation_size) for i in self.map_list} for freq in
+                                                                                                        self.freq_list}
         self.global_threshold = self.threshold * self.accumulation_size * self.exceedance
 
-    def accumulate_and_make_decision(self, result_dict: dict):
+    def accumulate_and_make_decision(self, result_dict: dict, central_freq: int):
         accumed_results = []
         frequencies = []
 
         for key, key_dict in result_dict.items():
             if self.accum_status:
-                self.accum_deques[key].appendleft(key_dict['confidence'])
-                accum = sum(self.accum_deques[key])
+                self.accum_deques[central_freq][key].appendleft(key_dict['confidence'])
+                accum = sum(self.accum_deques[central_freq][key])
                 state = bool(accum >= self.global_threshold)
             else:
                 state = bool(key_dict['confidence'] > self.threshold)
@@ -211,9 +228,6 @@ class Client(Process):
         self.accum_status = accum_status
         self.logger.info(f'Accum status = {self.accum_status}')
 
-    def change_central_freq(self, freq: int):
-        self.central_freq = freq
-
     def average_spectrum(self, arr: np.ndarray):
         spectrum = np.mean(arr, axis=0).astype(np.float16)  # среднее по столбцам (axis=0)
         return spectrum
@@ -228,8 +242,7 @@ class Client(Process):
             self.logger.error(f'error_queue is full. {e}')
 
     def receive_from_Alinx(self, sock):
-
-
+        self.change_frequency_Alinx()
         sock.send(b'\x30')
         arr = sock.recv(self.msg_len)
         self.logger.trace(f'Received {self.msg_len} bytes.')
@@ -246,7 +259,7 @@ class Client(Process):
 
             spectrum = self.average_spectrum(arr=arr_resh)
             img_arr = self.nn.normalization(np.fft.fftshift(arr_resh, axes=(1,)))
-            return img_arr, spectrum
+            return img_arr, np.fft.fftshift(spectrum)
         else:
             self.logger.trace(f'Packet size = {len(arr)} missed.')
             raise custom_utils.AlinxException()
@@ -276,6 +289,21 @@ class Client(Process):
         else:
             self.logger.trace(f'Packet size = {np_arr.size} missed.')
             return None
+
+    def change_frequency_Alinx(self):
+
+        if len(self.freq_list) > 1 and self.current_accum_index % self.accumulation_size == 0:
+            index = self.freq_list.index(self.central_freq) + 1
+            freq = self.freq_list[index % len(self.freq_list)]
+            self.FCM_control_queue.put(Task_(self.name, 'set_frequency', freq))
+            self.logger.debug(f'Send to set {freq} Hz')
+            if self.task_done_event.wait(11):
+                self.central_freq = freq
+                self.logger.debug(f'Freq. {self.central_freq} Hz was set')
+                time.sleep(0.15)
+            else:
+                self.logger.error(f'Frequency has not been set')
+                self.send_error(f'Frequency has not been set')
 
     @logger.catch
     def run(self):
@@ -324,10 +352,11 @@ class Client(Process):
                         img_arr, spectrum = receive(sock=s)
                         if img_arr is not None:
                             clear_img, df_result, detected_img = self.nn.processing_for_grpc(img_arr)
-
+                            self.current_accum_index += 1
                             if self.data_q is not None:
                                 res, freq = self.accumulate_and_make_decision(
-                                    self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'))
+                                    self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'),
+                                    central_freq=self.central_freq)
 
                                 try:
                                     if self.data_q.full():
@@ -371,11 +400,11 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.config = load_conf(config_path=self.config_path)
         self.processes = {}
         self.data_queues = {}
-        self.error_queues = {}
+        self.error_queues = {'gRPC': Queue(maxsize=40)}
         self.connections = self.config['connections']
         self.last_update_times = {}
         if self.config['freq_conversion_module']['is_used']:
-            self.init_alinxTCPControl()
+            self.init_Alinx_FCM_control()
 
     def ServerErrorStream(self, request, context):
         self.custom_logger.debug(f'Start server error stream ')
@@ -387,15 +416,6 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                         yield API_pb2.ServerErrorResponse(status=error['status'], msg=error['msg'])
                 else:
                     time.sleep(0.005)
-                    #self.last_update_times[proc_name] = time.time()
-                # if time.time() - self.last_update_times[proc_name] > 31:
-                #     yield API_pb2.ServerErrorResponse(status=True, msg=f'Big ping from {proc_name}. '
-                #                                                        f'Trying to restart process!')
-                #     self.restart_process(channel_name=proc_name)
-                #     for name in self.last_update_times.keys():
-                #         self.last_update_times[name] = time.time()
-                # else:
-                #     self.custom_logger.trace(f'Ping in {proc_name} is ok!')
 
     def ProceedDataStream(self, request, context):
         self.custom_logger.debug(f'Start data stream with detected img status = {request.detected_img} and '
@@ -475,9 +495,9 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 self.last_update_times[conn_name] = time.time()
                 hardware_type = str(connection['hardware']['type'])
                 try:
-                    if self.alinxControlThread:
-                        if hardware_type == 'alinx' or hardware_type == 'Alinx' or hardware_type == 'ALINX':
-                            self.init_alinxTCPControl()
+                    # if self.alinxControlThread:
+                    #     if hardware_type == 'alinx' or hardware_type == 'Alinx' or hardware_type == 'ALINX':
+                    #         self.init_alinxTCPControl()
 
                     self.init_nn_client(conn_name=conn_name)
                     return API_pb2.StartChannelResponse(channelConnectionState=API_pb2.ConnectionState.Connected,
@@ -498,7 +518,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             self.custom_logger.warning(f'Unknown name {request.connection_name} !')
             return API_pb2.StartChannelResponse(channelConnectionState=API_pb2.ConnectionState.Disconnected,
                                                 description=f'Unknown channel: {request.connection_name} !')
-
+    @logger.catch
     def init_nn_client(self, conn_name: str):
         connection = self.connections[conn_name]
         data_queue = Queue(maxsize=5)
@@ -508,7 +528,8 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                     address=(str(connection['ip']), int(connection['port'])),
                     hardware_type=str(connection['hardware']['type']),
                     receive_freq_status=bool(connection['hardware']['receive_freq']),
-                    central_freq=int(list(connection['hardware']['central_freq'])[0]),
+                    central_freq=int(connection['hardware']['central_freq'][0]),
+                    freq_list=list(connection['hardware']['central_freq']),
                     model_version=str(connection['neural_network_settings']['version']),
                     weights_path=connection['neural_network_settings']['weights_path'],
                     project_path=connection['neural_network_settings']['project_path'],
@@ -525,6 +546,8 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                     exceedance=float(connection['detection_settings']['exceedance']),
                     data_queue=data_queue,
                     error_queue=error_queue,
+                    FCM_control_queue=self.task_queue,
+                    task_done_event=self.events[conn_name],
                     logger_=self.custom_logger.bind(process=str(conn_name)))
         cl.start()
         self.custom_logger.debug(f'Client {conn_name} started!')
@@ -533,17 +556,23 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.error_queues[conn_name] = error_queue
         self.custom_logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
 
-    def init_alinxTCPControl(self):
-        self.alinxControl_control_q = JoinableQueue(maxsize=10)
-        self.alinxControl_response_q = JoinableQueue(maxsize=10)
+    def init_Alinx_FCM_control(self):
+        self.task_queue = Queue()  # Очередь для задач
+        self.events = {'gRPC': Event()}
+        error_queue = Queue(maxsize=40)
+        self.error_queues['FCM'] = error_queue
+        for name in self.connections.keys():
+            self.events[name] = Event()
 
-        self.alinxControlThread = TCPControlAlinx(address=('127.0.0.1', 65556),
-                                                  freq_codes=self.config['freq_conversion_module']['freq_codes'],
-                                                  response_queue=self.alinxControl_response_q,
-                                                  control_queue=self.alinxControl_control_q,
-                                                  logger_=self.custom_logger)
-
+        self.alinxControlThread = FCM_Alinx(address=(self.config['freq_conversion_module']['ip'],
+                                                     self.config['freq_conversion_module']['port']),
+                                            freq_codes=self.config['freq_conversion_module']['freq_codes'],
+                                            logger_=self.custom_logger.bind(process='FCM'),
+                                            task_queue=self.task_queue,
+                                            error_queue=error_queue,
+                                            events=self.events)
         self.alinxControlThread.start()
+        self.custom_logger.info('FCM module was started.')
 
     def ZScaleChanging(self, request, context):
         name = request.band_name
@@ -663,14 +692,17 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         channel_name = request.channel_name
         freq = request.value
         # # # тут должна быть перестройка частоты # # #
-        self.processes[channel_name].control_q.put({'func': 'change_central_freq', 'args': (freq,)})
+        #self.processes[channel_name].control_q.put({'func': 'change_central_freq', 'args': (freq,)})
         return API_pb2.SetFrequencyResponse(status=f'You sent freq {freq} for {channel_name}.')
 
     def SetGain(self, request, context):
         channel_name = request.channel_name
         gain = request.value
-        # # # тут должна быть смена усиления # # #
-        return API_pb2.SetGainResponse(status=f'You sent gain {gain} for {channel_name}.')
+        self.task_queue.put(Task_(channel='gRPC', cmd=f'set_gain_{channel_name}', value=gain))
+        if self.events['gRPC'].wait(5):
+            return API_pb2.SetGainResponse(status=f'Send gain {gain} for {channel_name}.')
+        else:
+            return API_pb2.SetGainResponse(status=f'Something went wrong')
 
     def AlinxSoftVer(self, request, context):
         # # # тут должен быть запрос о версии ПО Alinx # # #

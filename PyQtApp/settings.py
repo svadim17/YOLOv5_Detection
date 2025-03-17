@@ -479,18 +479,18 @@ class AlinxTab(QWidget):
             else:
                 self.cb_central_freq.addItem(f'{2437.0} MHz', 2_437_000_000)
                 self.cb_central_freq.addItem(f'{5786.5} MHz', 5_786_500_000)
-        self.l_attenuation_24 = QLabel('Attenuation 2G4')
-        self.spb_attenuation_24 = QSpinBox()
-        self.spb_attenuation_24.setRange(0, 127)
-        self.spb_attenuation_24.setSingleStep(1)
-        self.spb_attenuation_24.setValue(0)
-        self.spb_attenuation_24.setSuffix(' dB')
-        self.l_attenuation_58 = QLabel('Attenuation 5G8')
-        self.spb_attenuation_58 = QSpinBox()
-        self.spb_attenuation_58.setRange(0, 127)
-        self.spb_attenuation_58.setSingleStep(1)
-        self.spb_attenuation_58.setValue(0)
-        self.spb_attenuation_58.setSuffix(' dB')
+        self.l_attenuation_24 = QLabel('Gain 2G4')
+        self.spb_gain_24 = QSpinBox()
+        self.spb_gain_24.setRange(0, 31)
+        self.spb_gain_24.setSingleStep(1)
+        self.spb_gain_24.setValue(0)
+        self.spb_gain_24.setSuffix(' dB')
+        self.l_attenuation_58 = QLabel('Gain 5G8')
+        self.spb_gain_58 = QSpinBox()
+        self.spb_gain_58.setRange(0, 31)
+        self.spb_gain_58.setSingleStep(1)
+        self.spb_gain_58.setValue(0)
+        self.spb_gain_58.setSuffix(' dB')
 
     def add_widgets_to_layout(self):
         spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -522,10 +522,10 @@ class AlinxTab(QWidget):
         l_central_freq_layout.addWidget(self.cb_central_freq)
         l_attenuation_24_layout = QVBoxLayout()
         l_attenuation_24_layout.addWidget(self.l_attenuation_24)
-        l_attenuation_24_layout.addWidget(self.spb_attenuation_24)
+        l_attenuation_24_layout.addWidget(self.spb_gain_24)
         l_attenuation_58_layout = QVBoxLayout()
         l_attenuation_58_layout.addWidget(self.l_attenuation_58)
-        l_attenuation_58_layout.addWidget(self.spb_attenuation_58)
+        l_attenuation_58_layout.addWidget(self.spb_gain_58)
         rx_settings_layout = QVBoxLayout()
         rx_settings_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         rx_settings_layout.setContentsMargins(15, 15, 15, 10)
@@ -580,7 +580,7 @@ class USRPTab(QWidget):
         i = 0
         for channel in self.enabled_channels:
             self.channels_list.insertItem(i, channel)
-            stack_widget = FrequencyStack(channel_name=channel, central_freq=1111)
+            stack_widget = FrequencyStack(channel_name=channel, central_freq=0)
             stack_widget.spb_freq.valueChanged.connect(lambda:
                                                        self.central_freq_changed(channel, stack_widget.spb_freq.value()))
             self.channels_stacks[channel] = stack_widget
