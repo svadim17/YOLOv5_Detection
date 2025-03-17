@@ -100,15 +100,15 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.RestartProcessRequest.SerializeToString,
                 response_deserializer=neuro__pb2.RestartProcessResponse.FromString,
                 _registered_method=True)
-        self.SetFrequency = channel.unary_unary(
-                '/NeuroDataProcessing.DataProcessingService/SetFrequency',
-                request_serializer=neuro__pb2.SetFrequencyRequest.SerializeToString,
-                response_deserializer=neuro__pb2.SetFrequencyResponse.FromString,
+        self.AlinxSetFrequency = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/AlinxSetFrequency',
+                request_serializer=neuro__pb2.AlinxSetFrequencyRequest.SerializeToString,
+                response_deserializer=neuro__pb2.AlinxSetFrequencyResponse.FromString,
                 _registered_method=True)
-        self.SetGain = channel.unary_unary(
-                '/NeuroDataProcessing.DataProcessingService/SetGain',
-                request_serializer=neuro__pb2.SetGainRequest.SerializeToString,
-                response_deserializer=neuro__pb2.SetGainResponse.FromString,
+        self.AlinxSetAttenuation = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/AlinxSetAttenuation',
+                request_serializer=neuro__pb2.AlinxSetAttenuationRequest.SerializeToString,
+                response_deserializer=neuro__pb2.AlinxSetAttenuationResponse.FromString,
                 _registered_method=True)
         self.AlinxSoftVer = channel.unary_unary(
                 '/NeuroDataProcessing.DataProcessingService/AlinxSoftVer',
@@ -211,13 +211,13 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def SetFrequency(self, request, context):
+    def AlinxSetFrequency(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def SetGain(self, request, context):
+    def AlinxSetAttenuation(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -310,15 +310,15 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     request_deserializer=neuro__pb2.RestartProcessRequest.FromString,
                     response_serializer=neuro__pb2.RestartProcessResponse.SerializeToString,
             ),
-            'SetFrequency': grpc.unary_unary_rpc_method_handler(
-                    servicer.SetFrequency,
-                    request_deserializer=neuro__pb2.SetFrequencyRequest.FromString,
-                    response_serializer=neuro__pb2.SetFrequencyResponse.SerializeToString,
+            'AlinxSetFrequency': grpc.unary_unary_rpc_method_handler(
+                    servicer.AlinxSetFrequency,
+                    request_deserializer=neuro__pb2.AlinxSetFrequencyRequest.FromString,
+                    response_serializer=neuro__pb2.AlinxSetFrequencyResponse.SerializeToString,
             ),
-            'SetGain': grpc.unary_unary_rpc_method_handler(
-                    servicer.SetGain,
-                    request_deserializer=neuro__pb2.SetGainRequest.FromString,
-                    response_serializer=neuro__pb2.SetGainResponse.SerializeToString,
+            'AlinxSetAttenuation': grpc.unary_unary_rpc_method_handler(
+                    servicer.AlinxSetAttenuation,
+                    request_deserializer=neuro__pb2.AlinxSetAttenuationRequest.FromString,
+                    response_serializer=neuro__pb2.AlinxSetAttenuationResponse.SerializeToString,
             ),
             'AlinxSoftVer': grpc.unary_unary_rpc_method_handler(
                     servicer.AlinxSoftVer,
@@ -677,7 +677,7 @@ class DataProcessingService(object):
             _registered_method=True)
 
     @staticmethod
-    def SetFrequency(request,
+    def AlinxSetFrequency(request,
             target,
             options=(),
             channel_credentials=None,
@@ -690,9 +690,9 @@ class DataProcessingService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/NeuroDataProcessing.DataProcessingService/SetFrequency',
-            neuro__pb2.SetFrequencyRequest.SerializeToString,
-            neuro__pb2.SetFrequencyResponse.FromString,
+            '/NeuroDataProcessing.DataProcessingService/AlinxSetFrequency',
+            neuro__pb2.AlinxSetFrequencyRequest.SerializeToString,
+            neuro__pb2.AlinxSetFrequencyResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -704,7 +704,7 @@ class DataProcessingService(object):
             _registered_method=True)
 
     @staticmethod
-    def SetGain(request,
+    def AlinxSetAttenuation(request,
             target,
             options=(),
             channel_credentials=None,
@@ -717,9 +717,9 @@ class DataProcessingService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/NeuroDataProcessing.DataProcessingService/SetGain',
-            neuro__pb2.SetGainRequest.SerializeToString,
-            neuro__pb2.SetGainResponse.FromString,
+            '/NeuroDataProcessing.DataProcessingService/AlinxSetAttenuation',
+            neuro__pb2.AlinxSetAttenuationRequest.SerializeToString,
+            neuro__pb2.AlinxSetAttenuationResponse.FromString,
             options,
             channel_credentials,
             insecure,
