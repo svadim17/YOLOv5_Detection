@@ -12,6 +12,7 @@ from gRPC_thread import ChannelInfo
 class RecognitionOptions(QWidget):
     signal_recogn_settings = pyqtSignal(str, int, float, float)
     signal_zscale_changed = pyqtSignal(str, int, int)
+    signal_gain_changed = pyqtSignal(str, int)
 
     def __init__(self, name: str, zscale_settings: list, current_recogn_settings: dict, channel_info: ChannelInfo):
         super().__init__()

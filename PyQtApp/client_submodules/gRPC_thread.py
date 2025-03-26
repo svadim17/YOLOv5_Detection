@@ -269,10 +269,10 @@ class gRPCThread(QtCore.QThread):
     def setGain(self, channel_name: str, gain: int):
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-            response = stub.SetGain(API_pb2.SetGainRequest(channel_name=channel_name, value=gain))
+            response = stub.AlinxSetAttenuation(API_pb2.AlinxSetAttenuationRequest(channel_name=channel_name, value=gain))
             self.logger_.info(response.status)
         except Exception as e:
-            self.logger_.error(f'Error with setting frequency! \n{e}')
+            self.logger_.error(f'Error with setting Gain! \n{e}')
 
     def nnInfo(self, enabled_channels: list):
         try:

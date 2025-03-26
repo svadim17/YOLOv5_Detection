@@ -3,13 +3,13 @@ from PyQt6.QtWidgets import QMainWindow, QApplication, QToolBar
 from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt
 import qdarktheme
-from gRPC_thread import gRPCThread, connect_to_gRPC_server, gRPCServerErrorThread
-from welcome_window import WelcomeWindow
-from connection_window import ConnectWindow
-from recognition_widget import RecognitionWidget
-from settings import SettingsWidget
-from processing import Processor
-from sound_thread import SoundThread
+from PyQtApp.client_submodules.gRPC_thread import gRPCThread, connect_to_gRPC_server, gRPCServerErrorThread
+from PyQtApp.client_submodules.welcome_window import WelcomeWindow
+from PyQtApp.client_submodules.connection_window import ConnectWindow
+from PyQtApp.client_submodules.recognition_widget import RecognitionWidget
+from PyQtApp.client_submodules.settings import SettingsWidget
+from PyQtApp.client_submodules.processing import Processor
+from PyQtApp.client_submodules.sound_thread import SoundThread
 import yaml
 from loguru import logger
 try:
@@ -117,10 +117,10 @@ class MainWindow(QMainWindow):
         self.settingsWidget.soundTab.signal_sound_classes_states.connect(self.processor.init_sound_classes_states)
         self.settingsWidget.alinxTab.btn_get_soft_ver.clicked.connect(self.gRPCThread.getAlinxSoftVer)
         self.settingsWidget.alinxTab.btn_get_load_detect.clicked.connect(self.gRPCThread.getLoadDetectState)
-        self.settingsWidget.alinxTab.spb_gain_24.valueChanged.connect(lambda: self.gRPCThread.setGain(channel_name='2G4',
-                                                                                                      gain=self.settingsWidget.alinxTab.spb_gain_24.value()))
-        self.settingsWidget.alinxTab.spb_gain_58.valueChanged.connect(lambda: self.gRPCThread.setGain(channel_name='5G8',
-                                                                                                      gain=self.settingsWidget.alinxTab.spb_gain_58.value()))
+        self.settingsWidget.alinxTab.spb_gain_24.valueChanged.connect(
+            lambda: self.gRPCThread.setGain(channel_name='2G4', gain=self.settingsWidget.alinxTab.spb_gain_24.value()))
+        self.settingsWidget.alinxTab.spb_gain_58.valueChanged.connect(
+            lambda: self.gRPCThread.setGain(channel_name='5G8', gain=self.settingsWidget.alinxTab.spb_gain_58.value()))
         self.settingsWidget.nnTab.btn_get_nn_info.clicked.connect(lambda: self.gRPCThread.nnInfo(self.enabled_channels))
         #self.settingsWidget.usrpTab.signal_central_freq_changed.connect(self.gRPCThread.setCustomFrequency)
         self.gRPCThread.signal_alinx_soft_ver.connect(self.settingsWidget.alinxTab.update_soft_ver)

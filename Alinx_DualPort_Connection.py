@@ -41,7 +41,7 @@ class Client(Process):
                     s.connect(self.address)
                     logger.info(f'Connected to  Alinx {self.address}!')
                     self.nn = NNProcessing(name=str(self.address),
-                                           weights=self.weights_path,
+                                           model_weights=self.weights_path,
                                            sample_rate=self.sample_rate,
                                            width=self.w,
                                            height=self.h,

@@ -176,7 +176,7 @@ class Client(Process):
     def run(self):
         try:
             self.nn = NNProcessing(name=self.name,
-                                   weights=self.weights_path,
+                                   model_weights=self.weights_path,
                                    sample_rate=self.sample_rate,
                                    width=self.signal_width,
                                    height=self.signal_height,

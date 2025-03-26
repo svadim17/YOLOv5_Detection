@@ -3,6 +3,18 @@ import hashlib
 import numpy as np
 import cv2
 import os
+from collections.abc import Mapping
+from enum import Enum
+
+
+def deep_update(source: dict, overrides: dict):
+    for key, value in overrides.items():
+        if isinstance(value, Mapping) and value:
+            returned = deep_update(source.get(key, {}), value)
+            source[key] = returned
+        else:
+            source[key] = overrides[key]
+    return source
 
 
 def image_to_base64(image_path):
@@ -42,6 +54,13 @@ class AlinxException(Exception):
 
     def __str__(self):
         return self.message
+
+
+class ErrorFlag(Enum):
+    no_error = 0
+    error = 1
+    warning = 2
+
 
 
 if __name__ == '__main__':

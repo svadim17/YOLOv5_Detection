@@ -64,7 +64,7 @@ class Client(Process):
 
         try:
             self.nn = NNProcessing(name=str(self.address),
-                                   weights=self.weights_path,
+                                   model_weights=self.weights_path,
                                    project_path=self.project_path,
                                    map_list=tuple(self.map_list),
                                    z_min=self.z_min,

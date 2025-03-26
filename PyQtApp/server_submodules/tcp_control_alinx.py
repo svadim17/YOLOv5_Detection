@@ -159,20 +159,13 @@ class FCM_Alinx(Process):
                     self.error_queue.put({'status': False, 'msg': 'FCM has been connected.'})
 #                    with self.logger.catch():
                     while True:
-                        try:
-                            task_ = self.task_queue.get()  # Берем task_id из очереди
-                            self.logger.info(f'FCM get task: {task_}')
-                            if task_ is None:  # Признак завершения работы
-                                break
-                            self.response_request(task_.cmd, task_.value)
-                            self.logger.success(f'FCM finish task: {task_}')
-                            self.events[task_.channel].set()
-
-                        except socket.timeout as e:
-                            msg = f'FCM Socket timeout error: {e}'
-                            self.logger.error(msg)
-                            self.error_queue.put({'status': True, 'msg': msg})
-                            time.sleep(2)
+                        task_ = self.task_queue.get()  # Берем task_id из очереди
+                        self.logger.info(f'FCM get task: {task_}')
+                        if task_ is None:  # Признак завершения работы
+                            break
+                        self.response_request(task_.cmd, task_.value)
+                        self.logger.success(f'FCM finish task: {task_}')
+                        self.events[task_.channel].set()
 
                 except socket.error as e:
                     self.logger.error(f'FCM connection error! {e}')

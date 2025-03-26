@@ -8,7 +8,7 @@ class SoundThread(QtCore.QThread):
 
     def __init__(self, sound_name: str, logger_):
         QtCore.QThread.__init__(self)
-        self.sound_path = 'assets/sounds/'
+        self.sound_path = '../assets/sounds/'
         self.sound_file = self.sound_path + sound_name
         self.logger = logger_
         try:

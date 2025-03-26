@@ -41,7 +41,7 @@ class Client(Process):
                 nn_type = s.recv(2)
 
                 self.nn = NNProcessing(name=str(self.address),
-                                       weights=self.weights_path,
+                                       model_weights=self.weights_path,
                                        sample_rate=self.sample_rate,
                                        width=self.w,
                                        height=self.h,

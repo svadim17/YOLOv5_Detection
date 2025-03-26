@@ -50,8 +50,8 @@ class NNProcessing(object):
     def __init__(self,
                  name: str,
                  all_classes: tuple,
-                 version: str,
-                 weights: str,
+                 model_version: str,
+                 model_weights: str,
                  project_path: str,
                  map_list: tuple,
                  sample_rate=80_000_000,
@@ -67,8 +67,8 @@ class NNProcessing(object):
 
         self.name = name
         self.all_classes = all_classes
-        self.version = version
-        self.weights = weights
+        self.version = model_version
+        self.weights = model_weights
         self.project_path = project_path
         self.map_list = map_list
         self.sample_rate = sample_rate

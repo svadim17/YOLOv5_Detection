@@ -7,12 +7,12 @@ server_port: '51234'
 server_addr: localhost
 settings_main:
   show_recogn_options: true
-  show_frequencies: true
+  show_frequencies: false
   enable_accumulation: true
   watchdog: false
   show_spectrogram: true
   show_histogram: false
-  show_spectrum: false
+  show_spectrum: true
 settings_sound:
   sound_status: true
   classes_sound:

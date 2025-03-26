@@ -153,7 +153,7 @@ class RecognitionWidget(QDockWidget, QWidget):
 
     def create_spectrogram_tab(self):
         self.img_frame = QLabel()
-        pixmap = QPixmap('assets/icons/spectrum_img.png')
+        pixmap = QPixmap('../assets/icons/spectrum_img.png')
         self.img_frame.setPixmap(pixmap.scaled(self.img_width, self.img_height))
         self.img_frame.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Центрирование изображения
         # self.img_frame.setScaledContents(True)  # масштабирование изображения по размеру виджета
