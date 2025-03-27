@@ -6,6 +6,7 @@ from PyQt6.QtGui import QPixmap, QImage, QFont, QIcon
 from PyQt6.QtCore import pyqtSlot, Qt, pyqtSignal
 import qdarktheme
 from os import walk
+import yaml
 
 
 class SettingsWidget(QWidget):
@@ -29,7 +30,7 @@ class SettingsWidget(QWidget):
                                    channel.hardware_type.lower() == 'Usrp' or
                                    channel.hardware_type.lower() == 'USRP' for channel in self.enabled_channels_info)
 
-        self.mainTab = MainTab(config=config)
+        self.mainTab = MainTab(config=config, logger_=self.logger)
         self.saveTab = SaveTab(enabled_channels=enabled_channels, map_list=config['map_list'])
         self.soundTab = SoundTab(enabled_channels=enabled_channels, config=config, logger_=self.logger)
         self.nnTab = NNTab(logger_=self.logger, enabled_channels=enabled_channels)
@@ -62,9 +63,10 @@ class SettingsWidget(QWidget):
 
 class MainTab(QWidget):
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, logger_):
         super().__init__()
         self.config = config
+        self.logger = logger_
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(15)
         self.setLayout(self.main_layout)
@@ -87,7 +89,7 @@ class MainTab(QWidget):
         self.chb_show_recogn_options.setChecked(True)
 
         self.chb_show_frequencies = QCheckBox('Show frequencies')
-        self.chb_show_frequencies.setChecked(True)
+        self.chb_show_frequencies.setChecked(self.config['settings_main']['show_frequencies'])
 
         self.chb_accumulation = QCheckBox('Enable accumulation')
         self.chb_accumulation.setChecked(True)
@@ -105,6 +107,30 @@ class MainTab(QWidget):
 
         self.chb_spectrum_show = QCheckBox('Show spectrum')
         self.chb_spectrum_show.setChecked(self.config['settings_main']['show_spectrum'])
+
+        self.box_theme_settings = QGroupBox('Theme')
+
+        self.cb_themes = QComboBox()
+        all_themes = self.get_all_themes()
+        input_theme_name = self.config['settings_main']['theme']['name']
+        input_theme_type = self.config['settings_main']['theme']['type']
+
+        for theme in all_themes:
+            self.cb_themes.addItem(theme)
+        if input_theme_name in all_themes:
+            self.cb_themes.setCurrentText(input_theme_name)
+        else:
+            self.cb_themes.setCurrentText('default')
+            self.logger.warning(f'Unknown theme name {input_theme_name}. Theme is set to default')
+
+        self.cb_theme_type = QComboBox()
+        self.cb_theme_type.addItem('dark')
+        self.cb_theme_type.addItem('light')
+        if input_theme_type == 'dark' or input_theme_type == 'light':
+            self.cb_theme_type.setCurrentText(input_theme_type)
+        else:
+            self.cb_theme_type.setCurrentText('dark')
+            self.logger.warning(f'Unknown theme type {input_theme_type}. Theme type is set to dark')
 
     def add_widgets_to_layout(self):
         spectr_layout = QVBoxLayout()
@@ -124,18 +150,34 @@ class MainTab(QWidget):
         widgets_states_layout.addWidget(self.chb_spectrogram_show)
         widgets_states_layout.addWidget(self.chb_histogram_show)
         widgets_states_layout.addWidget(self.chb_spectrum_show)
-
         self.box_widgets_states.setLayout(widgets_states_layout)
 
+        theme_layout = QVBoxLayout()
+        theme_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        theme_layout.addWidget(self.cb_themes)
+        theme_layout.addSpacing(10)
+        theme_layout.addWidget(self.cb_theme_type)
+        self.box_theme_settings.setLayout(theme_layout)
+
+        left_layout = QVBoxLayout()
+        left_layout.addWidget(self.box_widgets_states)
+        left_layout.addWidget(self.box_theme_settings)
+
         central_layout = QHBoxLayout()
+        central_layout.addLayout(left_layout)
+        central_layout.addSpacing(20)
         central_layout.addLayout(controls_layout)
-        central_layout.addWidget(self.box_widgets_states)
 
         spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         self.main_layout.addLayout(spectr_layout)
         self.main_layout.addLayout(central_layout)
         self.main_layout.addSpacerItem(spacer)
+
+    def get_all_themes(self):
+        with open('app_themes.yaml', 'r', encoding='utf-8') as f:
+            themes = yaml.safe_load(f)
+        return themes.keys()
 
     def collect_config(self):
         config = {'settings_main': {'show_recogn_options': self.chb_show_recogn_options.isChecked(),
@@ -144,7 +186,11 @@ class MainTab(QWidget):
                                     'watchdog': self.chb_watchdog.isChecked(),
                                     'show_spectrogram': self.chb_spectrogram_show.isChecked(),
                                     'show_histogram': self.chb_histogram_show.isChecked(),
-                                    'show_spectrum': self.chb_spectrum_show.isChecked()
+                                    'show_spectrum': self.chb_spectrum_show.isChecked(),
+                                    'theme': {
+                                        'name': self.cb_themes.currentText(),
+                                        'type': self.cb_theme_type.currentText()
+                                             }
                                     }
                   }
         return config

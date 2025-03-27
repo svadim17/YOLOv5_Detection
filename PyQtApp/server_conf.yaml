@@ -14,8 +14,8 @@ connections:
       calculate_log: false
     neural_network_settings:
       version: v5
-      project_path: C:\Users\a.yakov\PycharmProjects\YOLOv5_Detection
-      weights_path: C:\Users\a.yakov\PycharmProjects\YOLOv5_Detection\trained_neural_models\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
       - 640
       - 640
@@ -46,15 +46,15 @@ connections:
       - 4986500000
       - 5086500000
       - 5186500000
-      - 5286500000
-      - 5386500000
-      - 5486500000
-      - 5586500000
-      - 5686500000
-      - 5786500000
-      - 5886500000
-      - 5986500000
-      - 6086500000
+#      - 5286500000
+#      - 5386500000
+#      - 5486500000
+#      - 5586500000
+#      - 5686500000
+#      - 5786500000
+#      - 5886500000
+#      - 5986500000
+#      - 6086500000
       receive_freq: true
     signal_settings:
       signal_width: 1024
@@ -63,8 +63,8 @@ connections:
       calculate_log: false
     neural_network_settings:
       version: v5
-      project_path: C:\Users\a.yakov\PycharmProjects\YOLOv5_Detection
-      weights_path: C:\Users\a.yakov\PycharmProjects\YOLOv5_Detection\trained_neural_models\yolov5m_6classes_BIG_AUGMENTATED_ver5\weights\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
+      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
       - 640
       - 640

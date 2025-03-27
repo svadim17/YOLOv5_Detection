@@ -8,9 +8,9 @@ import qdarktheme
 from collections import deque
 import time
 import pyqtgraph
-from recognition_options import RecognitionOptions
-from process_options import ProcessOptions
-from gRPC_thread import ChannelInfo
+from PyQtApp.client_submodules.recognition_options import RecognitionOptions
+from PyQtApp.client_submodules.process_options import ProcessOptions
+from PyQtApp.client_submodules.gRPC_thread import ChannelInfo
 
 
 class RecognitionWidget(QDockWidget, QWidget):
@@ -21,6 +21,7 @@ class RecognitionWidget(QDockWidget, QWidget):
                  recogn_options: dict,
                  signal_settings: dict,
                  show_recogn_options: bool,
+                 show_freq: bool,
                  channel_info: ChannelInfo,
                  **widgets_statuses):
         super().__init__()
@@ -48,6 +49,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.img_width, self.img_height = 320, 320
         self.drons_btns = {}
         self.drons_freq = {}
+        self.freq_labels = {}
         self.last_fps = deque(maxlen=5)
         self.last_fps_2 = deque(maxlen=5)
         self.last_time = 0
@@ -64,6 +66,8 @@ class RecognitionWidget(QDockWidget, QWidget):
 
         self.hist_deques = {name: deque(maxlen=self.accum_size) for name in self.map_list}
         self.create_widgets()
+
+        self.show_frequencies(state=int(show_freq))
 
     @pyqtSlot(int)
     def change_accum_size(self, val: int):
@@ -107,23 +111,6 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.create_spectrum_tab()
         self.create_context_menu()
 
-    def create_buttons_(self):
-
-        for name in self.map_list:
-            drone_btn = QPushButton(name)
-            self.drons_btns[name] = drone_btn
-            drone_freq = QLabel('None')
-            drone_freq.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.drons_freq[name] = drone_freq
-
-        drons_btns_layout = QHBoxLayout()
-        for drone_name in self.drons_btns.keys():
-            drone_layout = QVBoxLayout()
-            drone_layout.addWidget(self.drons_btns[drone_name])
-            drone_layout.addWidget(self.drons_freq[drone_name])
-            drons_btns_layout.addLayout(drone_layout)
-        self.main_layout.addLayout(drons_btns_layout)
-
     def create_buttons(self):
         for freq in self.channel_info.central_freq:
             drons_btns = {}
@@ -136,8 +123,8 @@ class RecognitionWidget(QDockWidget, QWidget):
                 drons_freq[name] = drone_freq
 
             drons_btns_layout = QGridLayout()
-            freq_label = QLabel(f'{freq/1000_000_000:.1f}GHz')
-            freq_label.setStyleSheet('transform: rotate(90deg)')
+            freq_label = QLabel(f'{freq/1000_000_000:.2f}GHz')
+            freq_label.setStyleSheet('transform: rotate(90deg);')
             drons_btns_layout.addWidget(freq_label)
             colomn = 1
             for drone_name in drons_btns.keys():
@@ -149,6 +136,7 @@ class RecognitionWidget(QDockWidget, QWidget):
 
             self.drons_btns[freq] = drons_btns
             self.drons_freq[freq] = drons_freq
+            self.freq_labels[freq] = freq_label
             self.main_layout.addLayout(drons_btns_layout)
 
     def create_spectrogram_tab(self):
@@ -212,7 +200,6 @@ class RecognitionWidget(QDockWidget, QWidget):
 
     @pyqtSlot(int)
     def show_frequencies(self, state: int):
-
         for dron_freq in self.drons_freq.values():
             for widget_ in dron_freq.values():
                 if bool(state):
@@ -292,45 +279,17 @@ class RecognitionWidget(QDockWidget, QWidget):
         return QPixmap.fromImage(picture)
 
     @pyqtSlot(dict)
-    def update_state_(self, info: dict):
-        band_name = info['band_name']
-        channel_freq = info['channel_freq']
-        freq_ghz = channel_freq / 1_000_000_000
-
-        self.last_fps_2.append(1 / (time.time() - self.last_time_2))
-        current_fps = f'FPS: {sum(self.last_fps_2) / len(self.last_fps_2):.1f}'
-        self.last_time_2 = time.time()
-        self.setWindowTitle(f'{self.name}  |  Fc = {freq_ghz:.4f} GHz  |  {current_fps}')
-
-        for drone_dict in info['drones']:
-            if drone_dict['state']:
-                self.drons_btns[drone_dict['name']].setStyleSheet("background-color: #F0483C; "
-                                                                  "font: bold; "
-                                                                  "color: #FFFFFF")
-                self.drons_freq[drone_dict['name']].setText(str(drone_dict['freq']))
-            else:
-                self.drons_btns[drone_dict['name']].setStyleSheet("background-color: ")
-                self.drons_freq[drone_dict['name']].setText('None')
-            self.hist_deques[drone_dict['name']].appendleft(int(drone_dict['state']))
-
-        if self.histogram_plot:
-            self.update_histogram_plot()
-
-        if 'detected_img' in info:
-            self.last_fps.append(1 / (time.time() - self.last_time))
-            current_fps = f'FPS: {sum(self.last_fps) / len(self.last_fps):.1f}'
-            self.last_time = time.time()
-
-            img_arr = np.frombuffer(info['detected_img'], dtype=np.uint8).reshape((640, 640, 3))
-            img_pixmap = self.convert_cv_qt(img_arr, fps=current_fps)
-            self.img_frame.setPixmap(img_pixmap)
-
-    @pyqtSlot(dict)
     def update_state(self, info: dict):
         band_name = info['band_name']
         channel_freq = info['channel_freq']
         freq_ghz = channel_freq / 1_000_000_000
 
+        for freq, label in self.freq_labels.items():
+            if channel_freq == freq:
+                label.setStyleSheet("color: red")
+            else:
+                label.setStyleSheet("")
+        # self.freq_labels[channel_freq].setStyleSheet("color: red")
         self.last_fps_2.append(1 / (time.time() - self.last_time_2))
         current_fps = f'FPS: {sum(self.last_fps_2) / len(self.last_fps_2):.1f}'
         self.last_time_2 = time.time()

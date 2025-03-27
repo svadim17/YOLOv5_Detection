@@ -13,6 +13,9 @@ settings_main:
   show_spectrogram: true
   show_histogram: false
   show_spectrum: true
+  theme:
+    name: classic_green
+    type: dark
 settings_sound:
   sound_status: true
   classes_sound:
@@ -20,4 +23,4 @@ settings_sound:
     Fpv: true
     Dji: true
     WiFi: false
-  sound_name: Rus Man Object detected.mp3
+  sound_name: ''

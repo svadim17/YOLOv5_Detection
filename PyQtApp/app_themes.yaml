@@ -1,0 +1,95 @@
+# ===== Классические темы =====
+default:
+  "[dark]":
+    primary: "#8ab4f7"          # Зеленый
+    background: "#202124"       # Темный фон
+    foreground: "#e4e7eb"       # Светлый текст
+    input.background: "#2E2E2E" # Фон полей ввода
+    border: "#3f4042"           # Границы
+  "[light]":
+    primary: "#1a73e8"          # Зеленый
+    background: "#f8f9fa"       # Светлый фон
+    foreground: "#4d5157"       # Темный текст
+    input.background: "#FFFFFF" # Фон полей ввода
+    border: "#dadce0"
+
+classic_green:
+  "[dark]":
+    primary: "#4CAF50"          # Зеленый
+    background: "#212121"       # Темный фон
+    foreground: "#E0E0E0"       # Светлый текст
+    input.background: "#2E2E2E" # Фон полей ввода
+    border: "#424242"           # Границы
+  "[light]":
+    primary: "#4CAF50"          # Зеленый
+    background: "#F5F5F5"       # Светлый фон
+    foreground: "#212121"       # Темный текст
+    input.background: "#FFFFFF" # Фон полей ввода
+
+classic_blue:
+  "[dark]":
+    primary: "#2196F3"          # Голубой
+    background: "#121212"       # Почти черный
+    foreground: "#E0E0E0"
+    input.background: "#1E1E1E"
+    border: "#333333"
+  "[light]":
+    primary: "#1976D2"          # Темно-голубой
+    background: "#FFFFFF"
+    foreground: "#000000"
+    input.background: "#F5F5F5"
+
+# ===== Монохромные темы =====
+monochrome_dark:
+  "[dark]":
+    primary: "#757575"          # Серый акцент
+    background: "#1A1A1A"       # Угольно-черный
+    foreground: "#B0B0B0"       # Светло-серый текст
+    input.background: "#252525"
+    border: "#404040"
+  "[light]":
+    primary: "#616161"          # Темно-серый
+    background: "#FAFAFA"       # Почти белый
+    foreground: "#212121"
+    input.background: "#EEEEEE"
+
+# ===== Современные темы (Material, Nord) =====
+material_purple:
+  "[dark]":
+    primary: "#9C27B0"          # Фиолетовый
+    background: "#1E1E1E"
+    foreground: "#E1E1E1"
+    input.background: "#2D2D2D"
+    border: "#3E3E3E"
+  "[light]":
+    primary: "#7B1FA2"          # Темно-фиолетовый
+    background: "#F5F5F5"
+    foreground: "#212121"
+    input.background: "#FFFFFF"
+
+nord_theme:
+  "[dark]":
+    primary: "#5E81AC"          # Северный голубой
+    background: "#2E3440"       # Nord-фон
+    foreground: "#D8DEE9"       # Nord-текст
+    input.background: "#3B4252"
+    border: "#434C5E"
+  "[light]":
+    primary: "#5E81AC"
+    background: "#ECEFF4"       # Nord-светлый
+    foreground: "#2E3440"
+    input.background: "#E5E9F0"
+
+# ===== Тема "Cyberpunk" =====
+cyberpunk:
+  "[dark]":
+    primary: "#FF00FF"          # Неоново-розовый
+    background: "#0A0A0A"       # Глубокий черный
+    foreground: "#00FF00"       # Неоново-зеленый
+    input.background: "#1A1A1A"
+    border: "#FF00FF"
+  "[light]":
+    primary: "#FF00FF"
+    background: "#FFFFFF"
+    foreground: "#000000"
+    input.background: "#F0F0F0"

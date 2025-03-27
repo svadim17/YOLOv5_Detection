@@ -43,6 +43,13 @@ class MainWindow(QMainWindow):
         self.watchdog = bool(self.config['settings_main']['watchdog'])
         self.clear_img_status = False
 
+        with open('app_themes.yaml', 'r', encoding='utf-8') as f:           # load available themes
+            self.themes = yaml.safe_load(f)
+        qdarktheme.setup_theme(theme=self.config['settings_main']['theme']['type'],
+                               custom_colors=self.themes[self.config['settings_main']['theme']['name']])
+        # s = qdarktheme.load_stylesheet()
+        # print(s)
+
         self.recogn_widgets = {}
         self.recogn_settings_widgets = {}
         self.sound_states = {}
@@ -107,6 +114,8 @@ class MainWindow(QMainWindow):
         self.settingsWidget.mainTab.chb_spectrogram_show.stateChanged.connect(self.change_img_status)
         self.settingsWidget.mainTab.chb_histogram_show.stateChanged.connect(self.change_histogram_status)
         self.settingsWidget.mainTab.chb_spectrum_show.stateChanged.connect(self.change_spectrum_status)
+        self.settingsWidget.mainTab.cb_themes.currentIndexChanged.connect(self.apply_theme)
+        self.settingsWidget.mainTab.cb_theme_type.currentIndexChanged.connect(self.apply_theme)
         self.settingsWidget.btn_save_client_config.clicked.connect(self.save_config)
         self.settingsWidget.btn_save_server_config.clicked.connect(lambda: self.gRPCThread.saveConfigRequest('kgbradar'))
         self.settingsWidget.saveTab.btn_save.clicked.connect(self.change_save_status)
@@ -170,6 +179,7 @@ class MainWindow(QMainWindow):
                                                   recogn_options=recogn_settings[channel_info.name],
                                                   signal_settings=self.signal_settings[channel_info.name],
                                                   show_recogn_options=bool(self.config['settings_main']['show_recogn_options']),
+                                                  show_freq=bool(self.config['settings_main']['show_frequencies']),
                                                   show_images=self.show_img_status,
                                                   show_histogram=self.show_histogram_status,
                                                   show_spectrum=self.show_spectrum_status,
@@ -177,7 +187,7 @@ class MainWindow(QMainWindow):
                 recogn_widget.recognOptions.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
                 recogn_widget.recognOptions.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
                 # recogn_widget.recognOptions.signal_freq_changed.connect(self.gRPCThread.setFrequency)
-                recogn_widget.recognOptions.signal_gain_changed.connect(self.gRPCThread.setGain)
+                # recogn_widget.recognOptions.signal_gain_changed.connect(self.gRPCThread.setGain)
                 self.settingsWidget.mainTab.chb_show_recogn_options.stateChanged.connect(recogn_widget.add_remove_recogn_options)
                 self.settingsWidget.mainTab.chb_show_frequencies.stateChanged.connect(recogn_widget.show_frequencies)
                 recogn_widget.processOptions.signal_process_name.connect(self.gRPCThread.getProcessStatusRequest)
@@ -328,14 +338,18 @@ class MainWindow(QMainWindow):
         pass
 
     def save_config(self):
-        config = {'server_addr': self.server_ip}
+        try:
+            config = {'server_addr': self.server_ip}
 
-        self.config.update(self.settingsWidget.mainTab.collect_config())
-        self.config.update(self.settingsWidget.soundTab.collect_config())
-        self.config.update(config)
+            self.config.update(self.settingsWidget.mainTab.collect_config())
+            self.config.update(self.settingsWidget.soundTab.collect_config())
+            self.config.update(config)
 
-        with open('client_conf.yaml', 'w') as f:
-            yaml.dump(self.config, f, sort_keys=False)
+            with open('client_conf.yaml', 'w') as f:
+                yaml.dump(self.config, f, sort_keys=False)
+            self.logger_.success(f'Client config saved successfully!')
+        except Exception as e:
+            self.logger_.error(f'Error with saving client config! \n{e}')
 
     def load_config(self):
         try:
@@ -364,13 +378,18 @@ class MainWindow(QMainWindow):
         # Перемещаем окно в центр экрана
         self.move(x, y)
 
+    def apply_theme(self):
+        theme_name = self.settingsWidget.mainTab.cb_themes.currentText()
+        theme_type = self.settingsWidget.mainTab.cb_theme_type.currentText()
+        qdarktheme.setup_theme(theme=theme_type, custom_colors=self.themes[theme_name])
+
     # def closeEvent(self, a0):
     #     self.gRPCThread.gRPC_channel.close()
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    qdarktheme.setup_theme()
+    qdarktheme.setup_theme(theme='dark')
     main_window = MainWindow()
     main_window.welcomeWindow.show()
     sys.exit(app.exec())
