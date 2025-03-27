@@ -8,8 +8,10 @@ class SoundThread(QtCore.QThread):
 
     def __init__(self, sound_name: str, logger_):
         QtCore.QThread.__init__(self)
-        self.sound_path = '../assets/sounds/'
+        print(sound_name)
+        self.sound_path = 'assets/sounds/'
         self.sound_file = self.sound_path + sound_name
+        print(self.sound_file)
         self.logger = logger_
         try:
             pygame.mixer.music.load(self.sound_file)

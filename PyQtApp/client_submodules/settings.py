@@ -330,7 +330,7 @@ class SoundTab(QWidget):
         self.map_list = self.config['map_list']
 
         self.logger = logger_
-        self.sound_path = '../assets/sounds'
+        self.sound_path = 'assets/sounds'
         self.sound_states = {}
         self.sound_classes_states = {}
 
@@ -362,7 +362,7 @@ class SoundTab(QWidget):
         else:
             self.logger.warning(f'Unknown sound {self.input_sound_name}. {self.cb_sound.currentText()} is set to default')
         self.btn_play_sound = QPushButton()
-        self.btn_play_sound.setIcon(QIcon('../assets/icons/play_sound.png'))
+        self.btn_play_sound.setIcon(QIcon('assets/icons/play_sound.png'))
 
         self.box_channels_sound = QGroupBox('Channels sound')
         self.chb_channels_sound = {}
