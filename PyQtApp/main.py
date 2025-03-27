@@ -43,12 +43,11 @@ class MainWindow(QMainWindow):
         self.watchdog = bool(self.config['settings_main']['watchdog'])
         self.clear_img_status = False
 
+        self.theme_type = self.config['settings_main']['theme']['type']
         with open('app_themes.yaml', 'r', encoding='utf-8') as f:           # load available themes
             self.themes = yaml.safe_load(f)
-        qdarktheme.setup_theme(theme=self.config['settings_main']['theme']['type'],
+        qdarktheme.setup_theme(theme=self.theme_type,
                                custom_colors=self.themes[self.config['settings_main']['theme']['name']])
-        # s = qdarktheme.load_stylesheet()
-        # print(s)
 
         self.recogn_widgets = {}
         self.recogn_settings_widgets = {}
@@ -151,12 +150,12 @@ class MainWindow(QMainWindow):
 
     def create_menu(self):
         self.act_settings = QAction('Settings', self)
-        self.act_settings.setIcon(QIcon('assets/icons/btn_settings.png'))
+        self.act_settings.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_settings.png'))
         self.act_settings.triggered.connect(self.open_settings)
 
     def create_actions(self):
         self.act_start = QAction()
-        self.act_start.setIcon(QIcon('assets/icons/btn_start.png'))
+        self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
         self.act_start.setText('Start')
         self.act_start.setCheckable(True)
         self.act_start.triggered.connect(self.change_connection_state)
@@ -228,7 +227,7 @@ class MainWindow(QMainWindow):
 
     def change_connection_state(self, status: bool):
         if status:
-            self.act_start.setIcon(QIcon('assets/icons/btn_stop.png'))
+            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
             for channel in self.enabled_channels:
                 try:
                     self.gRPCThread.startChannelRequest(channel_name=channel)
@@ -238,7 +237,7 @@ class MainWindow(QMainWindow):
             self.gRPCThread.start()
             self.gRPCErrorTread.start()
         else:
-            self.act_start.setIcon(QIcon('assets/icons/btn_start.png'))
+            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
 
             # Stop gRPC main thread
             if self.gRPCThread.isRunning():
@@ -380,8 +379,14 @@ class MainWindow(QMainWindow):
 
     def apply_theme(self):
         theme_name = self.settingsWidget.mainTab.cb_themes.currentText()
-        theme_type = self.settingsWidget.mainTab.cb_theme_type.currentText()
-        qdarktheme.setup_theme(theme=theme_type, custom_colors=self.themes[theme_name])
+        self.theme_type = self.settingsWidget.mainTab.cb_theme_type.currentText()
+        qdarktheme.setup_theme(theme=self.theme_type, custom_colors=self.themes[theme_name])
+        self.act_settings.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_settings.png'))
+        self.settingsWidget.soundTab.btn_play_sound.setIcon(QIcon(f'assets/icons/{self.theme_type}/play_sound.png'))
+        if self.act_start.isChecked():
+            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
+        else:
+            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
 
     # def closeEvent(self, a0):
     #     self.gRPCThread.gRPC_channel.close()
