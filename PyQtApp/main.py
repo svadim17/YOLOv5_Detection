@@ -182,7 +182,8 @@ class MainWindow(QMainWindow):
                                                   show_images=self.show_img_status,
                                                   show_histogram=self.show_histogram_status,
                                                   show_spectrum=self.show_spectrum_status,
-                                                  channel_info=channel_info)
+                                                  channel_info=channel_info,
+                                                  theme_type=self.theme_type,)
                 recogn_widget.recognOptions.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
                 recogn_widget.recognOptions.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
                 # recogn_widget.recognOptions.signal_freq_changed.connect(self.gRPCThread.setFrequency)
@@ -383,6 +384,8 @@ class MainWindow(QMainWindow):
         qdarktheme.setup_theme(theme=self.theme_type, custom_colors=self.themes[theme_name])
         self.act_settings.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_settings.png'))
         self.settingsWidget.soundTab.btn_play_sound.setIcon(QIcon(f'assets/icons/{self.theme_type}/play_sound.png'))
+        for widget in self.recogn_widgets.values():
+            widget.theme_changed(theme=self.theme_type)
         if self.act_start.isChecked():
             self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
         else:

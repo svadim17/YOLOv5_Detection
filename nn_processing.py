@@ -91,21 +91,20 @@ class NNProcessing(object):
         self.load_model()
 
     def load_model(self):
-        match self.version:
-            case 'v5':
-                self.model = torch.hub.load(self.project_path,
-                                            model='custom',
-                                            path=self.weights,
-                                            source='local')
+        if self.version == 'v5':
+            self.model = torch.hub.load(self.project_path,
+                                        model='custom',
+                                        path=self.weights,
+                                        source='local')
 
-                self.model.iou = 0.8
-                self.model.conf = 0.4
-                # self.model.augment = True
-                self.model.agnostic = True
-            case 'v10':
-                self.model = YOLO(self.weights)
-            case _:
-                raise Exception(f"Unknown model version {self.version}")
+            self.model.iou = 0.8
+            self.model.conf = 0.4
+            # self.model.augment = True
+            self.model.agnostic = True
+        elif self.version == 'v10':
+            self.model = YOLO(self.weights)
+        else:
+            raise Exception(f"Unknown model version {self.version}")
 
     def normalization(self, data):
         # data = np.transpose(data + 122)
@@ -130,26 +129,24 @@ class NNProcessing(object):
         color_image = cv2.applyColorMap(norm_data, self.colormap)   # create a color image from normalized data
         img = cv2.resize(color_image, self.img_size)
         clear_img = copy.copy(img)
-        match self.version:
-            case 'v5':
-                result = self.model(img, size=self.img_size[0])
-                df_result = result.pandas().xyxy[0]
-                detected_img = result.render()[0]
+        if self.version == 'v5':
+            result = self.model(img, size=self.img_size[0])
+            df_result = result.pandas().xyxy[0]
+            detected_img = result.render()[0]
 
-            case 'v10':
-                middle_result = self.model(img)
-                df_result = self.convert_result_to_pandas(results=middle_result)
-                detected_img = img.copy()
-                for result in middle_result:
-                    for box in result.boxes:
-                        cv2.rectangle(detected_img, (int(box.xyxy[0][0]), int(box.xyxy[0][1])),
-                                      (int(box.xyxy[0][2]), int(box.xyxy[0][3])), (255, 255, 255), 2)
-                        cv2.putText(detected_img, f"{result.names[int(box.cls[0])]}",
-                                    (int(box.xyxy[0][0]), int(box.xyxy[0][1]) - 10),
-                                    cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
-
-            case _:
-                raise Exception(f"Unknown model version {self.version}")
+        elif self.version == 'v10':
+            middle_result = self.model(img)
+            df_result = self.convert_result_to_pandas(results=middle_result)
+            detected_img = img.copy()
+            for result in middle_result:
+                for box in result.boxes:
+                    cv2.rectangle(detected_img, (int(box.xyxy[0][0]), int(box.xyxy[0][1])),
+                                  (int(box.xyxy[0][2]), int(box.xyxy[0][3])), (255, 255, 255), 2)
+                    cv2.putText(detected_img, f"{result.names[int(box.cls[0])]}",
+                                (int(box.xyxy[0][0]), int(box.xyxy[0][1]) - 10),
+                                cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
+        else:
+            raise Exception(f"Unknown model version {self.version}")
         return clear_img, df_result, detected_img
 
     def processing(self, norm_data, save_images=False):

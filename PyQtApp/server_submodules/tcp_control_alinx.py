@@ -68,48 +68,47 @@ class FCM_Alinx(Process):
             response_int = list(response)
             cmd_code = response_int[1]
             status = response_int[2]
-            match status:
-                case 1:
-                    response_dict = {'status': False, 'msg': 'Load Detect set.'}
-                    self.logger.info('Load Detect set.')
-                case 0:
-                    if cmd_code == 65:
-                        response_dict = {'status': False, 'msg': 'Load Detect not set.'}
-                        self.logger.info('Load Detect not set.')
-                    elif cmd_code == 33:
-                        response_dict = {'status': False, 'msg': 'Frequency successfully set!'}
-                        self.logger.success('Frequency successfully set!')
-                    else:
-                        response_dict = {'status': True, 'msg': f'Unknown status code: {status}'}
-                        self.logger.warning(f'Unknown status code: {status}')
-                case 20:
-                    response_dict = {'status': False, 'msg': 'LockDetect went to 1 early'}
-                    self.logger.warning('Attenuation 2G4 successfully set!')
-                case 205:
-                    response_dict = {'status': False, 'msg': 'Attenuation 2G4 successfully set!'}
-                    self.logger.success('Attenuation 2G4 successfully set!')
-                case 13:
-                    response_dict = {'status': False, 'msg': 'Attenuation 2G4 setting error!'}
-                    self.logger.warning('Attenuation 2G4 setting error!')
-                case 252:
-                    response_dict = {'status': False, 'msg': 'Attenuation 5G8 successfully set!'}
-                    self.logger.success('Attenuation 5G8 successfully set!')
-                case 12:
-                    response_dict = {'status': False, 'msg': 'Attenuation 5G8 setting error!'}
-                    self.logger.warning('Attenuation 5G8 setting error!')
-                case 150:
-                    response_dict = {'status': False, 'msg': 'Unknown command!'}
-                    self.logger.warning('Unknown command!')
-                case 102:
-                    response_dict = {'status': True, 'msg': 'Transmission error!'}
-                    self.logger.warning('Transmission error!')
-                case 17:
-                    response_dict = {'status': False, 'msg': 'Frequency setting command is inaccurate'}
-                    self.logger.warning('Frequency setting command is inaccurate')
-                case _:
-                    msg = f'FCM: Unknown response status {status}!'
-                    response_dict = {'status': True, 'msg': msg}
-                    self.logger.warning(msg)
+            if status == 1:
+                response_dict = {'status': False, 'msg': 'Load Detect set.'}
+                self.logger.info('Load Detect set.')
+            elif status == 0:
+                if cmd_code == 65:
+                    response_dict = {'status': False, 'msg': 'Load Detect not set.'}
+                    self.logger.info('Load Detect not set.')
+                elif cmd_code == 33:
+                    response_dict = {'status': False, 'msg': 'Frequency successfully set!'}
+                    self.logger.success('Frequency successfully set!')
+                else:
+                    response_dict = {'status': True, 'msg': f'Unknown status code: {status}'}
+                    self.logger.warning(f'Unknown status code: {status}')
+            elif status == 20:
+                response_dict = {'status': False, 'msg': 'LockDetect went to 1 early'}
+                self.logger.warning('Attenuation 2G4 successfully set!')
+            elif status == 205:
+                response_dict = {'status': False, 'msg': 'Attenuation 2G4 successfully set!'}
+                self.logger.success('Attenuation 2G4 successfully set!')
+            elif status == 13:
+                response_dict = {'status': False, 'msg': 'Attenuation 2G4 setting error!'}
+                self.logger.warning('Attenuation 2G4 setting error!')
+            elif status == 252:
+                response_dict = {'status': False, 'msg': 'Attenuation 5G8 successfully set!'}
+                self.logger.success('Attenuation 5G8 successfully set!')
+            elif status == 12:
+                response_dict = {'status': False, 'msg': 'Attenuation 5G8 setting error!'}
+                self.logger.warning('Attenuation 5G8 setting error!')
+            elif status == 150:
+                response_dict = {'status': False, 'msg': 'Unknown command!'}
+                self.logger.warning('Unknown command!')
+            elif status == 102:
+                response_dict = {'status': True, 'msg': 'Transmission error!'}
+                self.logger.warning('Transmission error!')
+            elif status == 17:
+                response_dict = {'status': False, 'msg': 'Frequency setting command is inaccurate'}
+                self.logger.warning('Frequency setting command is inaccurate')
+            else:
+                msg = f'FCM: Unknown response status {status}!'
+                response_dict = {'status': True, 'msg': msg}
+                self.logger.warning(msg)
 
             if not response:
                 response_dict = {'status': True, 'msg': 'No response form TCPControl server!'}
@@ -127,24 +126,23 @@ class FCM_Alinx(Process):
             return response_dict
 
     def response_request(self, cmd_name: str, value):
-        match cmd_name:
-            case 'set_frequency':
-                cmd = self.set_frequency_command(value)
-            case 'get_software':
-                cmd = self.get_software_command()
-            case 'get_loadDetect':
-                cmd = self.get_loadDetect_command()
-            case 'set_attenuator_2G4_coeff':
-                cmd = self.set_attenuator_2G4_coeff_command(value)
-            case 'set_attenuator_5G8_coeff':
-                cmd = self.set_attenuator_5G8_coeff_command(value)
-            case 'set_gain_2G4':
-                cmd = self.set_attenuator_2G4_coeff_command(63 - value*2)
-            case 'set_gain_5G8':
-                cmd = self.set_attenuator_5G8_coeff_command(63 - value * 2)
-            case _:
-                self.logger.error(f'Unknown FCM command: {cmd_name} {value}')
-                return
+        if cmd_name == 'set_frequency':
+            cmd = self.set_frequency_command(value)
+        elif cmd_name == 'get_software':
+            cmd = self.get_software_command()
+        elif cmd_name == 'get_loadDetect':
+            cmd = self.get_loadDetect_command()
+        elif cmd_name == 'set_attenuator_2G4_coeff':
+            cmd = self.set_attenuator_2G4_coeff_command(value)
+        elif cmd_name == 'set_attenuator_5G8_coeff':
+            cmd = self.set_attenuator_5G8_coeff_command(value)
+        elif cmd_name == 'set_gain_2G4':
+            cmd = self.set_attenuator_2G4_coeff_command(63 - value*2)
+        elif cmd_name == 'set_gain_5G8':
+            cmd = self.set_attenuator_5G8_coeff_command(63 - value * 2)
+        else:
+            self.logger.error(f'Unknown FCM command: {cmd_name} {value}')
+            return
         self.sock.send(cmd)
         gRPC_msg = self.receive_response()
         self.error_queue.put(gRPC_msg)

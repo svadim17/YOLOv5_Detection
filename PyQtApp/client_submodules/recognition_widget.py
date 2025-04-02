@@ -1,8 +1,10 @@
 from PyQt6.QtWidgets import (QWidget, QDockWidget, QApplication, QTabWidget, QSlider, QSpinBox, QCheckBox,
-                             QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel, QSizePolicy, QMenu)
-from PyQt6.QtGui import QPixmap, QImage, QPainter, QFont, QCursor, QAction
+                             QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel, QSizePolicy, QMenu,
+                             QTreeWidget, QTreeWidgetItem)
+from PyQt6.QtGui import QPixmap, QImage, QPainter, QFont, QCursor, QAction, QIcon
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt
 import numpy as np
+import os
 import cv2
 import qdarktheme
 from collections import deque
@@ -23,6 +25,7 @@ class RecognitionWidget(QDockWidget, QWidget):
                  show_recogn_options: bool,
                  show_freq: bool,
                  channel_info: ChannelInfo,
+                 theme_type: str,
                  **widgets_statuses):
         super().__init__()
         self.name = window_name
@@ -32,6 +35,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.signal_settings = signal_settings
         self.show_recogn_options = show_recogn_options
         self.channel_info = channel_info
+        self.theme_type = theme_type
 
         self.show_img_status = widgets_statuses.get('show_images', False)
         self.show_histogram_status = widgets_statuses.get('show_histogram', False)
@@ -50,6 +54,8 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.drons_btns = {}
         self.drons_freq = {}
         self.freq_labels = {}
+        self.drone_btns_all_freq = {}
+
         self.last_fps = deque(maxlen=5)
         self.last_fps_2 = deque(maxlen=5)
         self.last_time = 0
@@ -111,7 +117,163 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.create_spectrum_tab()
         self.create_context_menu()
 
+    def create_buttons_tree(self):
+        self.freq_tree = QTreeWidget()
+
+        self.freq_tree.setColumnCount(len(self.map_list) + 1)      # +1 for freq column
+        # self.freq_tree.setHeaderLabels(['Freq'] + self.map_list)
+        self.freq_tree.setHeaderHidden(True)
+        # self.freq_tree.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # self.freq_tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # self.freq_tree.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.freq_tree.setColumnWidth(0, 200)  # Фиксированная ширина для колонки с частотами
+        for col in range(1, len(self.map_list) + 1):
+            self.freq_tree.setColumnWidth(col, 80)
+
+        all_freq_tree_item = QTreeWidgetItem(self.freq_tree)
+        self.btn_all_freq = QPushButton('All freq')
+        self.btn_all_freq.clicked.connect(lambda checked, item=all_freq_tree_item: self.toggle_frequencies(item))
+        self.freq_tree.setItemWidget(all_freq_tree_item, 0, self.btn_all_freq)
+
+        for col, drone in enumerate(self.map_list, 1):
+            drone_btn = QPushButton(drone)
+            drone_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            self.drone_btns_all_freq[drone] = drone_btn
+            self.freq_tree.setItemWidget(all_freq_tree_item, col, drone_btn)
+
+        tree_layout = QHBoxLayout()
+        tree_layout.setContentsMargins(0, 0, 0, 0)
+        tree_layout.addWidget(self.freq_tree, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.main_layout.addLayout(tree_layout)
+        # self.adjust_tree_size()
+
+    def toggle_frequencies(self, item):
+        if item.childCount() == 0:
+            for freq in self.channel_info.central_freq:
+                freq_item = QTreeWidgetItem(item)
+
+                freq_label = QLabel(f'{freq/1000_000_000:.2f}GHz')
+                freq_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.freq_tree.setItemWidget(freq_item, 0, freq_label)
+
+                drones_btns = {}
+                drones_freqs = {}
+                for col, drone in enumerate(self.map_list, 1):
+                    container = QWidget()
+                    drone_layout = QVBoxLayout(container)
+                    drone_layout.setContentsMargins(0, 0, 0, 0)
+                    drone_layout.setSpacing(2)
+
+                    drone_btn = QPushButton(drone)
+                    drone_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                    drone_freq = QLabel('None')
+                    drone_freq.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                    drone_freq.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+                    drone_layout.addWidget(drone_btn)
+                    drone_layout.addWidget(drone_freq)
+                    self.freq_tree.setItemWidget(freq_item, col, container)
+
+                    drones_btns[drone] = drone_btn
+                    drones_freqs[drone] = drone_freq
+
+                self.drons_btns[freq] = drones_btns
+                self.drons_freq[freq] = drones_freqs
+                self.freq_labels[freq] = freq_label
+
+            item.setExpanded(True)
+        else:
+            is_expanded = item.isExpanded()
+            item.setExpanded(not is_expanded)
+        # self.adjust_tree_size()
+
+    def adjust_tree_size(self):
+        """Подгоняем размер дерева под содержимое"""
+        # Подсчитываем количество видимых строк
+        visible_rows = 1  # Начальная строка "All freq"
+        root = self.freq_tree.topLevelItem(0)
+        if root and root.isExpanded():
+            visible_rows += root.childCount()
+
+        # Рассчитываем высоту на основе видимых строк
+        row_height = self.freq_tree.sizeHintForRow(0)  # Высота одной строки
+        total_height = row_height * visible_rows
+
+        # Рассчитываем общую ширину на основе фиксированных колонок
+        total_width = 200 + 80 * len(self.map_list)  # 200 для первой колонки + 80 для каждой колонки дронов
+
+        # Устанавливаем размеры дерева
+        self.freq_tree.setMinimumHeight(total_height)
+        self.freq_tree.setMaximumHeight(total_height)
+        self.freq_tree.setMinimumWidth(total_width)
+        self.freq_tree.setMaximumWidth(total_width)
+
+        # Устанавливаем минимальный размер виджета
+        self.setMinimumWidth(total_width)
+        self.setMinimumHeight(total_height + self.tab.height() if self.tab.isVisible() else total_height)
+
     def create_buttons(self):
+        self.btn_all_freq = QPushButton(icon=QIcon(f'./assets/icons/{self.theme_type}/arrow_right.png'))
+        self.btn_all_freq.setCheckable(True)
+        self.btn_all_freq.clicked.connect(self.btn_all_freq_clicked)
+
+        for name in self.map_list:
+            drone_btn = QPushButton(name)
+            self.drone_btns_all_freq[name] = drone_btn
+
+        self.all_freq_layout = QGridLayout()
+        self.all_freq_layout.addWidget(self.btn_all_freq)
+        colomn = 1
+        for btn in self.drone_btns_all_freq.values():
+            self.all_freq_layout.addWidget(btn, 0, colomn)
+            colomn += 1
+        self.main_layout.addLayout(self.all_freq_layout)
+
+        self.all_drons_btns_widget = QWidget()
+        all_drons_btns_layout = QVBoxLayout()
+        self.all_drons_btns_widget.setLayout(all_drons_btns_layout)
+        for freq in self.channel_info.central_freq:
+            drons_btns = {}
+            drons_freq = {}
+            for name in self.map_list:
+                drone_btn = QPushButton(name)
+                drons_btns[name] = drone_btn
+                drone_freq = QLabel('None')
+                drone_freq.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                drons_freq[name] = drone_freq
+
+            self.drons_btns_layout = QGridLayout()
+            freq_label = QLabel(f'{freq/1000_000_000:.2f}GHz')
+            freq_label.setStyleSheet('transform: rotate(90deg);')
+            self.drons_btns_layout.addWidget(freq_label)
+            colomn = 1
+            for drone_name in drons_btns.keys():
+                drone_layout = QVBoxLayout()
+                drone_layout.addWidget(drons_btns[drone_name])
+                drone_layout.addWidget(drons_freq[drone_name])
+                self.drons_btns_layout.addLayout(drone_layout, 0, colomn)
+                colomn += 1
+
+            self.drons_btns[freq] = drons_btns
+            self.drons_freq[freq] = drons_freq
+            self.freq_labels[freq] = freq_label
+            all_drons_btns_layout.addLayout(self.drons_btns_layout)
+
+        self.main_layout.addWidget(self.all_drons_btns_widget)
+        self.all_drons_btns_widget.hide()
+
+    def btn_all_freq_clicked(self):
+        if not self.btn_all_freq.isChecked():
+            self.btn_all_freq.setIcon(QIcon(f'./assets/icons/{self.theme_type}/arrow_right.png'))
+            self.all_drons_btns_widget.hide()
+        else:
+            self.btn_all_freq.setIcon(QIcon(f'./assets/icons/{self.theme_type}/arrow_down.png'))
+            self.all_drons_btns_widget.show()
+
+
+    def create_buttons_old(self):
         for freq in self.channel_info.central_freq:
             drons_btns = {}
             drons_freq = {}
@@ -137,6 +299,7 @@ class RecognitionWidget(QDockWidget, QWidget):
             self.drons_btns[freq] = drons_btns
             self.drons_freq[freq] = drons_freq
             self.freq_labels[freq] = freq_label
+
             self.main_layout.addLayout(drons_btns_layout)
 
     def create_spectrogram_tab(self):
@@ -285,10 +448,12 @@ class RecognitionWidget(QDockWidget, QWidget):
         freq_ghz = channel_freq / 1_000_000_000
 
         for freq, label in self.freq_labels.items():
-            if channel_freq == freq:
-                label.setStyleSheet("color: red")
-            else:
-                label.setStyleSheet("")
+            if label is not None:
+                if channel_freq == freq:
+                    label.setStyleSheet("color: red")
+                else:
+                    label.setStyleSheet("")
+
         # self.freq_labels[channel_freq].setStyleSheet("color: red")
         self.last_fps_2.append(1 / (time.time() - self.last_time_2))
         current_fps = f'FPS: {sum(self.last_fps_2) / len(self.last_fps_2):.1f}'
@@ -296,15 +461,26 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.setWindowTitle(f'{self.name}  |  Fc = {freq_ghz:.4f} GHz  |  {current_fps}')
 
         for drone_dict in info['drones']:
+            if (channel_freq in self.drons_btns and
+                    channel_freq in self.drons_freq and
+                    drone_dict['name'] in self.drons_btns[channel_freq] and
+                    drone_dict['name'] in self.drons_freq[channel_freq]):
+                if drone_dict['state']:
+                    self.drons_btns[channel_freq][drone_dict['name']].setStyleSheet("background-color: #F0483C; "
+                                                                      "font: bold; "
+                                                                      "color: #FFFFFF")
+                    self.drons_freq[channel_freq][drone_dict['name']].setText(str(drone_dict['freq']))
+                else:
+                    self.drons_btns[channel_freq][drone_dict['name']].setStyleSheet("background-color: ")
+                    self.drons_freq[channel_freq][drone_dict['name']].setText('None')
+                self.hist_deques[drone_dict['name']].appendleft(int(drone_dict['state']))
+
             if drone_dict['state']:
-                self.drons_btns[channel_freq][drone_dict['name']].setStyleSheet("background-color: #F0483C; "
-                                                                  "font: bold; "
-                                                                  "color: #FFFFFF")
-                self.drons_freq[channel_freq][drone_dict['name']].setText(str(drone_dict['freq']))
+                self.drone_btns_all_freq[drone_dict['name']].setStyleSheet("background-color: #F0483C; "
+                                                                           "font: bold; "
+                                                                           "color: #FFFFFF")
             else:
-                self.drons_btns[channel_freq][drone_dict['name']].setStyleSheet("background-color: ")
-                self.drons_freq[channel_freq][drone_dict['name']].setText('None')
-            self.hist_deques[drone_dict['name']].appendleft(int(drone_dict['state']))
+                self.drone_btns_all_freq[drone_dict['name']].setStyleSheet("background-color: ")
 
         if self.histogram_plot:
             self.update_histogram_plot()
@@ -337,6 +513,11 @@ class RecognitionWidget(QDockWidget, QWidget):
     def update_channel_freq(self, new_freq):
         freq_ghz = new_freq / 1_000_000_000
         self.setWindowTitle(f'{self.name} | Fc = {freq_ghz:.4f} GHz')
+
+    def theme_changed(self, theme: str):
+        self.theme_type = theme
+        self.btn_all_freq.setIcon(QIcon(f'./assets/icons/{self.theme_type}/arrow_right.png'))
+        self.all_drons_btns_widget.hide()
 
 
 if __name__ == '__main__':
