@@ -17,10 +17,10 @@ from collections.abc import Mapping
 import custom_utils
 import os
 try:
-    from nn_processing import NNProcessing
+    from server.yolov5.nn_processing import NNProcessing
 except ImportError:
     sys.path.append(os.path.abspath('../'))
-    from nn_processing import NNProcessing
+    from server.yolov5.nn_processing import NNProcessing
 
 
 logger.remove(0)

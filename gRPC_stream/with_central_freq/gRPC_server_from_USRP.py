@@ -11,7 +11,7 @@ from loguru import logger
 import copy
 from collections import deque
 # from yolov5.nn_processing import NNProcessing
-from nn_processing import NNProcessing
+from server.yolov5.nn_processing import NNProcessing
 
 TCP_HOST = "127.0.0.1"  # The server's hostname or IP address
 gRPC_PORT = '50051'
