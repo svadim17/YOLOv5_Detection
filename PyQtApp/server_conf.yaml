@@ -63,8 +63,8 @@ connections:
       calculate_log: false
     neural_network_settings:
       version: v5
-      project_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5
-      weights_path: C:\Users\v.stecko\Desktop\YOLOv5 Project\yolov5\runs\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      project_path: C:\Users\a.yakov\PycharmProjects\YOLOv5_Detection
+      weights_path: C:\Users\a.yakov\PycharmProjects\YOLOv5_Detection\runs\yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
       - 640
       - 640
