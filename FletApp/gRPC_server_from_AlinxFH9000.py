@@ -16,11 +16,11 @@ import json
 import sys
 from collections.abc import Mapping
 try:
-    from nn_processing import NNProcessing
+    from server.yolov5.nn_processing import NNProcessing
 except ImportError:
     import os, sys
     sys.path.append(os.path.abspath('../'))
-    from nn_processing import NNProcessing
+    from server.yolov5.nn_processing import NNProcessing
 
 
 logger.remove(0)
