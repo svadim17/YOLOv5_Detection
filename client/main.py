@@ -1,15 +1,16 @@
+import os
 import sys
 from PyQt6.QtWidgets import QMainWindow, QApplication, QToolBar
 from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt
 import qdarktheme
-from client.client_submodules.gRPC_thread import gRPCThread, connect_to_gRPC_server, gRPCServerErrorThread
-from client.client_submodules.welcome_window import WelcomeWindow
-from client.client_submodules.connection_window import ConnectWindow
-from client.client_submodules.recognition_widget import RecognitionWidget
-from client.client_submodules.settings import SettingsWidget
-from client.client_submodules.processing import Processor
-from client.client_submodules.sound_thread import SoundThread
+from client_submodules.gRPC_thread import gRPCThread, connect_to_gRPC_server, gRPCServerErrorThread
+from client_submodules.welcome_window import WelcomeWindow
+from client_submodules.connection_window import ConnectWindow
+from client_submodules.recognition_widget import RecognitionWidget
+from client_submodules.settings import SettingsWidget
+from client_submodules.processing import Processor
+from client_submodules.sound_thread import SoundThread
 import yaml
 from loguru import logger
 try:
@@ -382,14 +383,14 @@ class MainWindow(QMainWindow):
         theme_name = self.settingsWidget.mainTab.cb_themes.currentText()
         self.theme_type = self.settingsWidget.mainTab.cb_theme_type.currentText()
         qdarktheme.setup_theme(theme=self.theme_type, custom_colors=self.themes[theme_name])
-        self.act_settings.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_settings.png'))
-        self.settingsWidget.soundTab.btn_play_sound.setIcon(QIcon(f'assets/icons/{self.theme_type}/play_sound.png'))
+        self.act_settings.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_settings.png'))
+        self.settingsWidget.soundTab.btn_play_sound.setIcon(QIcon(f'./assets/icons/{self.theme_type}/play_sound.png'))
         for widget in self.recogn_widgets.values():
             widget.theme_changed(theme=self.theme_type)
         if self.act_start.isChecked():
-            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
+            self.act_start.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_stop.png'))
         else:
-            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
+            self.act_start.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_start.png'))
 
     # def closeEvent(self, a0):
     #     self.gRPCThread.gRPC_channel.close()

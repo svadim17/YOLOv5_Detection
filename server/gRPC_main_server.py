@@ -5,13 +5,12 @@ import neuro_pb2 as API_pb2
 import time
 from multiprocessing import Process, Queue, Pipe, Event
 from loguru import logger
-
 import yaml
 import sys
 import custom_utils
 import os
-from server.tcp_control_alinx import FCM_Alinx, Task_
-from server.client_process import Client
+from tcp_control_alinx import FCM_Alinx, Task_
+from client_process import Client
 
 
 logger.remove(0)

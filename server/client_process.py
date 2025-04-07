@@ -7,13 +7,12 @@ import time
 import numpy as np
 from multiprocessing import Process, Queue, Pipe
 from loguru import logger
-
 import custom_utils
-from server.tcp_control_alinx import Task_
+from tcp_control_alinx import Task_
 
 
 try:
-    from server.yolov5.nn_processing import NNProcessing
+    from yolov5.nn_processing import NNProcessing
 except ImportError:
     # Получаем путь на два уровня вверх
     sys.path.append(os.path.abspath('../PyQtApp/'))

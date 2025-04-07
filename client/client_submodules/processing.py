@@ -16,8 +16,8 @@ class Processor(QtCore.QObject):
 
         self.channels_central_freq = {}
 
-        if not os.path.isdir('../../PyQtApp/saved_images'):
-            os.mkdir('../../PyQtApp/saved_images')
+        if not os.path.isdir('../saved_images'):
+            os.mkdir('../saved_images')
 
     def init_recogn_widgets(self, recogn_widgets: dict):
         self.recogn_widgets = recogn_widgets

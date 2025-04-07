@@ -257,3 +257,5 @@ crashlytics-build.properties
 fabric.properties
 /server/server_logs/
 /server/yolov5/trained_neural_models/
+/runs/
+/pretrained_models/

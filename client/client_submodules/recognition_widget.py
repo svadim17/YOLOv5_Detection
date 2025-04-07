@@ -215,7 +215,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.setMinimumHeight(total_height + self.tab.height() if self.tab.isVisible() else total_height)
 
     def create_buttons(self):
-        self.btn_all_freq = QPushButton(icon=QIcon(f'./assets/icons/{self.theme_type}/arrow_right.png'))
+        self.btn_all_freq = QPushButton(icon=QIcon(f'../assets/icons/{self.theme_type}/arrow_right.png'))
         self.btn_all_freq.setCheckable(True)
         self.btn_all_freq.clicked.connect(self.btn_all_freq_clicked)
 
@@ -266,10 +266,10 @@ class RecognitionWidget(QDockWidget, QWidget):
 
     def btn_all_freq_clicked(self):
         if not self.btn_all_freq.isChecked():
-            self.btn_all_freq.setIcon(QIcon(f'./assets/icons/{self.theme_type}/arrow_right.png'))
+            self.btn_all_freq.setIcon(QIcon(f'../assets/icons/{self.theme_type}/arrow_right.png'))
             self.all_drons_btns_widget.hide()
         else:
-            self.btn_all_freq.setIcon(QIcon(f'./assets/icons/{self.theme_type}/arrow_down.png'))
+            self.btn_all_freq.setIcon(QIcon(f'../assets/icons/{self.theme_type}/arrow_down.png'))
             self.all_drons_btns_widget.show()
 
 
@@ -516,7 +516,7 @@ class RecognitionWidget(QDockWidget, QWidget):
 
     def theme_changed(self, theme: str):
         self.theme_type = theme
-        self.btn_all_freq.setIcon(QIcon(f'./assets/icons/{self.theme_type}/arrow_right.png'))
+        self.btn_all_freq.setIcon(QIcon(f'../assets/icons/{self.theme_type}/arrow_right.png'))
         self.all_drons_btns_widget.hide()
 
 
