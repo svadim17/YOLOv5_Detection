@@ -387,7 +387,8 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
 def serve():
     gRPC_PORT = 51234
-    CONFIG_PATH = 'server_conf.yaml'
+    script_path = os.path.dirname(__file__)
+    CONFIG_PATH = os.path.join(script_path, 'server_conf.yaml')
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10), )
     # interceptors=[ConnectionInterceptor()])  # Добавляем наш interceptor

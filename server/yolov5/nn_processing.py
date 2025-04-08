@@ -11,6 +11,7 @@ import numpy as np
 import platform
 import pathlib
 from ultralytics import YOLO
+import os
 
 # For loading neural model on different OS
 if platform.system() == 'Windows':
@@ -65,11 +66,13 @@ class NNProcessing(object):
                  img_save_path='\saved_images'):
         super().__init__()
 
+        self.script_path = os.path.dirname(__file__)
+        self.weights = os.path.join(self.script_path, 'runs', model_weights)
+        self.project_path = self.script_path
+
         self.name = name
         self.all_classes = all_classes
         self.version = model_version
-        self.weights = model_weights
-        self.project_path = project_path
         self.map_list = map_list
         self.sample_rate = sample_rate
         self.width = width

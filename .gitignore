@@ -24,7 +24,7 @@
 !cfg/yolov3*.cfg
 
 storage.googleapis.com
-runs/*
+server/yolov5/runs/*
 server/yolov5/data/*
 server/yolov5/data/images/*
 !data/*.yaml
@@ -257,5 +257,5 @@ crashlytics-build.properties
 fabric.properties
 /server/server_logs/
 /server/yolov5/trained_neural_models/
-/runs/
+/server/yolov5/runs/
 /pretrained_models/
