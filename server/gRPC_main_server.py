@@ -56,6 +56,12 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.error_queues = {'gRPC': Queue(maxsize=40)}
         self.connections = self.config['connections']
         self.last_update_times = {}
+
+        self.task_queue = None              # needed for control FCM
+        # Feedback for FCM task done
+        self.events = {'gRPC': Event()}
+        for name in self.connections.keys():
+            self.events[name] = Event()
         if self.config['freq_conversion_module']['is_used']:
             self.init_Alinx_FCM_control()
 
@@ -211,11 +217,9 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
     def init_Alinx_FCM_control(self):
         self.task_queue = Queue()  # Очередь для задач
-        self.events = {'gRPC': Event()}
         error_queue = Queue(maxsize=40)
         self.error_queues['FCM'] = error_queue
-        for name in self.connections.keys():
-            self.events[name] = Event()
+
 
         self.alinxControlThread = FCM_Alinx(address=(self.config['freq_conversion_module']['ip'],
                                                      self.config['freq_conversion_module']['port']),
@@ -342,11 +346,12 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             self.custom_logger.error(f'Error with start process {channel_name}\n{e}')
 
     def AlinxSetFrequency(self, request, context):
-        channel_name = request.channel_name
         freq = request.value
-        # # # тут должна быть перестройка частоты # # #
-        #self.processes[channel_name].control_q.put({'func': 'change_central_freq', 'args': (freq,)})
-        return API_pb2.AlinxSetFrequencyResponse(status=f'You sent freq {freq} for {channel_name}.')
+        for name, process in self.processes.items():
+            process.control_q.put({'func': 'set_FCM_frequency', 'args': (freq,)})
+        msg = f'Central frequency was changed on {freq}'
+        self.custom_logger.debug(msg)
+        return API_pb2.AlinxSetFrequencyResponse(status=f'Central frequency was changed on {freq}.')
 
     def AlinxSetAttenuation(self, request, context):
         channel_name = request.channel_name
@@ -356,6 +361,13 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             return API_pb2.AlinxSetAttenuationResponse(status=f'Send gain {gain} for {channel_name}.')
         else:
             return API_pb2.AlinxSetAttenuationResponse(status=f'Something went wrong')
+
+    def AlinxAutoscanFrequency(self, request, context):
+        for name, process in self.processes.items():
+            process.control_q.put({'func': 'set_autoscan_state', 'args': (request.status,)})
+        msg = f'Autoscan status was changed on {request.status}'
+        self.custom_logger.debug(msg)
+        return API_pb2.SetAutoscanFreqResponse(status=msg)
 
     def AlinxSoftVer(self, request, context):
         # # # тут должен быть запрос о версии ПО Alinx # # #

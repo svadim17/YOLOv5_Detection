@@ -130,6 +130,11 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.SignalSettingsRequest.SerializeToString,
                 response_deserializer=neuro__pb2.SignalSettingsResponse.FromString,
                 _registered_method=True)
+        self.AlinxAutoscanFrequency = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/AlinxAutoscanFrequency',
+                request_serializer=neuro__pb2.SetAutoscanFreqRequest.SerializeToString,
+                response_deserializer=neuro__pb2.SetAutoscanFreqResponse.FromString,
+                _registered_method=True)
 
 
 class DataProcessingServiceServicer(object):
@@ -247,6 +252,12 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def AlinxAutoscanFrequency(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataProcessingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -339,6 +350,11 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.SignalSettings,
                     request_deserializer=neuro__pb2.SignalSettingsRequest.FromString,
                     response_serializer=neuro__pb2.SignalSettingsResponse.SerializeToString,
+            ),
+            'AlinxAutoscanFrequency': grpc.unary_unary_rpc_method_handler(
+                    servicer.AlinxAutoscanFrequency,
+                    request_deserializer=neuro__pb2.SetAutoscanFreqRequest.FromString,
+                    response_serializer=neuro__pb2.SetAutoscanFreqResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -828,6 +844,33 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/SignalSettings',
             neuro__pb2.SignalSettingsRequest.SerializeToString,
             neuro__pb2.SignalSettingsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AlinxAutoscanFrequency(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/AlinxAutoscanFrequency',
+            neuro__pb2.SetAutoscanFreqRequest.SerializeToString,
+            neuro__pb2.SetAutoscanFreqResponse.FromString,
             options,
             channel_credentials,
             insecure,

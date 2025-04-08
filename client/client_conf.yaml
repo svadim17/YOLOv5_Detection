@@ -4,10 +4,10 @@ map_list:
 - Dji
 - WiFi
 server_port: '51234'
-server_addr: '192.168.1.35'
+server_addr: localhost
 settings_main:
   show_recogn_options: true
-  show_frequencies: false
+  show_frequencies: true
   enable_accumulation: true
   watchdog: false
   show_spectrogram: true
@@ -23,4 +23,4 @@ settings_sound:
     Fpv: true
     Dji: true
     WiFi: false
-  sound_name: 'Rus Man Object detected.mp3'
+  sound_name: Rus Man Object detected.mp3

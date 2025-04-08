@@ -80,6 +80,12 @@ class Client(Process):
         self.error_queue = error_queue
         self.FCM_control_queue = FCM_control_queue
         self.task_done_event = task_done_event
+
+        if len(self.freq_list) > 1 and self.FCM_control_queue is not None:
+            self.autoscan = True
+        else:
+            self.autoscan = False
+
         self.img_save_path = '\\saved_images'
         if not os.path.isdir(self.img_save_path):
             os.mkdir(self.img_save_path)
@@ -186,7 +192,7 @@ class Client(Process):
             self.logger.error(f'error_queue is full. {e}')
 
     def receive_from_Alinx(self, sock):
-        self.change_frequency_Alinx()
+        self.change_FCM_frequency()
         sock.send(b'\x30')
         arr = sock.recv(self.msg_len)
         self.logger.trace(f'Received {self.msg_len} bytes.')
@@ -234,11 +240,19 @@ class Client(Process):
             self.logger.trace(f'Packet size = {np_arr.size} missed.')
             return None
 
-    def change_frequency_Alinx(self):
+    def set_autoscan_state(self, state: bool):
+        self.autoscan = state
+        if self.autoscan is False:
+            self.set_FCM_frequency(5_786_500000)
 
-        if len(self.freq_list) > 1 and self.current_accum_index % self.accumulation_size == 0:
+    def change_FCM_frequency(self):
+        if self.autoscan and len(self.freq_list) > 1 and self.current_accum_index % self.accumulation_size == 0:
             index = self.freq_list.index(self.central_freq) + 1
             freq = self.freq_list[index % len(self.freq_list)]
+            self.set_FCM_frequency(freq)
+
+    def set_FCM_frequency(self, freq: int):
+        if freq in self.freq_list:
             self.FCM_control_queue.put(Task_(self.name, 'set_frequency', freq))
             self.logger.debug(f'Send to set {freq} Hz')
             if self.task_done_event.wait(11):

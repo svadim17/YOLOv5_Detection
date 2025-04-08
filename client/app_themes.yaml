@@ -1,16 +1,16 @@
 # ===== Классические темы =====
 default:
   "[dark]":
-    primary: "#8ab4f7"          # Зеленый
+    primary: "#8ab4f7"
     background: "#202124"       # Темный фон
     foreground: "#e4e7eb"       # Светлый текст
     input.background: "#2E2E2E" # Фон полей ввода
     border: "#3f4042"           # Границы
   "[light]":
-    primary: "#1a73e8"          # Зеленый
+    primary: "#1a73e8"
     background: "#f8f9fa"       # Светлый фон
-    foreground: "#4d5157"       # Темный текст
-    input.background: "#FFFFFF" # Фон полей ввода
+    foreground: "#4d5157"
+    input.background: "#FFFFFF"
     border: "#dadce0"
 
 classic_green:

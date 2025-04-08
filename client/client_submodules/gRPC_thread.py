@@ -246,15 +246,14 @@ class gRPCThread(QtCore.QThread):
         except Exception as e:
             self.logger_.error(f'Error with getting Alinx Load Detect state! \n{e}')
 
-    def setFrequency(self, channel_name: str, freq: int):
-        pass
-        # try:
-        #     print('set_frequency', channel_name, freq)
-        #     stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-        #     response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
-        #     self.logger_.info(response.status)
-        # except Exception as e:
-        #     self.logger_.error(f'Error with setting frequency! \n{e}')
+    def setFrequency(self, freq: float):
+        try:
+            freq = int(freq * 1_000_000)
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.AlinxSetFrequency(API_pb2.AlinxSetFrequencyRequest(value=freq))
+            self.logger_.info(response.status)
+        except Exception as e:
+            self.logger_.error(f'Error with setting frequency! \n{e}')
 
     def setCustomFrequency(self, channel_name: str, freq: float):
         try:
@@ -269,7 +268,8 @@ class gRPCThread(QtCore.QThread):
     def setGain(self, channel_name: str, gain: int):
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-            response = stub.AlinxSetAttenuation(API_pb2.AlinxSetAttenuationRequest(channel_name=channel_name, value=gain))
+            response = stub.AlinxSetAttenuation(API_pb2.AlinxSetAttenuationRequest(channel_name=channel_name,
+                                                                                   value=gain))
             self.logger_.info(response.status)
         except Exception as e:
             self.logger_.error(f'Error with setting Gain! \n{e}')
@@ -288,6 +288,14 @@ class gRPCThread(QtCore.QThread):
             self.logger_.trace(f'NN models info: {nn_info}')
         except Exception as e:
             self.logger_.error(f'Error with getting NN models info! \n{e}')
+
+    def setAutoscanState(self, state):
+        try:
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.AlinxAutoscanFrequency(API_pb2.SetAutoscanFreqRequest(status=state))
+            self.logger_.info(response.status)
+        except Exception as e:
+            self.logger_.error(f'Error with setting Autoscan! \n{e}')
 
     def signalSettings(self, enabled_channels: list):
         try:

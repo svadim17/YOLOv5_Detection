@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import (QWidget, QDockWidget, QApplication, QSpinBox, QDoubleSpinBox,
                              QAbstractSpinBox, QDialog, QCheckBox, QVBoxLayout, QHBoxLayout,
-                             QPushButton, QLabel, QSlider, QSpacerItem, QSizePolicy, QGroupBox, QComboBox)
+                             QPushButton, QLabel, QSlider, QSpacerItem, QSizePolicy, QGroupBox, QComboBox, QToolTip)
 from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtCore import pyqtSlot, Qt, pyqtSignal
+from PyQt6.QtCore import pyqtSlot, Qt, pyqtSignal, QPoint
 import numpy as np
 import cv2
 import qdarktheme
@@ -43,6 +43,7 @@ class RecognitionOptions(QWidget):
         self.slider_threshold.setSingleStep(10)
         self.slider_threshold.setOrientation(Qt.Orientation.Horizontal)
         self.slider_threshold.setValue(int(self.threshold * 100))
+        self.slider_threshold.setToolTip(str(self.slider_threshold.value()))
         self.spb_slider_threshold = QDoubleSpinBox()
         self.spb_slider_threshold.setRange(0.05, 1)
         self.spb_slider_threshold.setSingleStep(0.05)
@@ -151,9 +152,12 @@ class RecognitionOptions(QWidget):
     @pyqtSlot(float)
     def slider_threshold_value_changed(self, value: float):
         self.slider_threshold.setValue(int(value * 100))
-        self.spb_slider_threshold.setValue(value)
+        # self.slider_threshold.setToolTip(str(value))
+        self.update_slider_tooltip(slider=self.slider_threshold, value=value)
+        # self.spb_slider_threshold.setValue(value)
 
     def recognition_settings_changed(self):
+        self.spb_slider_threshold.setValue(self.slider_threshold.value() / 100)
         self.signal_recogn_settings.emit(self.name,
                                          self.spb_accum_size.value(),
                                          self.spb_slider_threshold.value(),
@@ -171,7 +175,29 @@ class RecognitionOptions(QWidget):
         self.spb_slider_zscale_min.setValue(value)
         self.signal_zscale_changed.emit(self.name, self.slider_zscale_min.value(), self.slider_zscale_max.value())
 
+    def update_slider_tooltip(self, slider, value):
+        # Получаем позицию слайдера в глобальных координатах
+        slider_pos = slider.mapToGlobal(slider.pos())
 
+        # Вычисляем позицию "ползунка" (thumb) слайдера
+        thumb_width = slider.style().pixelMetric(
+            slider.style().PixelMetric.PM_SliderControlThickness
+        )
+        thumb_pos = int(
+            (value - slider.minimum()) / (slider.maximum() - slider.minimum())
+            * (slider.width() - thumb_width)
+        )
+
+        # Позиция для ToolTip (чуть выше ползунка)
+        tooltip_x = slider_pos.x() + thumb_pos
+        tooltip_y = slider_pos.y() - 20  # Смещение вверх
+
+        # Показываем ToolTip с текущим значением
+        QToolTip.showText(
+            slider.mapToGlobal(slider.rect().topLeft() + QPoint(thumb_pos, -20)),
+            str(value),
+            slider
+        )
 
 
 if __name__ == '__main__':

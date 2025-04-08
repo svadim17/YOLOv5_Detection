@@ -491,6 +491,8 @@ class NNTab(QWidget):
 
 
 class AlinxTab(QWidget):
+    signal_autoscan_state = pyqtSignal(bool)
+    signal_set_central_freq = pyqtSignal(float)
 
     def __init__(self, enabled_channels_info, logger_):
         super().__init__()
@@ -515,27 +517,28 @@ class AlinxTab(QWidget):
         self.btn_get_load_detect = QPushButton('Get Load Detect state')
 
         self.box_rx_settings = QGroupBox('RX Settings')
-        self.l_central_freq = QLabel('Central frequency')
+        self.l_central_freq = QLabel('FCM Central frequency')
+        self.chb_autoscan = QCheckBox('Autoscan frequency')
+        self.chb_autoscan.setChecked(True)
+        self.chb_autoscan.stateChanged.connect(self.chb_autoscan_clicked)
         self.cb_central_freq = QComboBox()
+        self.cb_central_freq.setDisabled(True)
+        self.cb_central_freq.currentTextChanged.connect(self.cb_central_freq_changed)
         for channel in self.enabled_channels_info:
             if len(channel.central_freq) > 1:
                 for freq in channel.central_freq:
                     self.cb_central_freq.addItem(f'{freq/1_000_000:.1f} MHz', freq)
-                break
-            else:
-                self.cb_central_freq.addItem(f'{2437.0} MHz', 2_437_000_000)
-                self.cb_central_freq.addItem(f'{5786.5} MHz', 5_786_500_000)
         self.l_attenuation_24 = QLabel('Gain 2G4')
         self.spb_gain_24 = QSpinBox()
         self.spb_gain_24.setRange(0, 31)
         self.spb_gain_24.setSingleStep(1)
-        self.spb_gain_24.setValue(0)
+        self.spb_gain_24.setValue(31)
         self.spb_gain_24.setSuffix(' dB')
         self.l_attenuation_58 = QLabel('Gain 5G8')
         self.spb_gain_58 = QSpinBox()
         self.spb_gain_58.setRange(0, 31)
         self.spb_gain_58.setSingleStep(1)
-        self.spb_gain_58.setValue(0)
+        self.spb_gain_58.setValue(31)
         self.spb_gain_58.setSuffix(' dB')
 
     def add_widgets_to_layout(self):
@@ -575,6 +578,7 @@ class AlinxTab(QWidget):
         rx_settings_layout = QVBoxLayout()
         rx_settings_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         rx_settings_layout.setContentsMargins(15, 15, 15, 10)
+        rx_settings_layout.addWidget(self.chb_autoscan)
         rx_settings_layout.addLayout(l_central_freq_layout)
         rx_settings_layout.addLayout(l_attenuation_24_layout)
         rx_settings_layout.addLayout(l_attenuation_58_layout)
@@ -594,6 +598,23 @@ class AlinxTab(QWidget):
 
     def update_load_detect_state(self, message: str):
         self.l_curr_loadDetect_ver.setText(message)
+
+    def chb_autoscan_clicked(self, state: int):
+        if bool(state):
+            self.cb_central_freq.setDisabled(True)
+            self.signal_autoscan_state.emit(True)
+        else:
+            self.cb_central_freq.setDisabled(False)
+            self.signal_autoscan_state.emit(False)
+
+    def update_cb_central_freq(self, freq: int):
+        self.cb_central_freq.setCurrentText(f'{freq / 1_000_000:.1f} MHz')
+
+    def cb_central_freq_changed(self):
+        if not self.chb_autoscan.isChecked():
+            freq = self.cb_central_freq.currentData()
+            print(f'change on {freq}')
+            self.signal_set_central_freq.emit(freq / 1_000_000)
 
 
 class USRPTab(QWidget):

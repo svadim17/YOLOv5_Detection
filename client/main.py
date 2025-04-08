@@ -48,7 +48,12 @@ class MainWindow(QMainWindow):
         with open('app_themes.yaml', 'r', encoding='utf-8') as f:           # load available themes
             self.themes = yaml.safe_load(f)
         qdarktheme.setup_theme(theme=self.theme_type,
-                               custom_colors=self.themes[self.config['settings_main']['theme']['name']])
+                               custom_colors=self.themes[self.config['settings_main']['theme']['name']],
+                               additional_qss="QToolTip { "
+                                              "background-color: #ffff99;"
+                                              "color: #000000;"
+                                              "border: 1px solid #000000;"
+                                              "padding: 2px;}")
 
         self.recogn_widgets = {}
         self.recogn_settings_widgets = {}
@@ -130,8 +135,10 @@ class MainWindow(QMainWindow):
             lambda: self.gRPCThread.setGain(channel_name='2G4', gain=self.settingsWidget.alinxTab.spb_gain_24.value()))
         self.settingsWidget.alinxTab.spb_gain_58.valueChanged.connect(
             lambda: self.gRPCThread.setGain(channel_name='5G8', gain=self.settingsWidget.alinxTab.spb_gain_58.value()))
+        self.settingsWidget.alinxTab.signal_autoscan_state.connect(self.gRPCThread.setAutoscanState)
+        self.settingsWidget.alinxTab.signal_set_central_freq.connect(self.gRPCThread.setFrequency)
         self.settingsWidget.nnTab.btn_get_nn_info.clicked.connect(lambda: self.gRPCThread.nnInfo(self.enabled_channels))
-        #self.settingsWidget.usrpTab.signal_central_freq_changed.connect(self.gRPCThread.setCustomFrequency)
+        # self.settingsWidget.usrpTab.signal_central_freq_changed.connect(self.gRPCThread.setCustomFrequency)
         self.gRPCThread.signal_alinx_soft_ver.connect(self.settingsWidget.alinxTab.update_soft_ver)
         self.gRPCThread.signal_alinx_load_detect_state.connect(self.settingsWidget.alinxTab.update_load_detect_state)
         self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
@@ -140,6 +147,9 @@ class MainWindow(QMainWindow):
         self.processor.init_sound_classes_states(sound_classes_states=self.sound_classes_states)
         self.processor.signal_play_sound.connect(self.soundThread.start_stop_sound_thread)
         self.processor.signal_channel_central_freq.connect(self.settingsWidget.usrpTab.update_channel_freq)
+        self.processor.signal_channel_central_freq.connect(lambda freq_dict:
+                                 self.settingsWidget.alinxTab.update_cb_central_freq(freq_dict['central_freq']))
+
         self.settingsWidget.mainTab.cb_spectrogram_resolution.currentTextChanged.connect(lambda a:
         self.set_spectrogram_resolution(self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
         self.show()
@@ -382,7 +392,13 @@ class MainWindow(QMainWindow):
     def apply_theme(self):
         theme_name = self.settingsWidget.mainTab.cb_themes.currentText()
         self.theme_type = self.settingsWidget.mainTab.cb_theme_type.currentText()
-        qdarktheme.setup_theme(theme=self.theme_type, custom_colors=self.themes[theme_name])
+        qdarktheme.setup_theme(theme=self.theme_type,
+                               custom_colors=self.themes[theme_name],
+                               additional_qss="QToolTip { "
+                                              "background-color: #ffff99;"
+                                              "color: #000000;"
+                                              "border: 1px solid #000000;"
+                                              "padding: 2px;}")
         self.act_settings.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_settings.png'))
         self.settingsWidget.soundTab.btn_play_sound.setIcon(QIcon(f'./assets/icons/{self.theme_type}/play_sound.png'))
         for widget in self.recogn_widgets.values():

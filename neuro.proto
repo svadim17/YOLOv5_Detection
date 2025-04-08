@@ -221,4 +221,5 @@ service DataProcessingService {
     rpc AlinxLoadDetectState (AlinxLoadDetectRequest) returns (AlinxLoadDetectResponse);
     rpc NNInfo (NNInfoRequest) returns (NNInfoResponse);
     rpc SignalSettings (SignalSettingsRequest) returns (SignalSettingsResponse);
+    rpc AlinxAutoscanFrequency (SetAutoscanFreqRequest) returns (SetAutoscanFreqResponse);
 }
