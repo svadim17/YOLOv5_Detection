@@ -6,7 +6,7 @@ from PyQt6.QtCore import pyqtSlot, Qt, pyqtSignal, QPoint
 import numpy as np
 import cv2
 import qdarktheme
-from client.client_submodules.gRPC_thread import ChannelInfo
+from .gRPC_thread import ChannelInfo
 
 
 class RecognitionOptions(QWidget):

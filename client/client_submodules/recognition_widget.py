@@ -10,9 +10,9 @@ import qdarktheme
 from collections import deque
 import time
 import pyqtgraph
-from client.client_submodules.recognition_options import RecognitionOptions
-from client.client_submodules.process_options import ProcessOptions
-from client.client_submodules.gRPC_thread import ChannelInfo
+from .recognition_options import RecognitionOptions
+from .process_options import ProcessOptions
+from .gRPC_thread import ChannelInfo
 
 
 class RecognitionWidget(QDockWidget, QWidget):
