@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
         # central_widget = QWidget(self)
         # self.setCentralWidget(central_widget)
 
-        self.setWindowTitle('NN Recognition v25.15.4')
+        self.setWindowTitle('NN Recognition v25.15.4.1')
         self.config = self.load_config()
         self.server_ip = list(self.config['server_addr'])
         self.grpc_port = self.config['server_port']
