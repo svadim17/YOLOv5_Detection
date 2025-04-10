@@ -42,6 +42,7 @@ class MainWindow(QMainWindow):
         self.show_histogram_status = bool(self.config['settings_main']['show_histogram'])
         self.show_spectrum_status = bool(self.config['settings_main']['show_spectrum'])
         self.watchdog = bool(self.config['settings_main']['watchdog'])
+        self.welcome_window_state = bool(self.config['show_welcome_window'])
         self.clear_img_status = False
 
         self.theme_type = self.config['settings_main']['theme']['type']
@@ -62,19 +63,25 @@ class MainWindow(QMainWindow):
         for name in self.map_list:
             self.sound_classes_states[name] = self.config['settings_sound']['classes_sound'][name]
 
-        self.welcomeWindow = WelcomeWindow(server_addr=self.server_ip, server_port=self.grpc_port)
-        self.welcomeWindow.signal_connect_to_server.connect(self.connect_to_server)
-        self.welcomeWindow.finished.connect(self.welcome_window_closed)
+        if self.welcome_window_state:
+            self.welcomeWindow = WelcomeWindow(server_addr=self.server_ip, server_port=self.grpc_port)
+            self.welcomeWindow.signal_connect_to_server.connect(self.connect_to_server)
+            self.welcomeWindow.finished.connect(self.welcome_window_closed)
+            self.welcomeWindow.show()
+        else:
+            self.connect_to_server(server_ip=self.server_ip[0], grpc_port=self.grpc_port)
 
     def connect_to_server(self, server_ip: str, grpc_port: str):
         self.server_ip = server_ip
         try:
             self.gRPC_channel = connect_to_gRPC_server(ip=server_ip, port=grpc_port)
             self.logger_.success(f'Successfully connected to {server_ip}:{grpc_port}!')
-            self.welcomeWindow.close()
+            if self.welcome_window_state:
+                self.welcomeWindow.close()
+            else:
+                self.welcome_window_closed()
         except Exception as e:
             self.logger_.critical(f'Error with connecting to {server_ip}:{grpc_port}! \n{e}')
-            self.welcomeWindow.connection_error()
 
     def welcome_window_closed(self):
         self.gRPCThread = gRPCThread(channel=self.gRPC_channel,
@@ -415,7 +422,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     qdarktheme.setup_theme(theme='dark')
     main_window = MainWindow()
-    main_window.welcomeWindow.show()
+    # main_window.welcomeWindow.show()
     sys.exit(app.exec())
 
 

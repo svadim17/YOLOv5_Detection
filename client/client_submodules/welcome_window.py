@@ -69,12 +69,6 @@ class WelcomeWindow(QDialog):
     def btn_connect_clicked(self):
         self.signal_connect_to_server.emit(self.cb_server_addr.currentText(), self.le_server_port.text())
 
-    def connection_error(self):
-        self.l_connection_error = QLabel('Error with connecting!')
-        self.main_layout.addWidget(self.l_connection_error)
-        time.sleep(2)
-        self.main_layout.removeWidget(self.l_connection_error)
-
 
 if __name__ == '__main__':
     app = QApplication([])
