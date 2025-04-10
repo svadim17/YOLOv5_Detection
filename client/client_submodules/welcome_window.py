@@ -1,6 +1,6 @@
 import time
-
-from PyQt6.QtWidgets import QDialog, QApplication, QLineEdit, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGroupBox
+from PyQt6.QtWidgets import (QDialog, QApplication, QLineEdit, QVBoxLayout, QHBoxLayout, QPushButton,
+                             QLabel, QGroupBox, QComboBox)
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtCore import Qt
 import qdarktheme
@@ -9,7 +9,7 @@ import qdarktheme
 class WelcomeWindow(QDialog):
     signal_connect_to_server = pyqtSignal(str, str)
 
-    def __init__(self, server_addr: str, server_port: str):
+    def __init__(self, server_addr: list, server_port: str):
         super().__init__()
         self.server_addr = server_addr
         self.server_port = server_port
@@ -26,10 +26,16 @@ class WelcomeWindow(QDialog):
         self.group_box = QGroupBox('Welcome to NN Application!')
         self.group_box.setStyleSheet('font-size: 14px;')
 
+        # self.le_server_addr = QLineEdit()
+        # self.le_server_addr.setPlaceholderText("Enter server address")
+        # self.le_server_addr.setText(self.server_addr)
+
         self.l_server_addr = QLabel('Server address')
-        self.le_server_addr = QLineEdit()
-        self.le_server_addr.setPlaceholderText("Enter server address")
-        self.le_server_addr.setText(self.server_addr)
+        self.cb_server_addr = QComboBox()
+        self.cb_server_addr.setPlaceholderText('Enter server address')      # appears when field is empty
+        self.cb_server_addr.setEditable(True)
+        self.cb_server_addr.addItems(self.server_addr)
+        self.cb_server_addr.setCurrentIndex(0)
 
         self.l_server_port = QLabel('Server port')
         self.le_server_port = QLineEdit()
@@ -42,7 +48,7 @@ class WelcomeWindow(QDialog):
     def add_widgets_to_layout(self):
         addr_layout = QVBoxLayout()
         addr_layout.addWidget(self.l_server_addr)
-        addr_layout.addWidget(self.le_server_addr)
+        addr_layout.addWidget(self.cb_server_addr)
 
         port_layout = QVBoxLayout()
         port_layout.addWidget(self.l_server_port)
@@ -61,7 +67,7 @@ class WelcomeWindow(QDialog):
         self.main_layout.addWidget(self.btn_connect)
 
     def btn_connect_clicked(self):
-        self.signal_connect_to_server.emit(self.le_server_addr.text(), self.le_server_port.text())
+        self.signal_connect_to_server.emit(self.cb_server_addr.currentText(), self.le_server_port.text())
 
     def connection_error(self):
         self.l_connection_error = QLabel('Error with connecting!')

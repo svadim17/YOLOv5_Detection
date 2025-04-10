@@ -1,4 +1,5 @@
-from PyQt6.QtWidgets import QDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGroupBox, QApplication
+from PyQt6.QtWidgets import (QDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+                             QGroupBox, QApplication)
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtCore import Qt
 import qdarktheme
