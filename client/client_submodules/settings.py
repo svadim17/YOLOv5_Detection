@@ -34,7 +34,9 @@ class SettingsWidget(QWidget):
         self.saveTab = SaveTab(enabled_channels=enabled_channels, map_list=config['map_list'])
         self.soundTab = SoundTab(enabled_channels=enabled_channels, config=config, logger_=self.logger)
         self.nnTab = NNTab(logger_=self.logger, enabled_channels=enabled_channels)
-        self.alinxTab = AlinxTab(enabled_channels_info=self.enabled_channels_info, logger_=self.logger)
+        self.alinxTab = AlinxTab(enabled_channels_info=self.enabled_channels_info,
+                                 autoscan=bool(config['fcm']['autoscan_frequency']),
+                                 logger_=self.logger)
         self.usrpTab = USRPTab(enabled_channels=enabled_channels, logger_=self.logger)
 
         self.tab = QTabWidget()
@@ -96,6 +98,7 @@ class MainTab(QWidget):
 
         self.chb_watchdog = QCheckBox('Watchdog')
         self.chb_watchdog.setChecked(self.config['settings_main']['watchdog'])
+        self.chb_watchdog.setDisabled(True)
 
         self.box_widgets_states = QGroupBox('Widgets states')
 
@@ -494,9 +497,10 @@ class AlinxTab(QWidget):
     signal_autoscan_state = pyqtSignal(bool)
     signal_set_central_freq = pyqtSignal(float)
 
-    def __init__(self, enabled_channels_info, logger_):
+    def __init__(self, enabled_channels_info, autoscan, logger_):
         super().__init__()
         self.enabled_channels_info = enabled_channels_info
+        self.autoscan_state = autoscan
         self.logger = logger_
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(15)
@@ -519,15 +523,19 @@ class AlinxTab(QWidget):
         self.box_rx_settings = QGroupBox('RX Settings')
         self.l_central_freq = QLabel('FCM Central frequency')
         self.chb_autoscan = QCheckBox('Autoscan frequency')
-        self.chb_autoscan.setChecked(True)
+        self.chb_autoscan.setChecked(self.autoscan_state)
         self.chb_autoscan.stateChanged.connect(self.chb_autoscan_clicked)
         self.cb_central_freq = QComboBox()
-        self.cb_central_freq.setDisabled(True)
+        self.cb_central_freq.setDisabled(False)
         self.cb_central_freq.currentTextChanged.connect(self.cb_central_freq_changed)
         for channel in self.enabled_channels_info:
             if len(channel.central_freq) > 1:
+                i = 0
                 for freq in channel.central_freq:
                     self.cb_central_freq.addItem(f'{freq/1_000_000:.1f} MHz', freq)
+                    if freq == 5_786_500_000:
+                        self.cb_central_freq.setCurrentIndex(i)
+                    i += 1
         self.l_attenuation_24 = QLabel('Gain 2G4')
         self.spb_gain_24 = QSpinBox()
         self.spb_gain_24.setRange(0, 31)
@@ -615,6 +623,10 @@ class AlinxTab(QWidget):
             freq = self.cb_central_freq.currentData()
             print(f'change on {freq}')
             self.signal_set_central_freq.emit(freq / 1_000_000)
+
+    def collect_config(self):
+        config = {'fcm': {'autoscan_frequency': self.chb_autoscan.isChecked()}}
+        return config
 
 
 class USRPTab(QWidget):

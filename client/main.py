@@ -360,6 +360,7 @@ class MainWindow(QMainWindow):
             config = {}
             self.config.update(self.settingsWidget.mainTab.collect_config())
             self.config.update(self.settingsWidget.soundTab.collect_config())
+            self.config.update(self.settingsWidget.alinxTab.collect_config())
             self.config.update(config)
 
             with open('client_conf.yaml', 'w') as f:
