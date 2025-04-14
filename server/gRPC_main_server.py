@@ -189,6 +189,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                     receive_freq_status=bool(connection['hardware']['receive_freq']),
                     central_freq=int(connection['hardware']['central_freq'][0]),
                     freq_list=list(connection['hardware']['central_freq']),
+                    autoscan=bool(connection['hardware']['autoscan']),
                     model_version=str(connection['neural_network_settings']['version']),
                     weights_path=connection['neural_network_settings']['weights_path'],
                     project_path=connection['neural_network_settings']['project_path'],

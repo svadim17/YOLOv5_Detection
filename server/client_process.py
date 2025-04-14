@@ -27,6 +27,7 @@ class Client(Process):
                  receive_freq_status: bool,
                  central_freq: int,
                  freq_list: list,
+                 autoscan: bool,
                  model_version: str,
                  weights_path: str,
                  project_path: str,
@@ -54,6 +55,7 @@ class Client(Process):
         self.receive_freq_status = receive_freq_status
         self.central_freq = central_freq
         self.freq_list = freq_list
+        self.autoscan = autoscan
         self.model_version = model_version
         self.weights_path = weights_path
         self.project_path = project_path
@@ -80,11 +82,6 @@ class Client(Process):
         self.error_queue = error_queue
         self.FCM_control_queue = FCM_control_queue
         self.task_done_event = task_done_event
-
-        if len(self.freq_list) > 1 and self.FCM_control_queue is not None:
-            self.autoscan = True
-        else:
-            self.autoscan = False
 
         self.img_save_path = '\\saved_images'
         if not os.path.isdir(self.img_save_path):

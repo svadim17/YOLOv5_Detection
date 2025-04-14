@@ -4,6 +4,7 @@ connections:
     port: 16024
     hardware:
       type: Alinx
+      autoscan: false
       central_freq:
       - 2437000000
       receive_freq: true
@@ -42,6 +43,7 @@ connections:
     port: 16058
     hardware:
       type: Alinx
+      autoscan: false
       central_freq:
       - 4986500000
       - 5086500000
