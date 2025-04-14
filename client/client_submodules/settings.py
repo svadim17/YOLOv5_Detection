@@ -527,7 +527,6 @@ class AlinxTab(QWidget):
         self.chb_autoscan.stateChanged.connect(self.chb_autoscan_clicked)
         self.cb_central_freq = QComboBox()
         self.cb_central_freq.setDisabled(False)
-        self.cb_central_freq.currentTextChanged.connect(self.cb_central_freq_changed)
         for channel in self.enabled_channels_info:
             if len(channel.central_freq) > 1:
                 i = 0
@@ -536,6 +535,7 @@ class AlinxTab(QWidget):
                     if freq == 5_786_500_000:
                         self.cb_central_freq.setCurrentIndex(i)
                     i += 1
+        self.cb_central_freq.currentTextChanged.connect(self.cb_central_freq_changed)
         self.l_attenuation_24 = QLabel('Gain 2G4')
         self.spb_gain_24 = QSpinBox()
         self.spb_gain_24.setRange(0, 31)
@@ -616,7 +616,8 @@ class AlinxTab(QWidget):
             self.signal_autoscan_state.emit(False)
 
     def update_cb_central_freq(self, freq: int):
-        self.cb_central_freq.setCurrentText(f'{freq / 1_000_000:.1f} MHz')
+        pass
+        # self.cb_central_freq.setCurrentText(f'{freq / 1_000_000:.1f} MHz')
 
     def cb_central_freq_changed(self):
         if not self.chb_autoscan.isChecked():
