@@ -140,7 +140,10 @@ class Client(Process):
 
         for key, key_dict in result_dict.items():
             if self.accum_status:
-                self.accum_deques[central_freq][key].appendleft(key_dict['confidence'])
+                if central_freq not in self.accum_deques.keys():
+                    self.accum_deques[central_freq] = {key: deque([], maxlen=10) for key in self.map_list}
+                else:
+                    self.accum_deques[central_freq][key].appendleft(key_dict['confidence'])
                 accum = sum(self.accum_deques[central_freq][key])
                 state = bool(accum >= self.global_threshold)
             else:
@@ -212,6 +215,7 @@ class Client(Process):
             raise custom_utils.AlinxException()
 
     def receive_from_USRP(self, sock):
+        self.change_USRP_frequency()
         sock.send(self.central_freq.to_bytes(length=8, byteorder='big'))
         if self.receive_freq_status:           # receive central freq of channel if status is true
             freq = sock.recv(self.freq_len)
@@ -240,7 +244,8 @@ class Client(Process):
     def set_autoscan_state(self, state: bool):
         self.autoscan = state
         if self.autoscan is False:
-            self.set_FCM_frequency(5_786_500000)
+            if self.hardware == 'ALINX' or self.hardware == 'Alinx' or self.hardware == 'alinx':
+                self.set_FCM_frequency(5_786_500000)
 
     def change_FCM_frequency(self):
         if self.autoscan and len(self.freq_list) > 1 and self.current_accum_index % self.accumulation_size == 0:
@@ -260,7 +265,17 @@ class Client(Process):
                 self.logger.error(f'Frequency has not been set')
                 self.send_error(f'Frequency has not been set')
 
-    #@logger.catch
+    def change_USRP_frequency(self):
+        if self.autoscan and len(self.freq_list) > 1 and self.current_accum_index % self.accumulation_size == 0:
+            index = self.freq_list.index(self.central_freq) + 1
+            freq = self.freq_list[index % len(self.freq_list)]
+            self.set_USRP_central_freq(freq)
+            time.sleep(0.15)
+
+    def set_USRP_central_freq(self, freq: int):
+        self.central_freq = freq
+        self.logger.debug(f'Send to set {freq} Hz')
+
     def run(self):
         try:
             self.nn = NNProcessing(name=self.name,
@@ -293,8 +308,6 @@ class Client(Process):
                     self.logger.success(f'Connected to {self.address}!')
 
                     if self.hardware.lower() == 'usrp':
-                        nn_type = s.recv(2)     # nn type
-                        self.logger.debug(f'NN type: {nn_type}')
                         receive = self.receive_from_USRP
 
                     elif self.hardware.lower() == 'alinx':
@@ -330,6 +343,16 @@ class Client(Process):
                                 except queue.Full as e:
                                     self.logger.error(f'data_queue is full. {e}')
 
+                                # # logging to database
+                                # try:
+                                #     print(f'Data to log:'
+                                #           f'results = {res}, {type(res)}'
+                                #           f'frequencies = {freq}, {type(freq)}'
+                                #           f'predict_df = {df_result},'
+                                #           f'channel_freq = {self.central_freq}')
+                                # except Exception as e:
+                                #     self.logger.error(f'Error with logging to database!\n{e}')
+
                             if not self.control_q.empty():
                                 cmd_dict = self.control_q.get()
                                 args = cmd_dict['args']
@@ -348,4 +371,5 @@ class Client(Process):
                     self.send_error(f'Unknown error! {e}')
                     break
         self.logger.debug(f'Channel {self.name} ({self.address}) finished work')
+
 

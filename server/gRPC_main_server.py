@@ -363,7 +363,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         else:
             return API_pb2.AlinxSetAttenuationResponse(status=f'Something went wrong')
 
-    def AlinxAutoscanFrequency(self, request, context):
+    def AutoscanFrequency(self, request, context):
         for name, process in self.processes.items():
             process.control_q.put({'func': 'set_autoscan_state', 'args': (request.status,)})
         msg = f'Autoscan status was changed on {request.status}'
@@ -377,6 +377,16 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
     def AlinxLoadDetectState(self, request, context):
         # # # тут должен быть запрос о состоянии Load Detect Alinx # # #
         return API_pb2.AlinxLoadDetectResponse(state='We are working on it...')
+
+    def USRPSetFrequency(self, request, context):
+        try:
+            channel_name = request.channel_name
+            freq = request.value
+            if channel_name in self.processes:
+                self.processes[channel_name].control_q.put({'func': 'set_USRP_central_freq', 'args': (freq,)})
+            return API_pb2.USRPSetFrequencyResponse(status=f'USRP central frequency was changed on {freq} in {channel_name}')
+        except Exception as e:
+            self.custom_logger.error(f'Error with setting USRP central freq! \n{e}')
 
     def NNInfo(self, request, context):
         chan_names = request.channels

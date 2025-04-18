@@ -92,6 +92,8 @@ class NNProcessing(object):
         torch.cuda.empty_cache()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.load_model()
+        self.batch_size = 5
+        self.norm_data_list = []
 
     def load_model(self):
         if self.version == 'v5':

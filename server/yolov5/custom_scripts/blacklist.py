@@ -1,3 +1,3 @@
-import tensorrt as trt
-
-print(trt.__version__)
+Batch faster on 0.020438603680543233 (10)
+Batch faster on 0.008343000604648779 (5)
+Batch faster on 0.005036900741885411 (3)

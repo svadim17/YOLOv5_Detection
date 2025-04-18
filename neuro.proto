@@ -200,6 +200,15 @@ message SignalSettingsResponse {            // Ответ на запрос о �
     repeated int64 fs = 4;
 }
 
+message USRPSetFrequencyRequest {
+    string channel_name = 1;
+    int64 value = 2;
+}
+
+message USRPSetFrequencyResponse {
+    string status = 1;
+}
+
 
 // Сервисы обработки данных
 service DataProcessingService {
@@ -221,5 +230,6 @@ service DataProcessingService {
     rpc AlinxLoadDetectState (AlinxLoadDetectRequest) returns (AlinxLoadDetectResponse);
     rpc NNInfo (NNInfoRequest) returns (NNInfoResponse);
     rpc SignalSettings (SignalSettingsRequest) returns (SignalSettingsResponse);
-    rpc AlinxAutoscanFrequency (SetAutoscanFreqRequest) returns (SetAutoscanFreqResponse);
+    rpc AutoscanFrequency (SetAutoscanFreqRequest) returns (SetAutoscanFreqResponse);
+    rpc USRPSetFrequency (USRPSetFrequencyRequest) returns (USRPSetFrequencyResponse);
 }

@@ -255,12 +255,12 @@ class gRPCThread(QtCore.QThread):
         except Exception as e:
             self.logger_.error(f'Error with setting frequency! \n{e}')
 
-    def setCustomFrequency(self, channel_name: str, freq: float):
+    def setUSRPFrequency(self, channel_name: str, freq: float):
         try:
             freq = int(freq * 1_000_000)
             print('set_custom_frequency', channel_name, freq)
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-            response = stub.SetFrequency(API_pb2.SetFrequencyRequest(channel_name=channel_name, value=freq))
+            response = stub.USRPSetFrequency(API_pb2.USRPSetFrequencyRequest(channel_name=channel_name, value=freq))
             self.logger_.info(response.status)
         except Exception as e:
             self.logger_.error(f'Error with setting frequency! \n{e}')
@@ -289,10 +289,10 @@ class gRPCThread(QtCore.QThread):
         except Exception as e:
             self.logger_.error(f'Error with getting NN models info! \n{e}')
 
-    def setAutoscanState(self, state):
+    def setAutoscanState(self, state: bool):
         try:
             stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
-            response = stub.AlinxAutoscanFrequency(API_pb2.SetAutoscanFreqRequest(status=state))
+            response = stub.AutoscanFrequency(API_pb2.SetAutoscanFreqRequest(status=state))
             self.logger_.info(response.status)
         except Exception as e:
             self.logger_.error(f'Error with setting Autoscan! \n{e}')

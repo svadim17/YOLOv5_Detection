@@ -26,6 +26,6 @@ settings_sound:
     Dji: true
     WiFi: false
   sound_name: Rus Man Object detected.mp3
-show_welcome_window: true
+show_welcome_window: false
 fcm:
   autoscan_frequency: false
