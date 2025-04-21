@@ -5,8 +5,8 @@ map_list:
 - WiFi
 server_port: '51234'
 server_addr:
+- 192.168.1.230
 - localhost
-- 192.168.150.135
 - 192.168.1.241
 settings_main:
   show_recogn_options: true
