@@ -47,6 +47,10 @@ def count_files(directory):
         return -1
 
 
+def is_list_of_nparrays(x):
+    return isinstance(x, list) and all(isinstance(i, np.ndarray) for i in x)
+
+
 class AlinxException(Exception):
 
     def __init__(self, message='Error with receiving data from hardware!'):

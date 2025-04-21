@@ -92,7 +92,6 @@ class NNProcessing(object):
         torch.cuda.empty_cache()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.load_model()
-        self.batch_size = 5
         self.norm_data_list = []
 
     def load_model(self):
@@ -153,6 +152,29 @@ class NNProcessing(object):
         else:
             raise Exception(f"Unknown model version {self.version}")
         return clear_img, df_result, detected_img
+
+    def processing_for_grpc_2(self, norm_data):
+        """ similar function but to check batch_size"""
+        batch_list = []
+        batch_clear_img = []
+        for data in norm_data:
+            color_image = cv2.applyColorMap(data, self.colormap)   # create a color image from normalized data
+            img = cv2.resize(color_image, self.img_size)
+            clear_img = copy.copy(img)
+            batch_list.append(img)
+            batch_clear_img.append(clear_img)
+        if self.version == 'v5':
+            result = self.model(batch_list, size=self.img_size[0])
+            batch_df_result = []
+            batch_detected_img = []
+            for i in range(len(norm_data)):
+                df_result = result.pandas().xyxy[i]
+                detected_img = result.render()[i]
+                batch_df_result.append(df_result)
+                batch_detected_img.append(detected_img)
+        else:
+            raise Exception(f"Unknown model version {self.version}")
+        return batch_clear_img, batch_df_result, batch_detected_img
 
     def processing(self, norm_data, save_images=False):
         color_image = cv2.applyColorMap(norm_data, self.colormap)   # create a color image from normalized data

@@ -1,93 +1,95 @@
 connections:
-#  2G437_v5:
-#    ip: 192.168.1.3
-#    port: 16024
-#    hardware:
-#      type: Alinx
-#      autoscan: false
-#      central_freq:
-#      - 2437000000
-#      receive_freq: true
-#    signal_settings:
-#      signal_width: 1024
-#      signal_height: 3072
-#      sample_rate: 122880000
-#      calculate_log: false
-#    neural_network_settings:
-#      version: v5
-#      project_path: yolov5
-#      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
-#      img_size:
-#      - 640
-#      - 640
-#      z_min: -60
-#      z_max: 70
-#    detection_settings:
-#      all_classes:
-#      - dji
-#      - wifi
-#      - autel_lite
-#      - autel_max_4n(t)
-#      - autel_tag
-#      - fpv
-#      map_list:
-#      - autel
-#      - fpv
-#      - dji
-#      - wifi
-#      accumulation_size: 10
-#      threshold: 0.4
-#      exceedance: 0.5
-#  5G7865_v5:
-#    ip: 192.168.1.3
-#    port: 16058
-#    hardware:
-#      type: Alinx
-#      autoscan: false
-#      central_freq:
-#      - 5786500000
-#      - 4986500000
-#      - 5086500000
-#      - 5186500000
-#      - 5286500000
-#      - 5386500000
-#      - 5486500000
-#      - 5586500000
-#      - 5686500000
-#      - 5886500000
-#      - 5986500000
-#      - 6086500000
-#      receive_freq: true
-#    signal_settings:
-#      signal_width: 1024
-#      signal_height: 3072
-#      sample_rate: 122880000
-#      calculate_log: false
-#    neural_network_settings:
-#      version: v5
-#      project_path: yolov5
-#      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
-#      img_size:
-#      - 640
-#      - 640
-#      z_min: -70
-#      z_max: 48
-#    detection_settings:
-#      all_classes:
-#      - dji
-#      - wifi
-#      - autel_lite
-#      - autel_max_4n(t)
-#      - autel_tag
-#      - fpv
-#      map_list:
-#      - autel
-#      - fpv
-#      - dji
-#      - wifi
-#      accumulation_size: 10
-#      threshold: 0.4
-#      exceedance: 0.5
+  2G437_v5:
+    ip: 192.168.1.3
+    port: 16024
+    hardware:
+      type: Alinx
+      autoscan: false
+      central_freq:
+      - 2437000000
+      receive_freq: true
+    signal_settings:
+      signal_width: 1024
+      signal_height: 3072
+      sample_rate: 122880000
+      calculate_log: false
+    neural_network_settings:
+      version: v5
+      batch_size: 1
+      project_path: yolov5
+      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      img_size:
+      - 640
+      - 640
+      z_min: -60
+      z_max: 70
+    detection_settings:
+      all_classes:
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
+      map_list:
+      - autel
+      - fpv
+      - dji
+      - wifi
+      accumulation_size: 10
+      threshold: 0.4
+      exceedance: 0.5
+  5G7865_v5:
+    ip: 192.168.1.3
+    port: 16058
+    hardware:
+      type: Alinx
+      autoscan: false
+      central_freq:
+      - 5786500000
+      - 4986500000
+      - 5086500000
+      - 5186500000
+      - 5286500000
+      - 5386500000
+      - 5486500000
+      - 5586500000
+      - 5686500000
+      - 5886500000
+      - 5986500000
+      - 6086500000
+      receive_freq: true
+    signal_settings:
+      signal_width: 1024
+      signal_height: 3072
+      sample_rate: 122880000
+      calculate_log: false
+    neural_network_settings:
+      version: v5
+      batch_size: 1
+      project_path: yolov5
+      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      img_size:
+      - 640
+      - 640
+      z_min: -70
+      z_max: 48
+    detection_settings:
+      all_classes:
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
+      map_list:
+      - autel
+      - fpv
+      - dji
+      - wifi
+      accumulation_size: 10
+      threshold: 0.4
+      exceedance: 0.5
   ch0:
     ip: 127.0.0.1
     port: 10091
@@ -104,6 +106,7 @@ connections:
       calculate_log: false
     neural_network_settings:
       version: v5
+      batch_size: 5
       project_path: yolov5
       weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
@@ -143,6 +146,7 @@ connections:
       calculate_log: false
     neural_network_settings:
       version: v5
+      batch_size: 1
       project_path: yolov5
       weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
@@ -182,6 +186,7 @@ connections:
       calculate_log: false
     neural_network_settings:
       version: v5
+      batch_size: 1
       project_path: yolov5
       weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
@@ -221,6 +226,7 @@ connections:
       calculate_log: false
     neural_network_settings:
       version: v5
+      batch_size: 1
       project_path: yolov5
       weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:

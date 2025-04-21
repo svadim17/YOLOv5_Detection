@@ -29,6 +29,7 @@ class Client(Process):
                  freq_list: list,
                  autoscan: bool,
                  model_version: str,
+                 batch_size: int,
                  weights_path: str,
                  project_path: str,
                  sample_rate: int,
@@ -57,6 +58,7 @@ class Client(Process):
         self.freq_list = freq_list
         self.autoscan = autoscan
         self.model_version = model_version
+        self.batch_size = batch_size
         self.weights_path = weights_path
         self.project_path = project_path
         self.sample_rate = sample_rate
@@ -317,41 +319,33 @@ class Client(Process):
                         self.logger.critical(f'Unknown Device Type: {self.hardware}')
                         self.send_error('Unknown Device Type!')
                         return
-
                     while True:
-                        img_arr, spectrum = receive(sock=s)
-                        if img_arr is not None:
-                            clear_img, df_result, detected_img = self.nn.processing_for_grpc(img_arr)
+
+                        imgs, spectrums = zip(*[receive(sock=s) for _ in range(self.batch_size)])
+
+                        if imgs is not None:
+                            clear_img, df_result, detected_img = self.nn.processing_for_grpc_2(imgs)
                             self.current_accum_index += 1
+
                             if self.data_q is not None:
-                                res, freq = self.accumulate_and_make_decision(
-                                    self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'),
-                                    central_freq=self.central_freq)
+                                for i in range(len(df_result)):
+                                    result_dict = self.nn.grpc_convert_result(df_result[i], return_data_type='dict_with_freq')
+                                    res, freq = self.accumulate_and_make_decision(result_dict, central_freq=self.central_freq)
 
-                                try:
-                                    if self.data_q.full():
-                                        self.data_q.get()
-                                    self.data_q.put({'name': self.name,
-                                                     'results': res,
-                                                     'frequencies': freq,
-                                                     'predict_df': df_result,
-                                                     'detected_img': detected_img,
-                                                     'clear_img': clear_img,
-                                                     'spectrum': spectrum,
-                                                     'channel_freq': self.central_freq},
-                                                    timeout=10)
-                                except queue.Full as e:
-                                    self.logger.error(f'data_queue is full. {e}')
-
-                                # # logging to database
-                                # try:
-                                #     print(f'Data to log:'
-                                #           f'results = {res}, {type(res)}'
-                                #           f'frequencies = {freq}, {type(freq)}'
-                                #           f'predict_df = {df_result},'
-                                #           f'channel_freq = {self.central_freq}')
-                                # except Exception as e:
-                                #     self.logger.error(f'Error with logging to database!\n{e}')
+                                    try:
+                                        if self.data_q.full():
+                                            self.data_q.get()
+                                        self.data_q.put({'name': self.name,
+                                                         'results': res,
+                                                         'frequencies': freq,
+                                                         'predict_df': df_result[i],
+                                                         'detected_img': detected_img[i],
+                                                         'clear_img': clear_img[i],
+                                                         'spectrum': spectrums[i],
+                                                         'channel_freq': self.central_freq},
+                                                        timeout=10)
+                                    except queue.Full as e:
+                                        self.logger.error(f'data_queue is full. {e}')
 
                             if not self.control_q.empty():
                                 cmd_dict = self.control_q.get()

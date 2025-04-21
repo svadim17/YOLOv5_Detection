@@ -5,6 +5,7 @@ map_list:
 - WiFi
 server_port: '51234'
 server_addr:
+- 192.168.1.35
 - localhost
 - 192.168.1.241
 settings_main:
@@ -26,6 +27,6 @@ settings_sound:
     Dji: true
     WiFi: false
   sound_name: Rus Man Object detected.mp3
-show_welcome_window: false
+show_welcome_window: true
 fcm:
   autoscan_frequency: false
