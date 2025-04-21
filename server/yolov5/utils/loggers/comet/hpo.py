@@ -1,3 +1,5 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import argparse
 import json
 import logging
@@ -14,10 +16,10 @@ ROOT = FILE.parents[3]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 
-from server.yolov5.train import train
-from server.yolov5.utils.callbacks import Callbacks
-from server.yolov5.utils.general import increment_path
-from server.yolov5.utils.torch_utils import select_device
+from train import train
+from utils.callbacks import Callbacks
+from utils.general import increment_path
+from utils.torch_utils import select_device
 
 # Project Configuration
 config = comet_ml.config.get_config()
@@ -53,7 +55,7 @@ def get_args(known=False):
     parser.add_argument("--sync-bn", action="store_true", help="use SyncBatchNorm, only available in DDP mode")
     parser.add_argument("--workers", type=int, default=8, help="max dataloader workers (per RANK in DDP mode)")
     parser.add_argument("--project", default=ROOT / "runs/train", help="save to project/name")
-    parser.add_argument("--name", default="yolov5m_7classes", help="save to project/name")
+    parser.add_argument("--name", default="exp", help="save to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--quad", action="store_true", help="quad dataloader")
     parser.add_argument("--cos-lr", action="store_true", help="cosine LR scheduler")

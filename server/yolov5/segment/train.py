@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """
 Train a YOLOv5 segment model on a segment dataset Models and datasets download automatically from the latest YOLOv5
 release.
@@ -40,14 +40,14 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-import server.yolov5.segment.val as validate  # for end-of-epoch mAP
-from server.yolov5.models.experimental import attempt_load
-from server.yolov5.models.yolo import SegmentationModel
-from server.yolov5.utils.autoanchor import check_anchors
-from server.yolov5.utils.autobatch import check_train_batch_size
-from server.yolov5.utils.callbacks import Callbacks
-from server.yolov5.utils.downloads import attempt_download, is_url
-from server.yolov5.utils.general import (
+import segment.val as validate  # for end-of-epoch mAP
+from models.experimental import attempt_load
+from models.yolo import SegmentationModel
+from utils.autoanchor import check_anchors
+from utils.autobatch import check_train_batch_size
+from utils.callbacks import Callbacks
+from utils.downloads import attempt_download, is_url
+from utils.general import (
     LOGGER,
     TQDM_BAR_FORMAT,
     check_amp,
@@ -72,13 +72,13 @@ from server.yolov5.utils.general import (
     strip_optimizer,
     yaml_save,
 )
-from server.yolov5.utils.loggers import GenericLogger
-from server.yolov5.utils.plots import plot_evolve, plot_labels
-from server.yolov5.utils.segment.dataloaders import create_dataloader
-from server.yolov5.utils.segment.loss import ComputeLoss
-from server.yolov5.utils.segment.metrics import KEYS, fitness
-from server.yolov5.utils.segment.plots import plot_images_and_masks, plot_results_with_masks
-from server.yolov5.utils.torch_utils import (
+from utils.loggers import GenericLogger
+from utils.plots import plot_evolve, plot_labels
+from utils.segment.dataloaders import create_dataloader
+from utils.segment.loss import ComputeLoss
+from utils.segment.metrics import KEYS, fitness
+from utils.segment.plots import plot_images_and_masks, plot_results_with_masks
+from utils.torch_utils import (
     EarlyStopping,
     ModelEMA,
     de_parallel,
@@ -214,7 +214,11 @@ def train(hyp, opt, device, callbacks):
     if opt.cos_lr:
         lf = one_cycle(1, hyp["lrf"], epochs)  # cosine 1->hyp['lrf']
     else:
-        lf = lambda x: (1 - x / epochs) * (1.0 - hyp["lrf"]) + hyp["lrf"]  # linear
+
+        def lf(x):
+            """Linear learning rate scheduler decreasing from 1 to hyp['lrf'] over 'epochs'."""
+            return (1 - x / epochs) * (1.0 - hyp["lrf"]) + hyp["lrf"]  # linear
+
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)  # plot_lr_scheduler(optimizer, scheduler, epochs)
 
     # EMA
@@ -321,10 +325,10 @@ def train(hyp, opt, device, callbacks):
     compute_loss = ComputeLoss(model, overlap=overlap)  # init loss class
     # callbacks.run('on_train_start')
     LOGGER.info(
-        f'Image sizes {imgsz} train, {imgsz} val\n'
-        f'Using {train_loader.num_workers * WORLD_SIZE} dataloader workers\n'
+        f"Image sizes {imgsz} train, {imgsz} val\n"
+        f"Using {train_loader.num_workers * WORLD_SIZE} dataloader workers\n"
         f"Logging results to {colorstr('bold', save_dir)}\n"
-        f'Starting training for {epochs} epochs...'
+        f"Starting training for {epochs} epochs..."
     )
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         # callbacks.run('on_train_epoch_start')
@@ -401,7 +405,7 @@ def train(hyp, opt, device, callbacks):
             # Log
             if RANK in {-1, 0}:
                 mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
-                mem = f"{torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0:.3g}G"  # (GB)
+                mem = f"{torch.cuda.memory_reserved() / 1e9 if torch.cuda.is_available() else 0:.3g}G"  # (GB)
                 pbar.set_description(
                     ("%11s" * 2 + "%11.4g" * 6)
                     % (f"{epoch}/{epochs - 1}", mem, *mloss, targets.shape[0], imgs.shape[-1])
@@ -567,7 +571,7 @@ def parse_opt(known=False):
     parser.add_argument("--sync-bn", action="store_true", help="use SyncBatchNorm, only available in DDP mode")
     parser.add_argument("--workers", type=int, default=8, help="max dataloader workers (per RANK in DDP mode)")
     parser.add_argument("--project", default=ROOT / "runs/train-seg", help="save to project/name")
-    parser.add_argument("--name", default="yolov5m_7classes", help="save to project/name")
+    parser.add_argument("--name", default="exp", help="save to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--quad", action="store_true", help="quad dataloader")
     parser.add_argument("--cos-lr", action="store_true", help="cosine LR scheduler")
@@ -579,7 +583,7 @@ def parse_opt(known=False):
     parser.add_argument("--local_rank", type=int, default=-1, help="Automatic DDP Multi-GPU argument, do not modify")
 
     # Instance Segmentation Args
-    parser.add_argument("--example_mask-ratio", type=int, default=4, help="Downsample the truth masks to saving memory")
+    parser.add_argument("--mask-ratio", type=int, default=4, help="Downsample the truth masks to saving memory")
     parser.add_argument("--no-overlap", action="store_true", help="Overlap masks train faster at slightly less mAP")
 
     return parser.parse_known_args()[0] if known else parser.parse_args()
@@ -736,9 +740,9 @@ def main(opt, callbacks=Callbacks()):
         # Plot results
         plot_evolve(evolve_csv)
         LOGGER.info(
-            f'Hyperparameter evolution finished {opt.evolve} generations\n'
+            f"Hyperparameter evolution finished {opt.evolve} generations\n"
             f"Results saved to {colorstr('bold', save_dir)}\n"
-            f'Usage example: $ python train.py --hyp {evolve_yaml}'
+            f"Usage example: $ python train.py --hyp {evolve_yaml}"
         )
 
 

@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """
 Train a YOLOv5 classifier model on a classification dataset.
 
@@ -36,11 +36,11 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-from server.yolov5.classify import val as validate
-from server.yolov5.models.experimental import attempt_load
-from server.yolov5.models.yolo import ClassificationModel, DetectionModel
-from server.yolov5.utils.dataloaders import create_classification_dataloader
-from server.yolov5.utils.general import (
+from classify import val as validate
+from models.experimental import attempt_load
+from models.yolo import ClassificationModel, DetectionModel
+from utils.dataloaders import create_classification_dataloader
+from utils.general import (
     DATASETS_DIR,
     LOGGER,
     TQDM_BAR_FORMAT,
@@ -55,9 +55,9 @@ from server.yolov5.utils.general import (
     print_args,
     yaml_save,
 )
-from server.yolov5.utils.loggers import GenericLogger
-from server.yolov5.utils.plots import imshow_cls
-from server.yolov5.utils.torch_utils import (
+from utils.loggers import GenericLogger
+from utils.plots import imshow_cls
+from utils.torch_utils import (
     ModelEMA,
     de_parallel,
     model_info,
@@ -109,7 +109,7 @@ def train(opt, device):
             if str(data) == "imagenet":
                 subprocess.run(["bash", str(ROOT / "data/scripts/get_imagenet.sh")], shell=True, check=True)
             else:
-                url = f"https://github.com/ultralytics/yolov5/releases/download/v1.0/{data}.zip"
+                url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{data}.zip"
                 download(url, dir=data_dir.parent)
             s = f"Dataset download success ✅ ({time.time() - t:.1f}s), saved to {colorstr('bold', data_dir)}\n"
             LOGGER.info(s)
@@ -177,8 +177,12 @@ def train(opt, device):
 
     # Scheduler
     lrf = 0.01  # final lr (fraction of lr0)
+
     # lf = lambda x: ((1 + math.cos(x * math.pi / epochs)) / 2) * (1 - lrf) + lrf  # cosine
-    lf = lambda x: (1 - x / epochs) * (1 - lrf) + lrf  # linear
+    def lf(x):
+        """Linear learning rate scheduler function, scaling learning rate from initial value to `lrf` over `epochs`."""
+        return (1 - x / epochs) * (1 - lrf) + lrf  # linear
+
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
     # scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=lr0, total_steps=epochs, pct_start=0.1,
     #                                    final_div_factor=1 / 25 / lrf)
@@ -197,10 +201,10 @@ def train(opt, device):
     scaler = amp.GradScaler(enabled=cuda)
     val = test_dir.stem  # 'val' or 'test'
     LOGGER.info(
-        f'Image sizes {imgsz} train, {imgsz} test\n'
-        f'Using {nw * WORLD_SIZE} dataloader workers\n'
+        f"Image sizes {imgsz} train, {imgsz} test\n"
+        f"Using {nw * WORLD_SIZE} dataloader workers\n"
         f"Logging results to {colorstr('bold', save_dir)}\n"
-        f'Starting {opt.model} training on {data} dataset with {nc} classes for {epochs} epochs...\n\n'
+        f"Starting {opt.model} training on {data} dataset with {nc} classes for {epochs} epochs...\n\n"
         f"{'Epoch':>10}{'GPU_mem':>10}{'train_loss':>12}{f'{val}_loss':>12}{'top1_acc':>12}{'top5_acc':>12}"
     )
     for epoch in range(epochs):  # loop over the dataset multiple times
@@ -286,13 +290,13 @@ def train(opt, device):
     # Train complete
     if RANK in {-1, 0} and final_epoch:
         LOGGER.info(
-            f'\nTraining complete ({(time.time() - t0) / 3600:.3f} hours)'
+            f"\nTraining complete ({(time.time() - t0) / 3600:.3f} hours)"
             f"\nResults saved to {colorstr('bold', save_dir)}"
-            f'\nPredict:         python classify/predict.py --weights {best} --source im.jpg'
-            f'\nValidate:        python classify/val.py --weights {best} --data {data_dir}'
-            f'\nExport:          python export.py --weights {best} --include onnx'
+            f"\nPredict:         python classify/predict.py --weights {best} --source im.jpg"
+            f"\nValidate:        python classify/val.py --weights {best} --data {data_dir}"
+            f"\nExport:          python export.py --weights {best} --include onnx"
             f"\nPyTorch Hub:     model = torch.hub.load('ultralytics/yolov5', 'custom', '{best}')"
-            f'\nVisualize:       https://netron.app\n'
+            f"\nVisualize:       https://netron.app\n"
         )
 
         # Plot examples
@@ -321,7 +325,7 @@ def parse_opt(known=False):
     parser.add_argument("--device", default="", help="cuda device, i.e. 0 or 0,1,2,3 or cpu")
     parser.add_argument("--workers", type=int, default=8, help="max dataloader workers (per RANK in DDP mode)")
     parser.add_argument("--project", default=ROOT / "runs/train-cls", help="save to project/name")
-    parser.add_argument("--name", default="yolov5m_7classes", help="save to project/name")
+    parser.add_argument("--name", default="exp", help="save to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--pretrained", nargs="?", const=True, default=True, help="start from i.e. --pretrained False")
     parser.add_argument("--optimizer", choices=["SGD", "Adam", "AdamW", "RMSProp"], default="Adam", help="optimizer")

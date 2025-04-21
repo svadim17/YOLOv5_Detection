@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """
 Run YOLOv5 segmentation inference on images, videos, directories, streams, etc.
 
@@ -44,9 +44,9 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from ultralytics.utils.plotting import Annotator, colors, save_one_box
 
-from server.yolov5.models.common import DetectMultiBackend
-from server.yolov5.utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
-from server.yolov5.utils.general import (
+from models.common import DetectMultiBackend
+from utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
+from utils.general import (
     LOGGER,
     Profile,
     check_file,
@@ -62,8 +62,8 @@ from server.yolov5.utils.general import (
     scale_segments,
     strip_optimizer,
 )
-from server.yolov5.utils.segment.general import masks2segments, process_mask, process_mask_native
-from server.yolov5.utils.torch_utils import select_device, smart_inference_mode
+from utils.segment.general import masks2segments, process_mask, process_mask_native
+from utils.torch_utils import select_device, smart_inference_mode
 
 
 @smart_inference_mode()
@@ -87,7 +87,7 @@ def run(
     visualize=False,  # visualize features
     update=False,  # update all models
     project=ROOT / "runs/predict-seg",  # save results to project/name
-    name="yolov5m_7classes",  # save results to project/name
+    name="exp",  # save results to project/name
     exist_ok=False,  # existing project/name ok, do not increment
     line_thickness=3,  # bounding box thickness (pixels)
     hide_labels=False,  # hide labels
@@ -97,6 +97,7 @@ def run(
     vid_stride=1,  # video frame-rate stride
     retina_masks=False,
 ):
+    """Run YOLOv5 segmentation inference on diverse sources including images, videos, directories, and streams."""
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -163,7 +164,7 @@ def run(
             p = Path(p)  # to Path
             save_path = str(save_dir / p.name)  # im.jpg
             txt_path = str(save_dir / "labels" / p.stem) + ("" if dataset.mode == "image" else f"_{frame}")  # im.txt
-            s += "%gx%g " % im.shape[2:]  # print string
+            s += "{:g}x{:g} ".format(*im.shape[2:])  # print string
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             if len(det):
@@ -244,7 +245,7 @@ def run(
                     vid_writer[i].write(im0)
 
         # Print time (inference-only)
-        LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
+        LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1e3:.1f}ms")
 
     # Print results
     t = tuple(x.t / seen * 1e3 for x in dt)  # speeds per image
@@ -280,7 +281,7 @@ def parse_opt():
     parser.add_argument("--visualize", action="store_true", help="visualize features")
     parser.add_argument("--update", action="store_true", help="update all models")
     parser.add_argument("--project", default=ROOT / "runs/predict-seg", help="save results to project/name")
-    parser.add_argument("--name", default="yolov5m_7classes", help="save results to project/name")
+    parser.add_argument("--name", default="exp", help="save results to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--line-thickness", default=3, type=int, help="bounding box thickness (pixels)")
     parser.add_argument("--hide-labels", default=False, action="store_true", help="hide labels")

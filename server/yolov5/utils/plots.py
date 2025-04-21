@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Plotting utils."""
 
 import contextlib
@@ -18,9 +18,9 @@ from PIL import Image, ImageDraw
 from scipy.ndimage.filters import gaussian_filter1d
 from ultralytics.utils.plotting import Annotator
 
-from server.yolov5.utils import TryExcept, threaded
-from server.yolov5.utils.general import LOGGER, clip_boxes, increment_path, xywh2xyxy, xyxy2xywh
-from server.yolov5.utils.metrics import fitness
+from utils import TryExcept, threaded
+from utils.general import LOGGER, clip_boxes, increment_path, xywh2xyxy, xyxy2xywh
+from utils.metrics import fitness
 
 # Settings
 RANK = int(os.getenv("RANK", -1))
@@ -29,7 +29,8 @@ matplotlib.use("Agg")  # for writing to files only
 
 
 class Colors:
-    # Ultralytics color palette https://ultralytics.com/
+    """Provides an RGB color palette derived from Ultralytics color scheme for visualization tasks."""
+
     def __init__(self):
         """
         Initializes the Colors class with a palette derived from Ultralytics color scheme, converting hex codes to RGB.
@@ -75,13 +76,13 @@ class Colors:
 colors = Colors()  # create instance for 'from utils.plots import colors'
 
 
-def feature_visualization(x, module_type, stage, n=32, save_dir=Path("runs/detect/yolov5m_7classes")):
+def feature_visualization(x, module_type, stage, n=32, save_dir=Path("runs/detect/exp")):
     """
     x:              Features to be visualized
     module_type:    Module type
     stage:          Module stage within model
     n:              Maximum number of feature maps to plot
-    save_dir:       Directory to save results
+    save_dir:       Directory to save results.
     """
     if ("Detect" not in module_type) and (
         "Segment" not in module_type
@@ -124,6 +125,9 @@ def butter_lowpass_filtfilt(data, cutoff=1500, fs=50000, order=5):
 
     # https://stackoverflow.com/questions/28536191/how-to-filter-smooth-with-scipy-numpy
     def butter_lowpass(cutoff, fs, order):
+        """Applies a low-pass Butterworth filter to a signal with specified cutoff frequency, sample rate, and filter
+        order.
+        """
         nyq = 0.5 * fs
         normal_cutoff = cutoff / nyq
         return butter(order, normal_cutoff, btype="low", analog=False)
@@ -179,7 +183,7 @@ def plot_images(images, targets, paths=None, fname="images.jpg", names=None):
     # Annotate
     fs = int((h + w) * ns * 0.01)  # font size
     annotator = Annotator(mosaic, line_width=round(fs / 10), font_size=fs, pil=True, example=names)
-    for i in range(i + 1):
+    for i in range(bs):
         x, y = int(w * (i // ns)), int(h * (i % ns))  # block origin
         annotator.rectangle([x, y, x + w, y + h], None, (255, 255, 255), width=2)  # borders
         if paths:
@@ -285,11 +289,11 @@ def plot_val_study(file="", dir="", x=None):
         if plot2:
             s = ["P", "R", "mAP@.5", "mAP@.5:.95", "t_preprocess (ms/img)", "t_inference (ms/img)", "t_NMS (ms/img)"]
             for i in range(7):
-                ax[i].histogram_plot(x, y[i], ".-", linewidth=2, markersize=8)
+                ax[i].plot(x, y[i], ".-", linewidth=2, markersize=8)
                 ax[i].set_title(s[i])
 
         j = y[3].argmax() + 1
-        ax2.histogram_plot(
+        ax2.plot(
             y[5, 1:j],
             y[3, 1:j] * 1e2,
             ".-",
@@ -298,7 +302,7 @@ def plot_val_study(file="", dir="", x=None):
             label=f.stem.replace("study_coco_", "").replace("yolo", "YOLO"),
         )
 
-    ax2.histogram_plot(
+    ax2.plot(
         1e3 / np.array([209, 140, 97, 58, 35, 18]),
         [34.6, 40.5, 43.0, 47.5, 49.7, 51.5],
         "k.-",
@@ -368,7 +372,7 @@ def plot_labels(labels, names=(), save_dir=Path("")):
 
 def imshow_cls(im, labels=None, pred=None, names=None, nmax=25, verbose=False, f=Path("images.jpg")):
     """Displays a grid of images with optional labels and predictions, saving to a file."""
-    from server.yolov5.utils.augmentations import denormalize
+    from utils.augmentations import denormalize
 
     names = names or [f"class{i}" for i in range(1000)]
     blocks = torch.chunk(
@@ -446,8 +450,8 @@ def plot_results(file="path/to/results.csv", dir=""):
             for i, j in enumerate([1, 2, 3, 4, 5, 8, 9, 10, 6, 7]):
                 y = data.values[:, j].astype("float")
                 # y[y == 0] = np.nan  # don't show zero values
-                ax[i].histogram_plot(x, y, marker=".", label=f.stem, linewidth=2, markersize=8)  # actual results
-                ax[i].histogram_plot(x, gaussian_filter1d(y, sigma=3), ":", label="smooth", linewidth=2)  # smoothing line
+                ax[i].plot(x, y, marker=".", label=f.stem, linewidth=2, markersize=8)  # actual results
+                ax[i].plot(x, gaussian_filter1d(y, sigma=3), ":", label="smooth", linewidth=2)  # smoothing line
                 ax[i].set_title(s[j], fontsize=12)
                 # if j in [8, 9, 10]:  # share train and val loss y axes
                 #     ax[i].get_shared_y_axes().join(ax[i], ax[i - 5])
@@ -478,7 +482,7 @@ def profile_idetection(start=0, stop=0, labels=(), save_dir=""):
             for i, a in enumerate(ax):
                 if i < len(results):
                     label = labels[fi] if len(labels) else f.stem.replace("frames_", "")
-                    a.histogram_plot(t, results[i], marker=".", label=label, linewidth=1, markersize=5)
+                    a.plot(t, results[i], marker=".", label=label, linewidth=1, markersize=5)
                     a.set_title(s[i])
                     a.set_xlabel("time (s)")
                     # if fi == len(files) - 1:

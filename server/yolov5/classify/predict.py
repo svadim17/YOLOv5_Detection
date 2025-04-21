@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """
 Run YOLOv5 classification inference on images, videos, directories, globs, YouTube, webcam, streams, etc.
 
@@ -45,10 +45,10 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from ultralytics.utils.plotting import Annotator
 
-from server.yolov5.models.common import DetectMultiBackend
-from server.yolov5.utils.augmentations import classify_transforms
-from server.yolov5.utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
-from server.yolov5.utils.general import (
+from models.common import DetectMultiBackend
+from utils.augmentations import classify_transforms
+from utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
+from utils.general import (
     LOGGER,
     Profile,
     check_file,
@@ -61,7 +61,7 @@ from server.yolov5.utils.general import (
     print_args,
     strip_optimizer,
 )
-from server.yolov5.utils.torch_utils import select_device, smart_inference_mode
+from utils.torch_utils import select_device, smart_inference_mode
 
 
 @smart_inference_mode()
@@ -78,12 +78,13 @@ def run(
     visualize=False,  # visualize features
     update=False,  # update all models
     project=ROOT / "runs/predict-cls",  # save results to project/name
-    name="yolov5m_7classes",  # save results to project/name
+    name="exp",  # save results to project/name
     exist_ok=False,  # existing project/name ok, do not increment
     half=False,  # use FP16 half-precision inference
     dnn=False,  # use OpenCV DNN for ONNX inference
     vid_stride=1,  # video frame-rate stride
 ):
+    """Conducts YOLOv5 classification inference on diverse input sources and saves results."""
     source = str(source)
     save_img = not nosave and not source.endswith(".txt")  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -146,7 +147,7 @@ def run(
             save_path = str(save_dir / p.name)  # im.jpg
             txt_path = str(save_dir / "labels" / p.stem) + ("" if dataset.mode == "image" else f"_{frame}")  # im.txt
 
-            s += "%gx%g " % im.shape[2:]  # print string
+            s += "{:g}x{:g} ".format(*im.shape[2:])  # print string
             annotator = Annotator(im0, example=str(names), pil=True)
 
             # Print results
@@ -191,7 +192,7 @@ def run(
                     vid_writer[i].write(im0)
 
         # Print time (inference-only)
-        LOGGER.info(f"{s}{dt[1].dt * 1E3:.1f}ms")
+        LOGGER.info(f"{s}{dt[1].dt * 1e3:.1f}ms")
 
     # Print results
     t = tuple(x.t / seen * 1e3 for x in dt)  # speeds per image
@@ -218,7 +219,7 @@ def parse_opt():
     parser.add_argument("--visualize", action="store_true", help="visualize features")
     parser.add_argument("--update", action="store_true", help="update all models")
     parser.add_argument("--project", default=ROOT / "runs/predict-cls", help="save results to project/name")
-    parser.add_argument("--name", default="yolov5m_7classes", help="save results to project/name")
+    parser.add_argument("--name", default="exp", help="save results to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--half", action="store_true", help="use FP16 half-precision inference")
     parser.add_argument("--dnn", action="store_true", help="use OpenCV DNN for ONNX inference")

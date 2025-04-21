@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """
 Validate a trained YOLOv5 classification model on a classification dataset.
 
@@ -34,9 +34,9 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-from server.yolov5.models.common import DetectMultiBackend
-from server.yolov5.utils.dataloaders import create_classification_dataloader
-from server.yolov5.utils.general import (
+from models.common import DetectMultiBackend
+from utils.dataloaders import create_classification_dataloader
+from utils.general import (
     LOGGER,
     TQDM_BAR_FORMAT,
     Profile,
@@ -46,7 +46,7 @@ from server.yolov5.utils.general import (
     increment_path,
     print_args,
 )
-from server.yolov5.utils.torch_utils import select_device, smart_inference_mode
+from utils.torch_utils import select_device, smart_inference_mode
 
 
 @smart_inference_mode()
@@ -59,7 +59,7 @@ def run(
     workers=8,  # max dataloader workers (per RANK in DDP mode)
     verbose=False,  # verbose output
     project=ROOT / "runs/val-cls",  # save to project/name
-    name="yolov5m_7classes",  # save to project/name
+    name="exp",  # save to project/name
     exist_ok=False,  # existing project/name ok, do not increment
     half=False,  # use FP16 half-precision inference
     dnn=False,  # use OpenCV DNN for ONNX inference
@@ -68,6 +68,7 @@ def run(
     criterion=None,
     pbar=None,
 ):
+    """Validates a YOLOv5 classification model on a dataset, computing metrics like top1 and top5 accuracy."""
     # Initialize/load model and set device
     training = model is not None
     if training:  # called by train.py
@@ -157,7 +158,7 @@ def parse_opt():
     parser.add_argument("--workers", type=int, default=8, help="max dataloader workers (per RANK in DDP mode)")
     parser.add_argument("--verbose", nargs="?", const=True, default=True, help="verbose output")
     parser.add_argument("--project", default=ROOT / "runs/val-cls", help="save to project/name")
-    parser.add_argument("--name", default="yolov5m_7classes", help="save to project/name")
+    parser.add_argument("--name", default="exp", help="save to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--half", action="store_true", help="use FP16 half-precision inference")
     parser.add_argument("--dnn", action="store_true", help="use OpenCV DNN for ONNX inference")

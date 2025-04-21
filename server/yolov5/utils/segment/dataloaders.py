@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Dataloaders."""
 
 import os
@@ -7,7 +7,7 @@ import random
 import cv2
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, distributed
+from torch.utils.data import DataLoader
 
 from ..augmentations import augment_hsv, copy_paste, letterbox
 from ..dataloaders import InfiniteDataLoader, LoadImagesAndLabels, SmartDistributedSampler, seed_worker
@@ -39,6 +39,7 @@ def create_dataloader(
     overlap_mask=False,
     seed=0,
 ):
+    """Creates a dataloader for training, validating, or testing YOLO models with various dataset options."""
     if rect and shuffle:
         LOGGER.warning("WARNING ⚠️ --rect is incompatible with DataLoader shuffle, setting shuffle=False")
         shuffle = False
@@ -74,6 +75,7 @@ def create_dataloader(
         shuffle=shuffle and sampler is None,
         num_workers=nw,
         sampler=sampler,
+        drop_last=quad,
         pin_memory=True,
         collate_fn=LoadImagesAndLabelsAndMasks.collate_fn4 if quad else LoadImagesAndLabelsAndMasks.collate_fn,
         worker_init_fn=seed_worker,
@@ -82,6 +84,8 @@ def create_dataloader(
 
 
 class LoadImagesAndLabelsAndMasks(LoadImagesAndLabels):  # for training/testing
+    """Loads images, labels, and segmentation masks for training and testing YOLO models with augmentation support."""
+
     def __init__(
         self,
         path,
@@ -102,6 +106,7 @@ class LoadImagesAndLabelsAndMasks(LoadImagesAndLabels):  # for training/testing
         rank=-1,
         seed=0,
     ):
+        """Initializes the dataset with image, label, and mask loading capabilities for training/testing."""
         super().__init__(
             path,
             img_size,
@@ -127,9 +132,7 @@ class LoadImagesAndLabelsAndMasks(LoadImagesAndLabels):  # for training/testing
         index = self.indices[index]  # linear, shuffled, or image_weights
 
         hyp = self.hyp
-        mosaic = self.mosaic and random.random() < hyp["mosaic"]
-        masks = []
-        if mosaic:
+        if mosaic := self.mosaic and random.random() < hyp["mosaic"]:
             # Load mosaic
             img, labels, segments = self.load_mosaic(index)
             shapes = None
@@ -175,6 +178,7 @@ class LoadImagesAndLabelsAndMasks(LoadImagesAndLabels):  # for training/testing
                 )
 
         nl = len(labels)  # number of labels
+        masks = []
         if nl:
             labels[:, 1:5] = xyxy2xywhn(labels[:, 1:5], w=img.shape[1], h=img.shape[0], clip=True, eps=1e-3)
             if self.overlap:
@@ -315,7 +319,7 @@ def polygon2mask(img_size, polygons, color=1, downsample_ratio=1):
     cv2.fillPoly(mask, polygons, color=color)
     nh, nw = (img_size[0] // downsample_ratio, img_size[1] // downsample_ratio)
     # NOTE: fillPoly firstly then resize is trying the keep the same way
-    # of loss calculation when example_mask-ratio=1.
+    # of loss calculation when mask-ratio=1.
     mask = cv2.resize(mask, (nw, nh))
     return mask
 
@@ -336,7 +340,7 @@ def polygons2masks(img_size, polygons, color, downsample_ratio=1):
 
 
 def polygons2masks_overlap(img_size, segments, downsample_ratio=1):
-    """Return a (640, 640) overlap example_mask."""
+    """Return a (640, 640) overlap mask."""
     masks = np.zeros(
         (img_size[0] // downsample_ratio, img_size[1] // downsample_ratio),
         dtype=np.int32 if len(segments) > 255 else np.uint8,

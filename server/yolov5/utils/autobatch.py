@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Auto-batch utils."""
 
 from copy import deepcopy
@@ -6,8 +6,8 @@ from copy import deepcopy
 import numpy as np
 import torch
 
-from server.yolov5.utils.general import LOGGER, colorstr
-from server.yolov5.utils.torch_utils import profile
+from utils.general import LOGGER, colorstr
+from utils.torch_utils import profile
 
 
 def check_train_batch_size(model, imgsz=640, amp=True):

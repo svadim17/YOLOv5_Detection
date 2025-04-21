@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """
 Validate a trained YOLOv5 segment model on a segment dataset.
 
@@ -40,10 +40,10 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 import torch.nn.functional as F
 
-from server.yolov5.models.common import DetectMultiBackend
-from server.yolov5.models.yolo import SegmentationModel
-from server.yolov5.utils.callbacks import Callbacks
-from server.yolov5.utils.general import (
+from models.common import DetectMultiBackend
+from models.yolo import SegmentationModel
+from utils.callbacks import Callbacks
+from utils.general import (
     LOGGER,
     NUM_THREADS,
     TQDM_BAR_FORMAT,
@@ -61,13 +61,13 @@ from server.yolov5.utils.general import (
     xywh2xyxy,
     xyxy2xywh,
 )
-from server.yolov5.utils.metrics import ConfusionMatrix, box_iou
-from server.yolov5.utils.plots import output_to_target, plot_val_study
-from server.yolov5.utils.segment.dataloaders import create_dataloader
-from server.yolov5.utils.segment.general import mask_iou, process_mask, process_mask_native, scale_image
-from server.yolov5.utils.segment.metrics import Metrics, ap_per_class_box_and_mask
-from server.yolov5.utils.segment.plots import plot_images_and_masks
-from server.yolov5.utils.torch_utils import de_parallel, select_device, smart_inference_mode
+from utils.metrics import ConfusionMatrix, box_iou
+from utils.plots import output_to_target, plot_val_study
+from utils.segment.dataloaders import create_dataloader
+from utils.segment.general import mask_iou, process_mask, process_mask_native, scale_image
+from utils.segment.metrics import Metrics, ap_per_class_box_and_mask
+from utils.segment.plots import plot_images_and_masks
+from utils.torch_utils import de_parallel, select_device, smart_inference_mode
 
 
 def save_one_txt(predn, save_conf, shape, file):
@@ -91,6 +91,7 @@ def save_one_json(predn, jdict, path, class_map, pred_masks):
     from pycocotools.mask import encode
 
     def single_encode(x):
+        """Encodes binary mask arrays into RLE (Run-Length Encoding) format for JSON serialization."""
         rle = encode(np.asarray(x[:, :, None], order="F", dtype="uint8"))[0]
         rle["counts"] = rle["counts"].decode("utf-8")
         return rle
@@ -120,7 +121,7 @@ def process_batch(detections, labels, iouv, pred_masks=None, gt_masks=None, over
         detections (array[N, 6]), x1, y1, x2, y2, conf, class
         labels (array[M, 5]), class, x1, y1, x2, y2
     Returns:
-        correct (array[N, 10]), for 10 IoU levels
+        correct (array[N, 10]), for 10 IoU levels.
     """
     if masks:
         if overlap:
@@ -170,7 +171,7 @@ def run(
     save_conf=False,  # save confidences in --save-txt labels
     save_json=False,  # save a COCO-JSON results file
     project=ROOT / "runs/val-seg",  # save to project/name
-    name="yolov5m_7classes",  # save to project/name
+    name="exp",  # save to project/name
     exist_ok=False,  # existing project/name ok, do not increment
     half=True,  # use FP16 half-precision inference
     dnn=False,  # use OpenCV DNN for ONNX inference
@@ -183,6 +184,9 @@ def run(
     compute_loss=None,
     callbacks=Callbacks(),
 ):
+    """Validates a YOLOv5 segmentation model on specified dataset, producing metrics, plots, and optional JSON
+    output.
+    """
     if save_json:
         check_requirements("pycocotools>=2.0.6")
         process = process_mask_native  # more accurate
@@ -465,7 +469,7 @@ def parse_opt():
     parser.add_argument("--save-conf", action="store_true", help="save confidences in --save-txt labels")
     parser.add_argument("--save-json", action="store_true", help="save a COCO-JSON results file")
     parser.add_argument("--project", default=ROOT / "runs/val-seg", help="save results to project/name")
-    parser.add_argument("--name", default="yolov5m_7classes", help="save to project/name")
+    parser.add_argument("--name", default="exp", help="save to project/name")
     parser.add_argument("--exist-ok", action="store_true", help="existing project/name ok, do not increment")
     parser.add_argument("--half", action="store_true", help="use FP16 half-precision inference")
     parser.add_argument("--dnn", action="store_true", help="use OpenCV DNN for ONNX inference")

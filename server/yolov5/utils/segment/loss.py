@@ -1,3 +1,5 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,7 +12,8 @@ from .general import crop_mask
 
 
 class ComputeLoss:
-    # Compute losses
+    """Computes the YOLOv5 model's loss components including classification, objectness, box, and mask losses."""
+
     def __init__(self, model, autobalance=False, overlap=False):
         """Initializes the compute loss function for YOLOv5 models with options for autobalancing and overlap
         handling.
@@ -46,7 +49,7 @@ class ComputeLoss:
     def __call__(self, preds, targets, masks):  # predictions, targets, model
         """Evaluates YOLOv5 model's loss for given predictions, targets, and masks; returns total loss components."""
         p, proto = preds
-        bs, nm, mask_h, mask_w = proto.shape  # batch size, number of masks, example_mask height, example_mask width
+        bs, nm, mask_h, mask_w = proto.shape  # batch size, number of masks, mask height, mask width
         lcls = torch.zeros(1, device=self.device)
         lbox = torch.zeros(1, device=self.device)
         lobj = torch.zeros(1, device=self.device)
@@ -58,8 +61,7 @@ class ComputeLoss:
             b, a, gj, gi = indices[i]  # image, anchor, gridy, gridx
             tobj = torch.zeros(pi.shape[:4], dtype=pi.dtype, device=self.device)  # target obj
 
-            n = b.shape[0]  # number of targets
-            if n:
+            if n := b.shape[0]:
                 pxy, pwh, _, pcls, pmask = pi[b, a, gj, gi].split((2, 2, 1, self.nc, nm), 1)  # subset of predictions
 
                 # Box regression
@@ -87,7 +89,7 @@ class ComputeLoss:
                 # Mask regression
                 if tuple(masks.shape[-2:]) != (mask_h, mask_w):  # downsample
                     masks = F.interpolate(masks[None], (mask_h, mask_w), mode="nearest")[0]
-                marea = xywhn[i][:, 2:].prod(1)  # example_mask width, height normalized
+                marea = xywhn[i][:, 2:].prod(1)  # mask width, height normalized
                 mxyxy = xywh2xyxy(xywhn[i] * torch.tensor([mask_w, mask_h, mask_w, mask_h], device=self.device))
                 for bi in b.unique():
                     j = b == bi  # matching index
@@ -113,7 +115,7 @@ class ComputeLoss:
         return loss * bs, torch.cat((lbox, lseg, lobj, lcls)).detach()
 
     def single_mask_loss(self, gt_mask, pred, proto, xyxy, area):
-        """Calculates and normalizes single example_mask loss for YOLOv5 between predicted and ground truth masks."""
+        """Calculates and normalizes single mask loss for YOLOv5 between predicted and ground truth masks."""
         pred_mask = (pred @ proto.view(self.nm, -1)).view(-1, *proto.shape[1:])  # (n,32) @ (32,80,80) -> (n,80,80)
         loss = F.binary_cross_entropy_with_logits(pred_mask, gt_mask, reduction="none")
         return (crop_mask(loss, xyxy).mean(dim=(1, 2)) / area).mean()

@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 # WARNING ⚠️ wandb is deprecated and will be removed in future release.
 # See supported integrations at https://github.com/ultralytics/yolov5#integrations
@@ -9,7 +9,7 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 
-from server.yolov5.utils.general import LOGGER, colorstr
+from utils.general import LOGGER, colorstr
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[3]  # YOLOv5 root directory
@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 RANK = int(os.getenv("RANK", -1))
 DEPRECATION_WARNING = (
     f"{colorstr('wandb')}: WARNING ⚠️ wandb is deprecated and will be removed in a future release. "
-    f'See supported integrations at https://github.com/ultralytics/yolov5#integrations.'
+    f"See supported integrations at https://github.com/ultralytics/yolov5#integrations."
 )
 
 try:
@@ -47,9 +47,9 @@ class WandbLogger:
         """
         - Initialize WandbLogger instance
         - Upload dataset if opt.upload_dataset is True
-        - Setup training processes if job_type is 'Training'
+        - Setup training processes if job_type is 'Training'.
 
-        arguments:
+        Arguments:
         opt (namespace) -- Commandline arguments for this run
         run_id (str) -- Run ID of W&B run to be resumed
         job_type (str) -- To set the job_type for this run
@@ -70,7 +70,7 @@ class WandbLogger:
                 resume="allow",
                 project="YOLOv5" if opt.project == "runs/train" else Path(opt.project).stem,
                 entity=opt.entity,
-                name=opt.name if opt.name != "yolov5m_7classes" else None,
+                name=opt.name if opt.name != "exp" else None,
                 job_type=job_type,
                 id=run_id,
                 allow_val_change=True,
@@ -88,9 +88,9 @@ class WandbLogger:
         Setup the necessary processes for training YOLO models:
           - Attempt to download model checkpoint and dataset artifacts if opt.resume stats with WANDB_ARTIFACT_PREFIX
           - Update data_dict, to contain info of previous run if resumed and the paths of dataset artifact if downloaded
-          - Setup log_dict, initialize bbox_interval
+          - Setup log_dict, initialize bbox_interval.
 
-        arguments:
+        Arguments:
         opt (namespace) -- commandline arguments for this run
 
         """
@@ -120,7 +120,7 @@ class WandbLogger:
         """
         Log the model checkpoint as W&B artifact.
 
-        arguments:
+        Arguments:
         path (Path)   -- Path of directory containing the checkpoints
         opt (namespace) -- Command line arguments for this run
         epoch (int)  -- Current epoch number
@@ -159,7 +159,7 @@ class WandbLogger:
         """
         Save the metrics to the logging dictionary.
 
-        arguments:
+        Arguments:
         log_dict (Dict) -- metrics/media to be logged in current step
         """
         if self.wandb_run:
@@ -170,7 +170,7 @@ class WandbLogger:
         """
         Commit the log_dict, model artifacts and Tables to W&B and flush the log_dict.
 
-        arguments:
+        Arguments:
         best_result (boolean): Boolean representing if the result of this evaluation is best or not
         """
         if self.wandb_run:
@@ -197,7 +197,7 @@ class WandbLogger:
 
 @contextmanager
 def all_logging_disabled(highest_level=logging.CRITICAL):
-    """source - https://gist.github.com/simon-weber/7853144
+    """Source - https://gist.github.com/simon-weber/7853144
     A context manager that will prevent any logging messages triggered during the body from being processed.
     :param highest_level: the maximum logging level in use.
       This would only need to be changed if a custom level greater than CRITICAL is defined.

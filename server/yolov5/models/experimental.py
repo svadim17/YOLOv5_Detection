@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Experimental modules."""
 
 import math
@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from server.yolov5.utils.downloads import attempt_download
+from utils.downloads import attempt_download
 
 
 class Sum(nn.Module):
@@ -91,7 +91,7 @@ def attempt_load(weights, device=None, inplace=True, fuse=True):
 
     Example inputs: weights=[a,b,c] or a single model weights=[a] or weights=a.
     """
-    from server.yolov5.models.yolo import Detect, Model
+    from models.yolo import Detect, Model
 
     model = Ensemble()
     for w in weights if isinstance(weights, list) else [weights]:

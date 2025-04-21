@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """
 YOLO-specific modules.
 
@@ -25,7 +25,7 @@ if str(ROOT) not in sys.path:
 if platform.system() != "Windows":
     ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-from server.yolov5.models.common import (
+from models.common import (
     C3,
     C3SPP,
     C3TR,
@@ -49,11 +49,11 @@ from server.yolov5.models.common import (
     GhostConv,
     Proto,
 )
-from server.yolov5.models.experimental import MixConv2d
-from server.yolov5.utils.autoanchor import check_anchor_order
-from server.yolov5.utils.general import LOGGER, check_version, check_yaml, colorstr, make_divisible, print_args
-from server.yolov5.utils.plots import feature_visualization
-from server.yolov5.utils.torch_utils import (
+from models.experimental import MixConv2d
+from utils.autoanchor import check_anchor_order
+from utils.general import LOGGER, check_version, check_yaml, colorstr, make_divisible, print_args
+from utils.plots import feature_visualization
+from utils.torch_utils import (
     fuse_conv_and_bn,
     initialize_weights,
     model_info,
@@ -70,7 +70,8 @@ except ImportError:
 
 
 class Detect(nn.Module):
-    # YOLOv5 Detect head for detection models
+    """YOLOv5 Detect head for processing input tensors and generating detection outputs in object detection models."""
+
     stride = None  # strides computed during build
     dynamic = False  # force grid reconstruction
     export = False  # export mode
@@ -127,9 +128,10 @@ class Detect(nn.Module):
 
 
 class Segment(Detect):
-    # YOLOv5 Segment head for segmentation models
+    """YOLOv5 Segment head for segmentation models, extending Detect with mask and prototype layers."""
+
     def __init__(self, nc=80, anchors=(), nm=32, npr=256, ch=(), inplace=True):
-        """Initializes YOLOv5 Segment head with options for example_mask count, protos, and channel adjustments."""
+        """Initializes YOLOv5 Segment head with options for mask count, protos, and channel adjustments."""
         super().__init__(nc, anchors, ch, inplace)
         self.nm = nm  # number of masks
         self.npr = npr  # number of protos
@@ -214,7 +216,8 @@ class BaseModel(nn.Module):
 
 
 class DetectionModel(BaseModel):
-    # YOLOv5 detection model
+    """YOLOv5 detection model class for object detection tasks, supporting custom configurations and anchors."""
+
     def __init__(self, cfg="yolov5s.yaml", ch=3, nc=None, anchors=None):
         """Initializes YOLOv5 model with configuration file, input channels, number of classes, and custom anchors."""
         super().__init__()
@@ -242,10 +245,14 @@ class DetectionModel(BaseModel):
         # Build strides, anchors
         m = self.model[-1]  # Detect()
         if isinstance(m, (Detect, Segment)):
+
+            def _forward(x):
+                """Passes the input 'x' through the model and returns the processed output."""
+                return self.forward(x)[0] if isinstance(m, Segment) else self.forward(x)
+
             s = 256  # 2x min stride
             m.inplace = self.inplace
-            forward = lambda x: self.forward(x)[0] if isinstance(m, Segment) else self.forward(x)
-            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])  # forward
+            m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward
             check_anchor_order(m)
             m.anchors /= m.stride.view(-1, 1, 1)
             self.stride = m.stride
@@ -328,14 +335,16 @@ Model = DetectionModel  # retain YOLOv5 'Model' class for backwards compatibilit
 
 
 class SegmentationModel(DetectionModel):
-    # YOLOv5 segmentation model
+    """YOLOv5 segmentation model for object detection and segmentation tasks with configurable parameters."""
+
     def __init__(self, cfg="yolov5s-seg.yaml", ch=3, nc=None, anchors=None):
         """Initializes a YOLOv5 segmentation model with configurable params: cfg (str) for configuration, ch (int) for channels, nc (int) for num classes, anchors (list)."""
         super().__init__(cfg, ch, nc, anchors)
 
 
 class ClassificationModel(BaseModel):
-    # YOLOv5 classification model
+    """YOLOv5 classification model for image classification tasks, initialized with a config file or detection model."""
+
     def __init__(self, cfg=None, model=None, nc=1000, cutoff=10):
         """Initializes YOLOv5 model with config file `cfg`, input channels `ch`, number of classes `nc`, and `cuttoff`
         index.

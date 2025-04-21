@@ -67,7 +67,11 @@ class NNProcessing(object):
         super().__init__()
 
         self.script_path = os.path.dirname(__file__)
-        self.weights = os.path.join(self.script_path, 'runs', model_weights)
+        try:
+            self.weights = os.path.join(self.script_path, 'runs', model_weights)
+            print(self.weights)
+        except Exception as e:
+            print(e)
         self.project_path = self.script_path
 
         self.name = name
