@@ -11,6 +11,12 @@ enum DroneType {
   Wifi = 3;
 }
 
+enum Status{
+   NoError = 0;
+   Error = 1;
+   Warning = 2;
+}
+
 enum ConnectionState {
   Connected = 0;
   Disconnected = 1;
@@ -47,7 +53,7 @@ message VoidRequest {                           // Пустой запрос
 }
 
 message ServerErrorResponse {                   // Сообщение для стрима ошибок
-    bool status = 1;
+    Status status = 1;
     string msg = 2;
 }
 

@@ -57,9 +57,9 @@ class AlinxException(Exception):
 
 
 class ErrorFlag(Enum):
-    no_error = 0
-    error = 1
-    warning = 2
+    NoError = 0
+    Error = 1
+    Warning = 2
 
 
 

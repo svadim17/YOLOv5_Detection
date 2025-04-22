@@ -6,11 +6,11 @@ import time
 from multiprocessing import Process, Queue, Pipe, Event
 from loguru import logger
 import yaml
-import sys
 import custom_utils
 import os
 from tcp_control_alinx import FCM_Alinx, Task_
 from client_process import Client
+from monitoring_process import start_monitoring
 
 
 logger.remove(0)
@@ -67,12 +67,13 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
 
     def ServerErrorStream(self, request, context):
         self.custom_logger.debug(f'Start server error stream ')
+        start_monitoring(self.error_queues['gRPC'])
         while True:
             for proc_name, q in self.error_queues.items():
                 while not q.empty():
                     error = q.get()
-                    if error['status']:
-                        yield API_pb2.ServerErrorResponse(status=error['status'], msg=error['msg'])
+                    #if error['status']:
+                    yield API_pb2.ServerErrorResponse(status=error['status'], msg=error['msg'])
                 else:
                     time.sleep(0.005)
 
