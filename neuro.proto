@@ -15,6 +15,7 @@ enum Status{
    NoError = 0;
    Error = 1;
    Warning = 2;
+   Telemetry = 3;
 }
 
 enum ConnectionState {

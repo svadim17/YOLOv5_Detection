@@ -53,9 +53,11 @@ class gRPCServerErrorThread(QtCore.QThread):
                         self.logger_.info('gRPCThread is interrupted.')
                         break
                     if err.status == 0:
-                        self.logger_.info(f'{err.msg}')
+                        self.logger_.trace(f'{err.msg}')
                     elif err.status == 1:
-                        self.logger_.critical(f'SERVER ERROR: {err.msg}')
+                        self.logger_.error(f'SERVER ERROR: {err.msg}')
+                    if err.status == 3:
+                        self.logger_.info(f'{err.msg}')
                     self.msleep(5)
             except grpc.RpcError as rpc_error:
                 if rpc_error.code() == grpc.StatusCode.UNAVAILABLE:
