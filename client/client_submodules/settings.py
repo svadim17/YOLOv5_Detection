@@ -14,6 +14,7 @@ class SettingsWidget(QWidget):
         super().__init__()
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         self.setWindowTitle('Settings')
+        self.setWindowIcon(QIcon('./assets/icons/light/btn_settings.png'))
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(15)
         self.setLayout(self.main_layout)
@@ -743,3 +744,16 @@ if __name__ == '__main__':
                             logger_=loguru.logger)
     window.show()
     app.exec()
+
+{"CPU load": 37.6,
+ "RAM used": 25625.4921875,
+ "RAM total": 130813.3046875,
+ "NET up": 0.0,
+ "NET down": 1.01171875,
+ "GPU load": "70",
+ "GPU temp": "58",
+ "GPU mem_used": "3111",
+ "GPU mem_total": "8192"}
+
+# CPU_TEMP
+

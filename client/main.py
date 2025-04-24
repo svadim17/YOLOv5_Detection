@@ -11,6 +11,9 @@ from client_submodules.recognition_widget import RecognitionWidget
 from client_submodules.settings import SettingsWidget
 from client_submodules.processing import Processor
 from client_submodules.sound_thread import SoundThread
+from client_submodules.telemetry import TelemetryWidget
+
+
 import yaml
 from loguru import logger
 try:
@@ -34,6 +37,7 @@ class MainWindow(QMainWindow):
         # self.setCentralWidget(central_widget)
 
         self.setWindowTitle('NN Recognition v25.17')
+        self.setWindowIcon(QIcon('./assets/icons/nn1.ico'))
         self.config = self.load_config()
         self.server_ip = list(self.config['server_addr'])
         self.grpc_port = self.config['server_port']
@@ -160,6 +164,10 @@ class MainWindow(QMainWindow):
 
         self.settingsWidget.mainTab.cb_spectrogram_resolution.currentTextChanged.connect(lambda a:
         self.set_spectrogram_resolution(self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
+
+        self.telemetryWidget = TelemetryWidget(theme_type=self.theme_type)
+        self.gRPCErrorTread.signal_telemetry.connect(self.telemetryWidget.udpate_widgets_states)
+
         self.show()
         self.move_window_to_center()
 
@@ -172,6 +180,10 @@ class MainWindow(QMainWindow):
         self.act_settings.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_settings.png'))
         self.act_settings.triggered.connect(self.open_settings)
 
+        self.act_telemetry = QAction('Telemetry', self)
+        self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
+        self.act_telemetry.triggered.connect(self.open_telemetry)
+
     def create_actions(self):
         self.act_start = QAction()
         self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
@@ -183,6 +195,7 @@ class MainWindow(QMainWindow):
         self.toolBar = QToolBar('Toolbar')
         self.toolBar.addAction(self.act_start)
         self.toolBar.addAction(self.act_settings)
+        self.toolBar.addAction(self.act_telemetry)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
     def init_recognition_widgets(self):
@@ -278,6 +291,9 @@ class MainWindow(QMainWindow):
 
     def open_settings(self):
         self.settingsWidget.show()
+
+    def open_telemetry(self):
+        self.telemetryWidget.show()
 
     def link_events(self):
         self.gRPCThread.signal_dataStream_response.connect(
@@ -408,6 +424,7 @@ class MainWindow(QMainWindow):
                                               "border: 1px solid #000000;"
                                               "padding: 2px;}")
         self.act_settings.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_settings.png'))
+        self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
         self.settingsWidget.soundTab.btn_play_sound.setIcon(QIcon(f'./assets/icons/{self.theme_type}/play_sound.png'))
         for widget in self.recogn_widgets.values():
             widget.theme_changed(theme=self.theme_type)

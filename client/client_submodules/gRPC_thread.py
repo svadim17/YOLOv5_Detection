@@ -1,3 +1,4 @@
+import json
 import time
 import grpc
 from grpc import StatusCode
@@ -30,7 +31,7 @@ def connect_to_gRPC_server(ip: str, port: str):
 
 
 class gRPCServerErrorThread(QtCore.QThread):
-    signal_dataStream_response = pyqtSignal(dict)
+    signal_telemetry = pyqtSignal(dict)
 
     def __init__(self, channel, logger_):
         QtCore.QThread.__init__(self)
@@ -58,6 +59,8 @@ class gRPCServerErrorThread(QtCore.QThread):
                         self.logger_.error(f'SERVER ERROR: {err.msg}')
                     if err.status == 3:
                         self.logger_.info(f'{err.msg}')
+                        msg_dict = json.loads(err.msg)
+                        self.signal_telemetry.emit(msg_dict)
                     self.msleep(5)
             except grpc.RpcError as rpc_error:
                 if rpc_error.code() == grpc.StatusCode.UNAVAILABLE:

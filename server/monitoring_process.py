@@ -80,10 +80,10 @@ def monitor_system(interval=1.0, queue_=None):
                    "NET down": down_speed}
             try:
                 usage, temp, mem_used, mem_total = output.decode().strip().split(", ")
-                msg['GPU load'] = usage
-                msg['GPU temp'] = temp
-                msg['GPU mem_used'] = mem_used
-                msg['GPU mem_total'] = mem_total
+                msg['GPU load'] = float(usage)
+                msg['GPU temp'] = float(temp)
+                msg['GPU mem_used'] = float(mem_used)
+                msg['GPU mem_total'] = float(mem_total)
             except Exception as e:
                 pass
 
@@ -119,9 +119,9 @@ def monitor_jetson(interval=2.0, queue_=None):
             gpu_load = stats.get("GPU", "N/A")
 
             if queue_ is not None:
-                msg = {"GPU Load": gpu_load,
-                             "CPU Temp": cpu_temp,
-                             "GPU Temp": gpu_temp, }
+                msg = {"GPU load": float(gpu_load),
+                        "CPU temp": float(cpu_temp),
+                        "GPU temp": float(gpu_temp), }
                 queue_.put({'status': 3, 'msg': json.dumps(msg)})
             else:
                 msg = (f"[JETSON] ~ "
