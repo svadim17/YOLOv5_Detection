@@ -11,7 +11,7 @@ def detect_platform():
         # Jetson имеет специфичный файл в /proc
         with open("/proc/device-tree/model") as f:
             model = f.read().strip()
-            if "NVIDIA" in model:
+            if "NVIDIA" in model or 'Jetson' in model or 'jetson' in model or 'Nvidia' in model:
                 return "jetson"
     except Exception:
         pass
