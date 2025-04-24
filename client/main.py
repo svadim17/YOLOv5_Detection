@@ -432,7 +432,7 @@ class MainWindow(QMainWindow):
             self.act_start.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_stop.png'))
         else:
             self.act_start.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_start.png'))
-
+        self.telemetryWidget.theme_changed(type=self.theme_type)
     # def closeEvent(self, a0):
     #     self.gRPCThread.gRPC_channel.close()
 

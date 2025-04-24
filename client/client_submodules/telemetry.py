@@ -26,21 +26,26 @@ class TelemetryWidget(QWidget):
         self.add_widgets_to_layout()
 
     def create_widgets(self):
+        if self.theme_type == 'light':
+            text_color = 'black'
+        else:
+            text_color = 'white'
+
         self.box_cpu = QGroupBox('CPU')
-        self.cpu_load_circle = CircularProgress(label='LOAD')
+        self.cpu_load_circle = CircularProgress(label='LOAD', text_color=text_color)
         self.cpu_temp_label = QLabel('TEMP: --°C')
         self.cpu_temp_label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
 
         self.box_gpu = QGroupBox('GPU')
-        self.gpu_load_circle = CircularProgress(label='LOAD')
-        self.gpu_memory_circle = CircularProgress(label='MEM')
+        self.gpu_load_circle = CircularProgress(label='LOAD', text_color=text_color)
+        self.gpu_memory_circle = CircularProgress(label='MEM', text_color=text_color)
         self.gpu_progress_label = ProgressLabel(postfix='GB')
         self.gpu_temp_label = QLabel('TEMP: --°C')
         self.gpu_temp_label.setFont(QFont("Arial", 14, QFont.Weight.Medium))
 
 
         self.box_ram = QGroupBox('RAM')
-        self.ram_memory_circle = CircularProgress(label='MEM')
+        self.ram_memory_circle = CircularProgress(label='MEM', text_color=text_color)
         self.ram_progress_label = ProgressLabel(postfix='GB')
 
         self.box_network = QGroupBox('Network')
@@ -132,13 +137,26 @@ class TelemetryWidget(QWidget):
             self.network_up_label.setText(f'Up: {(up / 128):.1f} Mb/s')       # приходит в КБ, а перевожу в Мб (делю на 128)
             self.network_down_label.setText(f'Down: {(down / 128):.1f} Mb/s')       # приходит в КБ, а перевожу в Мб (делю на 128)
 
+    def theme_changed(self, type):
+        self.theme_type = type
+        if self.theme_type == 'dark':
+            self.cpu_load_circle.text_color = 'white'
+            self.gpu_load_circle.text_color = 'white'
+            self.ram_memory_circle.text_color = 'white'
+            self.gpu_memory_circle.text_color = 'white'
+        else:
+            self.cpu_load_circle.text_color = 'black'
+            self.gpu_load_circle.text_color = 'black'
+            self.ram_memory_circle.text_color = 'black'
+            self.gpu_memory_circle.text_color = 'black'
 
 class CircularProgress(QWidget):
-    def __init__(self, label, color=QColor("#00ffff")):
+    def __init__(self, label, color=QColor("#00ffff"), text_color='white'):
         super().__init__()
         self.value = 0
         self.label = label
         self.color = color
+        self.text_color = text_color
         # self.setMinimumSize(50, 50)
 
     def setValue(self, val):
@@ -172,7 +190,7 @@ class CircularProgress(QWidget):
 
         # Draw text
         painter.resetTransform()
-        painter.setPen(QColor("white"))
+        painter.setPen(QColor(self.text_color))
         font = QFont("Arial", 14, QFont.Weight.Medium)
         painter.setFont(font)
         text = f"{self.label}\n{self.value:.0f}%"
