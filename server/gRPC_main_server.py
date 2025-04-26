@@ -54,6 +54,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.processes = {}
         self.data_queues = {}
         self.error_queues = {'gRPC': Queue(maxsize=40)}
+
         self.connections = self.config['connections']
         self.last_update_times = {}
 
@@ -72,8 +73,10 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             for proc_name, q in self.error_queues.items():
                 while not q.empty():
                     error = q.get()
-                    #if error['status']:
-                    yield API_pb2.ServerErrorResponse(status=error['status'], msg=error['msg'])
+                    if 'status' in error and 'msg' in error:
+                        yield API_pb2.ServerErrorResponse(status=error['status'], msg=error['msg'])
+                    else:
+                        self.custom_logger.error(f'Not correct error format: {error}')
                 else:
                     time.sleep(0.005)
 
@@ -84,31 +87,36 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             for channel_name, queue in self.data_queues.items():
                 if not queue.empty():
                     res = queue.get()
-                    if res is not None:
-                        band_name = res['name']
-                        channel_freq = res['channel_freq']
-                        Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0],
-                                                  freq=res['frequencies'][0]),
-                                API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1],
-                                                  freq=res['frequencies'][1]),
-                                API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2],
-                                                  freq=res['frequencies'][2]),
-                                API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3],
-                                                  freq=res['frequencies'][3])
-                                ]
+                    try:
+                        if res is not None:
+                            band_name = res['name']
+                            channel_freq = res['channel_freq']
+                            Uavs = [API_pb2.UavObject(type=API_pb2.DroneType.Autel, state=res['results'][0],
+                                                      freq=res['frequencies'][0]),
+                                    API_pb2.UavObject(type=API_pb2.DroneType.Fpv, state=res['results'][1],
+                                                      freq=res['frequencies'][1]),
+                                    API_pb2.UavObject(type=API_pb2.DroneType.Dji, state=res['results'][2],
+                                                      freq=res['frequencies'][2]),
+                                    API_pb2.UavObject(type=API_pb2.DroneType.Wifi, state=res['results'][3],
+                                                      freq=res['frequencies'][3])
+                                    ]
 
-                        # error_q = self.error_queues[channel_name].get()
-                        response_data = {'band_name': band_name, 'uavs': Uavs, 'channel_central_freq': channel_freq}
-                        if request.clear_img:
-                            response_data['clear_img'] = res['clear_img'].tobytes()
-                        if request.detected_img:
-                            response_data['detected_img'] = res['detected_img'].tobytes()
-                        if request.spectrum:
-                            response_data['spectrum'] = res['spectrum'].tobytes()
+                            # error_q = self.error_queues[channel_name].get()
+                            response_data = {'band_name': band_name, 'uavs': Uavs, 'channel_central_freq': channel_freq}
+                            if request.clear_img:
+                                response_data['clear_img'] = res['clear_img'].tobytes()
+                            if request.detected_img:
+                                response_data['detected_img'] = res['detected_img'].tobytes()
+                            if request.spectrum:
+                                response_data['spectrum'] = res['spectrum'].tobytes()
 
-                        yield API_pb2.DataResponse(**response_data)
-                        self.custom_logger.trace(f'Data was send from band {band_name}')
-                    self.last_update_times[channel_name] = time.time()
+                            yield API_pb2.DataResponse(**response_data)
+                            self.custom_logger.trace(f'Data was send from band {band_name}')
+                        self.last_update_times[channel_name] = time.time()
+                    except Exception as e:
+                        error_txt = f'An error occurred while unpacking data from the {band_name} to the client: {e}'
+                        self.custom_logger.error(error_txt)
+                        self.error_queues['gRPC'].put({'status': 1, 'msg': error_txt})
                 if time.time() - self.last_update_times[channel_name] > 32:
                     yield API_pb2.ServerErrorResponse(status=True, msg=f'Big ping from {channel_name}. '
                                                                        f'Trying to restart process!')
@@ -153,12 +161,8 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                 conn_name = request.connection_name
                 connection = self.connections[conn_name]
                 self.last_update_times[conn_name] = time.time()
-                hardware_type = str(connection['hardware']['type'])
-                try:
-                    # if self.alinxControlThread:
-                    #     if hardware_type == 'alinx' or hardware_type == 'Alinx' or hardware_type == 'ALINX':
-                    #         self.init_alinxTCPControl()
 
+                try:
                     self.init_nn_client(conn_name=conn_name)
                     return API_pb2.StartChannelResponse(channelConnectionState=API_pb2.ConnectionState.Connected,
                                                         description=f'Connected successfully'
