@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         # central_widget = QWidget(self)
         # self.setCentralWidget(central_widget)
 
-        self.setWindowTitle('NN Recognition v25.17.4')
+        self.setWindowTitle('NN Recognition v25.18')
         self.setWindowIcon(QIcon('./assets/icons/nn1.ico'))
         self.config = self.load_config()
         self.server_ip = list(self.config['server_addr'])
