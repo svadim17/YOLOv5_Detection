@@ -135,11 +135,11 @@ def monitor_jetson(interval=2.0, queue_=None):
 
 def start_monitoring(q):
     platform = detect_platform()
-    t = Thread(target=monitor_system, args=(1.0, q), daemon=True)
+    t = Thread(target=monitor_system, args=(3.0, q), daemon=True)
     t.start()
     if platform == "jetson":
         import jtop
-        jt = Thread(target=monitor_jetson, args=(1.0, q), daemon=True)
+        jt = Thread(target=monitor_jetson, args=(3.0, q), daemon=True)
         jt.start()
 
 
