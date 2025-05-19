@@ -1,123 +1,325 @@
-import cv2
-import torch
-import numpy as np
-import os
-import time
-from ultralytics import YOLO
-import pandas
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.logger_ = logger
 
+        # central_widget = QWidget(self)
+        # self.setCentralWidget(central_widget)
 
-torch.cuda.empty_cache()
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f'Using device: {device}')
+        self.setWindowTitle('NN Recognition v25.18')
+        self.setWindowIcon(QIcon('./assets/icons/nn1.ico'))
+        self.config = self.load_config()
+        self.server_ip = list(self.config['server_addr'])
+        self.grpc_port = self.config['server_port']
+        self.map_list = list(self.config['map_list'])
+        self.show_img_status = bool(self.config['settings_main']['show_spectrogram'])
+        self.show_histogram_status = bool(self.config['settings_main']['show_histogram'])
+        self.show_spectrum_status = bool(self.config['settings_main']['show_spectrum'])
+        self.watchdog = bool(self.config['settings_main']['watchdog'])
+        self.welcome_window_state = bool(self.config['show_welcome_window'])
+        self.clear_img_status = False
 
-project_path = r'C:\Users\v.stecko\Desktop\YOLOv5 Project\server\yolov5'
-weights_1 = r"C:\Users\v.stecko\Desktop\YOLOv5 Project\server\yolov5\runs\yolov5m_6classes_BIG_AUGMENTATED_ver6.pt"
-version_1 = 'v5'
+        self.theme_type = self.config['settings_main']['theme']['type']
+        with open('app_themes.yaml', 'r', encoding='utf-8') as f:           # load available themes
+            self.themes = yaml.safe_load(f)
+        qdarktheme.setup_theme(theme=self.theme_type,
+                               custom_colors=self.themes[self.config['settings_main']['theme']['name']],
+                               additional_qss="QToolTip { "
+                                              "background-color: #ffff99;"
+                                              "color: #000000;"
+                                              "border: 1px solid #000000;"
+                                              "padding: 2px;}")
 
-img_folder_path = r"D:\YOLOv5 DATASET\STEP 8\IMAGES\dji_40M"
-all_classes = ['dji', 'wifi',  'autel_lite', 'autel_max_4n(t)', 'autel_tag', 'fpv']
+        self.recogn_widgets = {}
+        self.recogn_settings_widgets = {}
+        self.sound_states = {}
+        self.sound_classes_states = {}
+        for name in self.map_list:
+            self.sound_classes_states[name] = self.config['settings_sound']['classes_sound'][name]
 
-
-def load_model(version: str, project_path: str, weights: str):
-    if version == 'v5':
-        model = torch.hub.load(project_path, model='custom', path=weights, source='local')
-
-        model.iou = 0.8
-        model.conf = 0.4
-        model.agnostic = True
-    elif version == 'v10':
-        model = YOLO(weights)
-    else:
-        raise Exception(f"Unknown model version {version}")
-    return model
-
-
-def convert_result_to_pandas(results):
-    columns = ['xmin', 'ymin', 'xmax', 'ymax', 'confidence', 'class', 'name']
-
-    xyxy_data = []
-    results_copy = results.copy()
-    for r in results_copy:
-        if not r.boxes:
-            return pandas.DataFrame(columns=columns)
+        if self.welcome_window_state:
+            self.welcomeWindow = WelcomeWindow(server_addr=self.server_ip, server_port=self.grpc_port)
+            self.welcomeWindow.signal_connect_to_server.connect(self.connect_to_server)
+            self.welcomeWindow.finished.connect(self.welcome_window_closed)
+            self.welcomeWindow.show()
         else:
-            for box in r.boxes:
-                xyxy_data.append({
-                    'name': all_classes[int(box.cls.item())],
-                    'xmin': box.xyxy[0][0].item(),
-                    'ymin': box.xyxy[0][1].item(),
-                    'xmax': box.xyxy[0][2].item(),
-                    'ymax': box.xyxy[0][3].item(),
-                    'confidence': box.conf.item(),
-                    'class': box.cls.item()
-                })
+            self.connect_to_server(server_ip=self.server_ip[0], grpc_port=self.grpc_port)
 
-    df_result = pandas.DataFrame(xyxy_data)
-    return df_result
+    def connect_to_server(self, server_ip: str, grpc_port: str):
+        self.server_ip = server_ip
+        try:
+            self.gRPC_channel = connect_to_gRPC_server(ip=server_ip, port=grpc_port)
+            self.logger_.success(f'Successfully connected to {server_ip}:{grpc_port}!')
+            if self.welcome_window_state:
+                self.welcomeWindow.close()
+            else:
+                self.welcome_window_closed()
+        except Exception as e:
+            self.logger_.critical(f'Error with connecting to {server_ip}:{grpc_port}! \n{e}')
+
+    def welcome_window_closed(self):
+        self.gRPCThread = gRPCThread(channel=self.gRPC_channel,
+                                     map_list=self.map_list,
+                                     detected_img_status=self.show_img_status,
+                                     clear_img_status=self.clear_img_status,
+                                     spectrum_status=self.show_spectrum_status,
+                                     watchdog=self.watchdog,
+                                     logger_=self.logger_)
+        self.gRPCErrorTread = gRPCServerErrorThread(self.gRPC_channel, self.logger_)
+        self.available_channels, self.channels_info = self.gRPCThread.getAvailableChannelsRequest()
+        self.connectWindow = ConnectWindow(ip=self.config['server_addr'],
+                                           available_channels=self.available_channels,
+                                           channels_info=self.channels_info)
+        self.connectWindow.show()
+        self.connectWindow.finished.connect(self.connect_window_closed)
+
+        self.create_actions()
+
+        self.processor = Processor(logger_=self.logger_)
+
+        self.link_events()
+        self.adjustSize()
+
+    def connect_window_closed(self):
+        self.enabled_channels = self.connectWindow.enabled_channels
+        self.enabled_channels_info = self.connectWindow.enabled_channels_info
+
+        self.gRPCThread.init_enabled_channels(enabled_channels=self.enabled_channels)
+        self.signal_settings = self.gRPCThread.signalSettings(enabled_channels=self.enabled_channels)
+        for channel in self.enabled_channels:
+            self.sound_states[channel] = self.config['settings_sound']['sound_status']
+
+        self.create_menu()
+        self.create_toolbar()
+        self.settingsWidget = SettingsWidget(enabled_channels=self.enabled_channels,
+                                             config=self.config,
+                                             enabled_channels_info=self.enabled_channels_info,
+                                             logger_=self.logger_)
+
+        self.processor.signal_play_sound.connect(self.soundThread.start_stop_sound_thread)
+        self.processor.signal_channel_central_freq.connect(self.settingsWidget.usrpTab.update_channel_freq)
+        self.processor.signal_channel_central_freq.connect(lambda freq_dict:
+                                 self.settingsWidget.alinxTab.update_cb_central_freq(freq_dict['central_freq']))
+
+        self.settingsWidget.mainTab.cb_spectrogram_resolution.currentTextChanged.connect(lambda a:
+        self.set_spectrogram_resolution(self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
+
+        self.telemetryWidget = TelemetryWidget(theme_type=self.theme_type)
+        self.gRPCErrorTread.signal_telemetry.connect(self.telemetryWidget.udpate_widgets_states)
+
+        self.show()
+        self.move_window_to_center()
+
+    def set_spectrogram_resolution(self, new_resolution: tuple[int, int]):
+        for recogn_widget in self.recogn_widgets.values():
+            recogn_widget.resize_img(new_resolution)
+
+    def create_menu(self):
+        self.act_settings = QAction('Settings', self)
+        self.act_settings.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_settings.png'))
+        self.act_settings.triggered.connect(self.open_settings)
+
+        self.act_telemetry = QAction('Telemetry', self)
+        self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
+        self.act_telemetry.triggered.connect(self.open_telemetry)
+
+    def create_actions(self):
+        self.act_start = QAction()
+        self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
+        self.act_start.setText('Start')
+        self.act_start.setCheckable(True)
+        self.act_start.triggered.connect(self.change_connection_state)
+
+    def create_toolbar(self):
+        self.toolBar = QToolBar('Toolbar')
+        self.toolBar.addAction(self.act_start)
+        self.toolBar.addAction(self.act_settings)
+        self.toolBar.addAction(self.act_telemetry)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
+
+    def init_recognition_widgets(self):
+        current_zscale_settings_dict = self.gRPCThread.getCurrentZScaleRequest()
+        recogn_settings = self.gRPCThread.gerCurrentRecognitionSettings()
+        for channel_info in self.channels_info:
+            if channel_info.name in self.enabled_channels:
+                recogn_widget = RecognitionWidget(window_name=channel_info.name,
+                                                  map_list=self.map_list,
+                                                  img_show_status=self.show_img_status,
+                                                  zscale_settings=current_zscale_settings_dict[channel_info.name],
+                                                  recogn_options=recogn_settings[channel_info.name],
+                                                  signal_settings=self.signal_settings[channel_info.name],
+                                                  show_recogn_options=bool(self.config['settings_main']['show_recogn_options']),
+                                                  show_freq=bool(self.config['settings_main']['show_frequencies']),
+                                                  show_images=self.show_img_status,
+                                                  show_histogram=self.show_histogram_status,
+                                                  show_spectrum=self.show_spectrum_status,
+                                                  channel_info=channel_info,
+                                                  theme_type=self.theme_type,)
+                recogn_widget.recognOptions.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
+                recogn_widget.recognOptions.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
+                # recogn_widget.recognOptions.signal_freq_changed.connect(self.gRPCThread.setFrequency)
+                # recogn_widget.recognOptions.signal_gain_changed.connect(self.gRPCThread.setGain)
+                self.settingsWidget.mainTab.chb_show_recogn_options.stateChanged.connect(recogn_widget.add_remove_recogn_options)
+                self.settingsWidget.mainTab.chb_show_frequencies.stateChanged.connect(recogn_widget.show_frequencies)
+                recogn_widget.processOptions.signal_process_name.connect(self.gRPCThread.getProcessStatusRequest)
+                recogn_widget.processOptions.signal_restart_process_name.connect(self.gRPCThread.restartProcess)
+                self.gRPCThread.signal_process_status.connect(recogn_widget.processOptions.update_process_status)
+
+                self.recogn_widgets[channel_info.name] = recogn_widget
+        self.add_recogn_widgets(type_of_adding='left')
+        self.processor.init_recogn_widgets(recogn_widgets=self.recogn_widgets)
+
+    def add_recogn_widgets(self, type_of_adding: str):
+        if type_of_adding == 'default':
+            i = 1
+            for widget in self.recogn_widgets.values():
+                if i % 2 == 1:
+                    self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, widget)
+                else:
+                    self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, widget)
+                i += 1
+                widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+
+        elif type_of_adding == 'tabs':
+            i = 0
+            for widget in self.recogn_widgets.values():
+                self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, widget)
+
+            # табуляция между соседними виджетами
+            while i < len(self.recogn_widgets) - 1:
+                try:
+                    self.tabifyDockWidget(self.recogn_widgets[list(self.recogn_widgets.keys())[i]],
+                                          self.recogn_widgets[list(self.recogn_widgets.keys())[i + 1]])
+                    i += 2
+                except: pass
+
+        elif type_of_adding == 'left':
+            for widget in self.recogn_widgets.values():
+                self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, widget)
+
+    def change_connection_state(self, status: bool):
+        if status:
+            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
+            for channel in self.enabled_channels:
+                try:
+                    self.gRPCThread.startChannelRequest(channel_name=channel)
+                except:
+                    self.logger_.warning(f'Error with starting gRPC channel {channel} or channel is already started.')
+
+            self.gRPCThread.start()
+            self.gRPCErrorTread.start()
+        else:
+            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
+
+            # Stop gRPC main thread
+            if self.gRPCThread.isRunning():
+                self.gRPCThread.requestInterruption()
+                self.logger_.info('gRPCThread is requested to stop.')
+            else:
+                self.logger_.warning('gRPCThread is not running.')
+
+            # Stop gRPC Error thread
+            if self.gRPCErrorTread.isRunning():
+                self.gRPCErrorTread.requestInterruption()
+                self.logger_.info('gRPCErrorTread is requested to stop.')
+            else:
+                self.logger_.warning('gRPCErrorTread is not running.')
+
+    def open_recognition_settings(self, channel):
+        self.recogn_settings_widgets[channel].show()
+
+    def open_settings(self):
+        self.settingsWidget.show()
+
+    def open_telemetry(self):
+        self.telemetryWidget.show()
+
+    def link_events(self):
+        self.gRPCThread.signal_dataStream_response.connect(
+            lambda info: self.processor.parsing_data(info,
+                                                     self.settingsWidget.saveTab.chb_save_detected.isChecked(),
+                                                     ))
+
+    def change_img_status(self):
+        if self.show_img_status:
+            self.show_img_status = False
+            self.gRPCThread.show_img_status = False
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.disable_spectrogram()
+            self.change_connection_state(status=False)      # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Spectrogram showing stopped.')
+        else:
+            self.show_img_status = True
+            self.gRPCThread.show_img_status = True
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.enable_spectrogram()
+            self.change_connection_state(status=False)      # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Spectrogram showing started.')
+
+    def change_histogram_status(self):
+        if self.show_histogram_status:
+            self.show_histogram_status = False
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.disable_histogram()
+            self.logger_.info('Histogram showing stopped.')
+        else:
+            self.show_histogram_status = True
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.enable_histogram()
+            self.logger_.info('Histogram showing started.')
+
+    def change_spectrum_status(self):
+        if self.show_spectrum_status:
+            self.show_spectrum_status = False
+            self.gRPCThread.show_spectrum_status = False
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.disable_spectrum()
+            self.change_connection_state(status=False)      # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Spectrum showing stopped.')
+        else:
+            self.show_spectrum_status = True
+            self.gRPCThread.show_spectrum_status = True
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.enable_spectrum()
+            self.change_connection_state(status=False)      # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Spectrum showing started.')
+
+    def change_sound_states(self):
+        pass
+
+    def move_window_to_center(self):
+        # Получаем размеры экрана
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.geometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+
+        # Получаем размеры окна
+        window_width = self.width()
+        window_height = self.height()
+
+        # Вычисляем координаты для центра экрана
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+
+        # Перемещаем окно в центр экрана
+        self.move(x, y)
 
 
-def processing(model, version, img):
-    if version == 'v5':
-        result = model(img, size=640)
-        df_result = result.pandas().xyxy[0]
-        detected_img = result.render()[0]
-    elif version == 'v10':
-        middle_result = model(img)
-        df_result = convert_result_to_pandas(results=middle_result)
-        detected_img = img.copy()
-        for result in middle_result:
-            for box in result.boxes:
-                cv2.rectangle(detected_img, (int(box.xyxy[0][0]), int(box.xyxy[0][1])),
-                              (int(box.xyxy[0][2]), int(box.xyxy[0][3])), (255, 255, 255), 2)
-                cv2.putText(detected_img, f"{result.names[int(box.cls[0])]}",
-                            (int(box.xyxy[0][0]), int(box.xyxy[0][1]) - 10),
-                            cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
-    else:
-        print('Error with processing !')
-    return df_result
-
-
-model_1 = load_model(version_1, project_path, weights_1)
-start_time = time.time()
-dji_counter = 0
-dji_file_count = 0
-for file in os.listdir(img_folder_path):
-    if file.endswith('.jpg'):
-        img_filepath = os.path.join(img_folder_path, file)  # get full path for signal
-        print(f'\nOpening and processing {img_filepath}...')
-
-        img = (cv2.imread(img_filepath, cv2.COLORMAP_INFERNO))
-        img_resize = cv2.resize(img, (640, 640))
-        norm_image = img.astype(np.uint8)
-
-        df_result = processing(model=model_1, version=version_1, img=norm_image.copy())
-        dji_count = (df_result['name'] == 'dji').sum()
-        dji_counter += dji_count
-        if dji_count > 0:
-            dji_file_count += 1
-print(f'Found {dji_counter} dji drones in {dji_file_count} files.')
-print(f'Total time is {time.time() - start_time}')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    qdarktheme.setup_theme(theme='dark')
+    main_window = MainWindow()
+    # main_window.welcomeWindow.show()
+    sys.exit(app.exec())
 
 
 

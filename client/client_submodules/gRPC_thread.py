@@ -5,8 +5,8 @@ from grpc import StatusCode
 import neuro_pb2_grpc as API_pb2_grpc
 import neuro_pb2 as API_pb2
 import custom_utils
-from PyQt6 import QtCore
-from PyQt6.QtCore import pyqtSignal
+from PySide6 import QtCore
+from PySide6.QtCore import Signal
 from collections import namedtuple
 
 ChannelInfo = namedtuple('ChannelInfo', ['name', 'hardware_type', 'central_freq'])
@@ -31,7 +31,7 @@ def connect_to_gRPC_server(ip: str, port: str):
 
 
 class gRPCServerErrorThread(QtCore.QThread):
-    signal_telemetry = pyqtSignal(dict)
+    signal_telemetry = Signal(dict)
 
     def __init__(self, channel, logger_):
         QtCore.QThread.__init__(self)
@@ -74,11 +74,11 @@ class gRPCServerErrorThread(QtCore.QThread):
 
 
 class gRPCThread(QtCore.QThread):
-    signal_dataStream_response = pyqtSignal(dict)
-    signal_process_status = pyqtSignal(bool)
-    signal_alinx_soft_ver = pyqtSignal(str)
-    signal_alinx_load_detect_state = pyqtSignal(str)
-    signal_nn_info = pyqtSignal(dict)
+    signal_dataStream_response = Signal(dict)
+    signal_process_status = Signal(bool)
+    signal_alinx_soft_ver = Signal(str)
+    signal_alinx_load_detect_state = Signal(str)
+    signal_nn_info = Signal(dict)
 
     def __init__(self, channel: int,
                  map_list: list,

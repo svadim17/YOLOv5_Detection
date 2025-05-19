@@ -94,7 +94,7 @@ connections:
     neural_network_settings:
       version: v5
       project_path: yolov5
-      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
       img_size:
       - 640
       - 640
@@ -113,8 +113,8 @@ connections:
       - fpv
       - dji
       - wifi
-      accumulation_size: 10
-      threshold: 0.4
+      accumulation_size: 25
+      threshold: 0.5
       exceedance: 0.5
   ch1:
     ip: 127.0.0.1
@@ -133,7 +133,7 @@ connections:
     neural_network_settings:
       version: v5
       project_path: yolov5
-      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
       img_size:
       - 640
       - 640
@@ -152,8 +152,8 @@ connections:
       - fpv
       - dji
       - wifi
-      accumulation_size: 10
-      threshold: 0.4
+      accumulation_size: 25
+      threshold: 0.5
       exceedance: 0.5
   ch2:
     ip: 127.0.0.1
@@ -172,7 +172,7 @@ connections:
     neural_network_settings:
       version: v5
       project_path: yolov5
-      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
       img_size:
       - 640
       - 640
@@ -211,7 +211,7 @@ connections:
     neural_network_settings:
       version: v5
       project_path: yolov5
-      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
       img_size:
       - 640
       - 640

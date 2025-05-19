@@ -1,8 +1,7 @@
-from PyQt6.QtWidgets import (QWidget, QDockWidget, QApplication, QSpinBox, QDoubleSpinBox,
+from PySide6.QtWidgets import (QWidget, QDockWidget, QApplication, QSpinBox, QDoubleSpinBox,
                              QAbstractSpinBox, QDialog, QCheckBox, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QSlider, QSpacerItem, QSizePolicy, QGroupBox)
-from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtCore import pyqtSlot, Qt, pyqtSignal
+from PySide6.QtCore import Signal, Qt
 import numpy as np
 import cv2
 import qdarktheme
@@ -10,8 +9,8 @@ import time
 
 
 class ProcessOptions(QWidget):
-    signal_process_name = pyqtSignal(str)
-    signal_restart_process_name = pyqtSignal(str)
+    signal_process_name = Signal(str)
+    signal_restart_process_name = Signal(str)
 
     def __init__(self, name: str):
         super().__init__()

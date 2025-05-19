@@ -1,7 +1,6 @@
-from PyQt6.QtWidgets import (QDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+from PySide6.QtWidgets import (QDialog, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
                              QGroupBox, QApplication)
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Qt
 import qdarktheme
 from collections import namedtuple
 

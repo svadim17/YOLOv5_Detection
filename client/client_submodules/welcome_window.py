@@ -1,13 +1,13 @@
 import time
-from PyQt6.QtWidgets import (QDialog, QApplication, QLineEdit, QVBoxLayout, QHBoxLayout, QPushButton,
+from PySide6.QtWidgets import (QDialog, QApplication, QLineEdit, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QGroupBox, QComboBox)
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt
 import qdarktheme
 
 
 class WelcomeWindow(QDialog):
-    signal_connect_to_server = pyqtSignal(str, str)
+    signal_connect_to_server = Signal(str, str)
 
     def __init__(self, server_addr: list, server_port: str):
         super().__init__()

@@ -1,18 +1,15 @@
-from PyQt6.QtWidgets import (QWidget, QDockWidget, QApplication, QSpinBox, QDoubleSpinBox,
+from PySide6.QtWidgets import (QWidget, QDockWidget, QApplication, QSpinBox, QDoubleSpinBox,
                              QAbstractSpinBox, QDialog, QCheckBox, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QSlider, QSpacerItem, QSizePolicy, QGroupBox, QComboBox, QToolTip)
-from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtCore import pyqtSlot, Qt, pyqtSignal, QPoint
-import numpy as np
-import cv2
+from PySide6.QtCore import Qt, Signal, QPoint, Slot
 import qdarktheme
 from .gRPC_thread import ChannelInfo
 
 
 class RecognitionOptions(QWidget):
-    signal_recogn_settings = pyqtSignal(str, int, float, float)
-    signal_zscale_changed = pyqtSignal(str, int, int)
-    signal_gain_changed = pyqtSignal(str, int)
+    signal_recogn_settings = Signal(str, int, float, float)
+    signal_zscale_changed = Signal(str, int, int)
+    signal_gain_changed = Signal(str, int)
 
     def __init__(self, name: str, zscale_settings: list, current_recogn_settings: dict, channel_info: ChannelInfo):
         super().__init__()
@@ -149,7 +146,7 @@ class RecognitionOptions(QWidget):
         self.main_layout.addWidget(self.box_decision)
         self.main_layout.addWidget(self.box_zscale)
 
-    @pyqtSlot(float)
+    @Slot(float)
     def slider_threshold_value_changed(self, value: float):
         self.slider_threshold.setValue(int(value * 100))
         # self.slider_threshold.setToolTip(str(value))
@@ -163,13 +160,13 @@ class RecognitionOptions(QWidget):
                                          self.spb_slider_threshold.value(),
                                          self.spb_exceedance.value())
 
-    @pyqtSlot(int)
+    @Slot(int)
     def slider_zmax_changed(self, value: int):
         self.slider_zscale_max.setValue(value)
         self.spb_slider_zscale_max.setValue(value)
         self.signal_zscale_changed.emit(self.name, self.slider_zscale_min.value(), self.slider_zscale_max.value())
 
-    @pyqtSlot(int)
+    @Slot(int)
     def slider_zmin_changed(self, value: int):
         self.slider_zscale_min.setValue(value)
         self.spb_slider_zscale_min.setValue(value)

@@ -1,5 +1,5 @@
-from PyQt6 import QtCore
-from PyQt6.QtCore import pyqtSignal
+from PySide6 import QtCore
+from PySide6.QtCore import Signal
 import os
 import datetime
 import cv2
@@ -7,8 +7,8 @@ import numpy as np
 
 
 class Processor(QtCore.QObject):
-    signal_play_sound = pyqtSignal(bool)
-    signal_channel_central_freq = pyqtSignal(dict)
+    signal_play_sound = Signal(bool)
+    signal_channel_central_freq = Signal(dict)
 
     def __init__(self, logger_):
         super().__init__()

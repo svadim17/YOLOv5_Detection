@@ -1,9 +1,9 @@
 import loguru
-from PyQt6.QtWidgets import (QWidget, QListWidget, QApplication, QSpacerItem, QSizePolicy,
+from PySide6.QtWidgets import (QWidget, QListWidget, QApplication, QSpacerItem, QSizePolicy,
                              QStackedWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QSlider, QTabWidget, QComboBox, QGroupBox, QSpinBox, QDoubleSpinBox)
-from PyQt6.QtGui import QPixmap, QImage, QFont, QIcon
-from PyQt6.QtCore import pyqtSlot, Qt, pyqtSignal
+from PySide6.QtGui import QPixmap, QImage, QFont, QIcon
+from PySide6.QtCore import Qt, Signal
 import qdarktheme
 from os import walk
 import yaml
@@ -322,8 +322,8 @@ class SaveStack(QWidget):
 
 
 class SoundTab(QWidget):
-    signal_sound_states = pyqtSignal(dict)
-    signal_sound_classes_states = pyqtSignal(dict)
+    signal_sound_states = Signal(dict)
+    signal_sound_classes_states = Signal(dict)
 
     def __init__(self, enabled_channels: list, config: dict, logger_):
         super().__init__()
@@ -495,8 +495,8 @@ class NNTab(QWidget):
 
 
 class AlinxTab(QWidget):
-    signal_autoscan_state = pyqtSignal(bool)
-    signal_set_central_freq = pyqtSignal(float)
+    signal_autoscan_state = Signal(bool)
+    signal_set_central_freq = Signal(float)
 
     def __init__(self, enabled_channels_info, autoscan, logger_):
         super().__init__()
@@ -633,8 +633,8 @@ class AlinxTab(QWidget):
 
 class USRPTab(QWidget):
 
-    signal_central_freq_changed = pyqtSignal(str, float)
-    signal_autoscan_state = pyqtSignal(bool)
+    signal_central_freq_changed = Signal(str, float)
+    signal_autoscan_state = Signal(bool)
 
     def __init__(self, enabled_channels: list, logger_):
         super().__init__()

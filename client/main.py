@@ -1,8 +1,11 @@
 import os
 import sys
-from PyQt6.QtWidgets import QMainWindow, QApplication, QToolBar
-from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import Qt
+# from PyQt6.QtWidgets import QMainWindow, QApplication, QToolBar
+# from PyQt6.QtGui import QIcon, QAction
+# from PyQt6.QtCore import Qt
+from PySide6.QtWidgets import QMainWindow, QApplication, QToolBar
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtCore import Qt
 import qdarktheme
 from client_submodules.gRPC_thread import gRPCThread, connect_to_gRPC_server, gRPCServerErrorThread
 from client_submodules.welcome_window import WelcomeWindow

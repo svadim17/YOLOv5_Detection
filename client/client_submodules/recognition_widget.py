@@ -1,8 +1,8 @@
-from PyQt6.QtWidgets import (QWidget, QDockWidget, QApplication, QTabWidget, QSlider, QSpinBox, QCheckBox,
+from PySide6.QtWidgets import (QWidget, QDockWidget, QApplication, QTabWidget, QSlider, QSpinBox, QCheckBox,
                              QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel, QSizePolicy, QMenu,
                              QTreeWidget, QTreeWidgetItem)
-from PyQt6.QtGui import QPixmap, QImage, QPainter, QFont, QCursor, QAction, QIcon
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt
+from PySide6.QtGui import QPixmap, QImage, QPainter, QFont, QCursor, QAction, QIcon
+from PySide6.QtCore import Slot, Qt
 import numpy as np
 import os
 import cv2
@@ -75,7 +75,7 @@ class RecognitionWidget(QDockWidget, QWidget):
 
         self.show_frequencies(state=int(show_freq))
 
-    @pyqtSlot(int)
+    @Slot(int)
     def change_accum_size(self, val: int):
         self.accum_size = val
         self.hist_deques = {name: deque(maxlen=self.accum_size) for name in self.map_list}
@@ -361,7 +361,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         else:
             self.spectrum_plot.hide()
 
-    @pyqtSlot(int)
+    @Slot(int)
     def show_frequencies(self, state: int):
         for dron_freq in self.drons_freq.values():
             for widget_ in dron_freq.values():
@@ -441,7 +441,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         painter.end()
         return QPixmap.fromImage(picture)
 
-    @pyqtSlot(dict)
+    @Slot(dict)
     def update_state(self, info: dict):
         band_name = info['band_name']
         channel_freq = info['channel_freq']
