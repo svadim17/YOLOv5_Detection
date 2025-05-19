@@ -16,12 +16,12 @@ connections:
     neural_network_settings:
       version: v5
       project_path: yolov5
-      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
       img_size:
       - 640
       - 640
-      z_min: -60
-      z_max: 70
+      z_min: -65
+      z_max: 55
     detection_settings:
       all_classes:
       - dji
@@ -46,17 +46,6 @@ connections:
       autoscan: false
       central_freq:
       - 5786500000
-#      - 4986500000
-#      - 5086500000
-#      - 5186500000
-#      - 5286500000
-#      - 5386500000
-#      - 5486500000
-#      - 5586500000
-#      - 5686500000
-#      - 5886500000
-#      - 5986500000
-#      - 6086500000
       receive_freq: true
     signal_settings:
       signal_width: 1024
@@ -66,11 +55,11 @@ connections:
     neural_network_settings:
       version: v5
       project_path: yolov5
-      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
+      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
       img_size:
       - 640
       - 640
-      z_min: -70
+      z_min: -76
       z_max: 48
     detection_settings:
       all_classes:
@@ -134,7 +123,7 @@ connections:
       type: USRP
       autoscan: false
       central_freq:
-        - 1180000000
+      - 1180000000
       receive_freq: false
     signal_settings:
       signal_width: 1024
@@ -146,23 +135,23 @@ connections:
       project_path: yolov5
       weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
-        - 640
-        - 640
+      - 640
+      - 640
       z_min: -60
       z_max: 70
     detection_settings:
       all_classes:
-        - dji
-        - wifi
-        - autel_lite
-        - autel_max_4n(t)
-        - autel_tag
-        - fpv
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
       map_list:
-        - autel
-        - fpv
-        - dji
-        - wifi
+      - autel
+      - fpv
+      - dji
+      - wifi
       accumulation_size: 10
       threshold: 0.4
       exceedance: 0.5
@@ -173,7 +162,7 @@ connections:
       type: USRP
       autoscan: false
       central_freq:
-        - 5786500000
+      - 5786500000
       receive_freq: false
     signal_settings:
       signal_width: 1024
@@ -185,23 +174,23 @@ connections:
       project_path: yolov5
       weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
-        - 640
-        - 640
+      - 640
+      - 640
       z_min: -60
       z_max: 70
     detection_settings:
       all_classes:
-        - dji
-        - wifi
-        - autel_lite
-        - autel_max_4n(t)
-        - autel_tag
-        - fpv
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
       map_list:
-        - autel
-        - fpv
-        - dji
-        - wifi
+      - autel
+      - fpv
+      - dji
+      - wifi
       accumulation_size: 10
       threshold: 0.4
       exceedance: 0.5
@@ -212,7 +201,7 @@ connections:
       type: USRP
       autoscan: false
       central_freq:
-        - 5240000000
+      - 5240000000
       receive_freq: false
     signal_settings:
       signal_width: 1024
@@ -224,23 +213,23 @@ connections:
       project_path: yolov5
       weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver5.pt
       img_size:
-        - 640
-        - 640
+      - 640
+      - 640
       z_min: -60
       z_max: 70
     detection_settings:
       all_classes:
-        - dji
-        - wifi
-        - autel_lite
-        - autel_max_4n(t)
-        - autel_tag
-        - fpv
+      - dji
+      - wifi
+      - autel_lite
+      - autel_max_4n(t)
+      - autel_tag
+      - fpv
       map_list:
-        - autel
-        - fpv
-        - dji
-        - wifi
+      - autel
+      - fpv
+      - dji
+      - wifi
       accumulation_size: 10
       threshold: 0.4
       exceedance: 0.5
@@ -249,15 +238,15 @@ freq_conversion_module:
   ip: 192.168.1.3
   port: 777
   freq_codes:
-    4_986_500000: 0x00
-    5_086_500000: 0x01
-    5_186_500000: 0x02
-    5_286_500000: 0x03
-    5_386_500000: 0x04
-    5_486_500000: 0x05
-    5_586_500000: 0x06
-    5_686_500000: 0x07
-    5_786_500000: 0x08
-    5_886_500000: 0x09
-    5_986_500000: 0x0A
-    6_086_500000: 0x0B
+    4986500000: 0
+    5086500000: 1
+    5186500000: 2
+    5286500000: 3
+    5386500000: 4
+    5486500000: 5
+    5586500000: 6
+    5686500000: 7
+    5786500000: 8
+    5886500000: 9
+    5986500000: 10
+    6086500000: 11
