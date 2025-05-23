@@ -31,3 +31,8 @@ settings_sound:
 show_welcome_window: true
 fcm:
   autoscan_frequency: false
+map:
+  base_position: [53.9312229, 27.6358432]
+  zoom_start: 15
+  min_zoom: 10
+  max_zoom: 17

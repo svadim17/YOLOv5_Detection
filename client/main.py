@@ -1,11 +1,13 @@
 import os
 import sys
+import time
+
 # from PyQt6.QtWidgets import QMainWindow, QApplication, QToolBar
 # from PyQt6.QtGui import QIcon, QAction
 # from PyQt6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QApplication, QToolBar
 from PySide6.QtGui import QIcon, QAction
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 import qdarktheme
 from client_submodules.gRPC_thread import gRPCThread, connect_to_gRPC_server, gRPCServerErrorThread
 from client_submodules.welcome_window import WelcomeWindow
@@ -15,6 +17,9 @@ from client_submodules.settings import SettingsWidget
 from client_submodules.processing import Processor
 from client_submodules.sound_thread import SoundThread
 from client_submodules.telemetry import TelemetryWidget
+from client_submodules.map_widget import MapWidget
+from client_submodules.map_widget import UAVObject
+
 
 
 import yaml
@@ -158,6 +163,7 @@ class MainWindow(QMainWindow):
         self.gRPCThread.signal_alinx_load_detect_state.connect(self.settingsWidget.alinxTab.update_load_detect_state)
         self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
         self.init_recognition_widgets()
+        self.init_map_widget()
         self.processor.init_sound_states(sound_states=self.sound_states)
         self.processor.init_sound_classes_states(sound_classes_states=self.sound_classes_states)
         self.processor.signal_play_sound.connect(self.soundThread.start_stop_sound_thread)
@@ -187,6 +193,10 @@ class MainWindow(QMainWindow):
         self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
         self.act_telemetry.triggered.connect(self.open_telemetry)
 
+        self.act_map = QAction('Map', self)
+        self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
+        self.act_map.triggered.connect(self.open_map)
+
     def create_actions(self):
         self.act_start = QAction()
         self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
@@ -199,6 +209,7 @@ class MainWindow(QMainWindow):
         self.toolBar.addAction(self.act_start)
         self.toolBar.addAction(self.act_settings)
         self.toolBar.addAction(self.act_telemetry)
+        self.toolBar.addAction(self.act_map)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
     def init_recognition_widgets(self):
@@ -261,9 +272,15 @@ class MainWindow(QMainWindow):
             for widget in self.recogn_widgets.values():
                 self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, widget)
 
+    def init_map_widget(self):
+        self.mapWidget = MapWidget(map_settings=self.config['map'])
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.mapWidget)
+        self.mapWidget.hide()
+
     def change_connection_state(self, status: bool):
         if status:
             self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
+            self.mapWidget.setup_test_movement()
             for channel in self.enabled_channels:
                 try:
                     self.gRPCThread.startChannelRequest(channel_name=channel)
@@ -289,6 +306,31 @@ class MainWindow(QMainWindow):
             else:
                 self.logger_.warning('gRPCErrorTread is not running.')
 
+    def init_drone_emulation(self):
+
+        self.obj = UAVObject(id='asalam',
+                                             name='DJI Phantom',
+                                             position_history=[
+                                                                [53.9329706, 27.6456251],
+                                                                [53.9331896, 27.6478315],],
+                                             altitude=127,
+                                             pilot_position=[53.9308304, 27.6468779],
+                                             serial_number='534645yfgsd5')
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.drone_emulate)
+        self.timer.start(2000)
+
+    def drone_emulate(self):
+        print("Add new location")
+        self.obj.position_history.append([i + 0.0005 for i in self.obj.position_history[-1]])
+        position_history = [
+            [53.9325706, 27.6451251],
+            [53.9332896, 27.6479315],
+            [53.9308304, 27.6468779],
+            [53.9305065, 27.6437918],
+            [53.9311214, 27.6398012]]
+        self.mapWidget.add_object(self.obj)
+
     def open_recognition_settings(self, channel):
         self.recogn_settings_widgets[channel].show()
 
@@ -297,6 +339,13 @@ class MainWindow(QMainWindow):
 
     def open_telemetry(self):
         self.telemetryWidget.show()
+
+    def open_map(self):
+        if self.mapWidget.isVisible():
+            self.mapWidget.hide()
+        else:
+            self.mapWidget.show()
+
 
     def link_events(self):
         self.gRPCThread.signal_dataStream_response.connect(
