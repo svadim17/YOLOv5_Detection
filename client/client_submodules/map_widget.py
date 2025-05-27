@@ -9,6 +9,7 @@ from loguru import logger
 import json
 
 
+
 UAVObject = namedtuple('UAV',
                        ['id', 'name', 'position_history', 'altitude', 'pilot_position', 'serial_number'])
 
@@ -24,7 +25,7 @@ class MapWidget(QDockWidget, QWidget):
         self.resize(800, 600)
         self.setMinimumSize(300, 300)
 
-        tiles_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "../map", "tiles_128"))
+        tiles_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "../map", "tiles"))
         self.tiles_path = f"file:///{tiles_folder}/{{z}}/{{x}}/{{y}}.png".replace('\\', '/')
         self.leaflet_css = f"file:///{os.path.abspath('assets/leaflet/leaflet.css')}".replace('\\', '/')
         self.leaflet_js = f"file:///{os.path.abspath('assets/leaflet/leaflet.js')}".replace('\\', '/')
@@ -212,7 +213,7 @@ class MapWidget(QDockWidget, QWidget):
             self.trajectory_points.append([lat, lng])
             self.update_path(trajectory_id=marker_id, points=self.trajectory_points)
 
-    def setup_test_movement(self):
+    def map_emulation(self):
         """Настраивает тестовое перемещение маркера"""
         self.trajectory = [
             {"lat": 53.938040, "lng": 27.672249},
@@ -230,6 +231,8 @@ class MapWidget(QDockWidget, QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.move_to_next_point)
         self.timer.start(1000)  # Обновление каждую секунду
+
+
 
     def move_to_next_point(self):
         """Перемещает маркер к следующей точке траектории"""

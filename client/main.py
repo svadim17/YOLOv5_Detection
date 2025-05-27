@@ -19,6 +19,7 @@ from client_submodules.sound_thread import SoundThread
 from client_submodules.telemetry import TelemetryWidget
 from client_submodules.map_widget import MapWidget
 from client_submodules.map_widget import UAVObject
+from client_submodules.remote_id_widget import RemoteIdWidget
 
 
 
@@ -164,6 +165,7 @@ class MainWindow(QMainWindow):
         self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
         self.init_recognition_widgets()
         self.init_map_widget()
+        self.init_remote_id_widget()
         self.processor.init_sound_states(sound_states=self.sound_states)
         self.processor.init_sound_classes_states(sound_classes_states=self.sound_classes_states)
         self.processor.signal_play_sound.connect(self.soundThread.start_stop_sound_thread)
@@ -197,6 +199,10 @@ class MainWindow(QMainWindow):
         self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
         self.act_map.triggered.connect(self.open_map)
 
+        self.act_remote_id = QAction('Remote ID', self)
+        self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
+        self.act_remote_id.triggered.connect(self.open_remote_id)
+
     def create_actions(self):
         self.act_start = QAction()
         self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
@@ -210,6 +216,7 @@ class MainWindow(QMainWindow):
         self.toolBar.addAction(self.act_settings)
         self.toolBar.addAction(self.act_telemetry)
         self.toolBar.addAction(self.act_map)
+        self.toolBar.addAction(self.act_remote_id)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
     def init_recognition_widgets(self):
@@ -277,10 +284,16 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.mapWidget)
         self.mapWidget.hide()
 
+    def init_remote_id_widget(self):
+        self.remoteIdWidget = RemoteIdWidget(theme_type=self.theme_type)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.remoteIdWidget)
+        self.remoteIdWidget.hide()
+
     def change_connection_state(self, status: bool):
         if status:
             self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
-            self.mapWidget.setup_test_movement()
+            self.mapWidget.map_emulation()
+            self.remote_id_emulation()
             for channel in self.enabled_channels:
                 try:
                     self.gRPCThread.startChannelRequest(channel_name=channel)
@@ -331,6 +344,11 @@ class MainWindow(QMainWindow):
             [53.9311214, 27.6398012]]
         self.mapWidget.add_object(self.obj)
 
+    def remote_id_emulation(self):
+        self.rid_timer = QTimer(self)
+        self.rid_timer.timeout.connect(self.remoteIdWidget.emulate)
+        self.rid_timer.start(3000)  # каждые 3 секунды
+
     def open_recognition_settings(self, channel):
         self.recogn_settings_widgets[channel].show()
 
@@ -346,6 +364,11 @@ class MainWindow(QMainWindow):
         else:
             self.mapWidget.show()
 
+    def open_remote_id(self):
+        if self. remoteIdWidget.isVisible():
+            self.remoteIdWidget.hide()
+        else:
+            self.remoteIdWidget.show()
 
     def link_events(self):
         self.gRPCThread.signal_dataStream_response.connect(
@@ -477,6 +500,9 @@ class MainWindow(QMainWindow):
                                               "padding: 2px;}")
         self.act_settings.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_settings.png'))
         self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
+        self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
+        self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
+
         self.settingsWidget.soundTab.btn_play_sound.setIcon(QIcon(f'./assets/icons/{self.theme_type}/play_sound.png'))
         for widget in self.recogn_widgets.values():
             widget.theme_changed(theme=self.theme_type)
