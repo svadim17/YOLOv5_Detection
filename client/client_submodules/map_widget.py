@@ -22,7 +22,7 @@ class MapWidget(QDockWidget, QWidget):
         super().__init__()
         self.map_settings = map_settings
         self.setWindowTitle("Map")
-        self.resize(800, 600)
+        # self.resize(800, 600)
         self.setMinimumSize(300, 300)
 
         tiles_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "../map", "tiles"))
@@ -231,8 +231,6 @@ class MapWidget(QDockWidget, QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.move_to_next_point)
         self.timer.start(1000)  # Обновление каждую секунду
-
-
 
     def move_to_next_point(self):
         """Перемещает маркер к следующей точке траектории"""

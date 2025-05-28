@@ -1,260 +1,561 @@
-import sys
 import os
-from PySide6.QtWidgets import QApplication, QMainWindow, QDockWidget, QWidget, QVBoxLayout
-from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtCore import QUrl, Qt, QTimer
-import json
+import sys
+import time
+from PySide6.QtWidgets import QMainWindow, QApplication, QToolBar
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtCore import Qt, QTimer
+import qdarktheme
+from client_submodules.gRPC_thread import gRPCThread, connect_to_gRPC_server, gRPCServerErrorThread
+from client_submodules.welcome_window import WelcomeWindow
+from client_submodules.connection_window import ConnectWindow
+from client_submodules.recognition_widget import RecognitionWidget
+from client_submodules.channels_widget import ChannelsWidget
+from client_submodules.settings import SettingsWidget
+from client_submodules.processing import Processor
+from client_submodules.sound_thread import SoundThread
+from client_submodules.telemetry_widget import TelemetryWidget
+from client_submodules.map_widget import MapWidget
+from client_submodules.map_widget import UAVObject
+from client_submodules.remote_id_widget import RemoteIdWidget
+from client_submodules.wifi_widget import WiFiWidget
+from client_submodules.aeroscope_widget import AeroscopeWidget
+
+import yaml
 from loguru import logger
 
-# Упрощаем настройки QtWebEngine
-os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-web-security"
+try:
+    logger.remove(0)
+except:
+    logger.remove(1)
+
+log_level = "TRACE"
+log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> |"
+              " <level>{level: <8}</level> |"
+              " <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>")
+logger.add(sys.stderr, format=log_format, colorize=True, backtrace=True, diagnose=True, enqueue=True)
 
 
-class MapWidget(QDockWidget):
+class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__("Map View")
-        self.setObjectName("MapDockWidget")
-        self.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetMovable |
-                         QDockWidget.DockWidgetFeature.DockWidgetFloatable)
+        super(MainWindow, self).__init__()
+        self.logger_ = logger
 
-        # Основной виджет
-        self.central_widget = QWidget()
-        self.setWidget(self.central_widget)
-        self.layout = QVBoxLayout(self.central_widget)
+        # central_widget = QWidget(self)
+        # self.setCentralWidget(central_widget)
 
-        # Создаем веб-виджет
-        self.web_view = QWebEngineView()
-        self.layout.addWidget(self.web_view)
+        self.setWindowTitle('NN Recognition v25.18')
+        self.setWindowIcon(QIcon('./assets/icons/nn1.ico'))
+        self.config = self.load_config()
+        self.server_ip = list(self.config['server_addr'])
+        self.grpc_port = self.config['server_port']
+        self.map_list = list(self.config['map_list'])
+        self.show_img_status = bool(self.config['settings_main']['show_spectrogram'])
+        self.show_histogram_status = bool(self.config['settings_main']['show_histogram'])
+        self.show_spectrum_status = bool(self.config['settings_main']['show_spectrum'])
+        self.watchdog = bool(self.config['settings_main']['watchdog'])
+        self.welcome_window_state = bool(self.config['show_welcome_window'])
+        self.clear_img_status = False
 
-        # Настраиваем разрешения и инспектор
-        settings = self.web_view.page().settings()
-        settings.setAttribute(settings.WebAttribute.LocalContentCanAccessFileUrls, True)
-        settings.setAttribute(settings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+        self.theme_type = self.config['settings_main']['theme']['type']
+        with open('app_themes.yaml', 'r', encoding='utf-8') as f:  # load available themes
+            self.themes = yaml.safe_load(f)
+        qdarktheme.setup_theme(theme=self.theme_type,
+                               custom_colors=self.themes[self.config['settings_main']['theme']['name']],
+                               additional_qss="QToolTip { "
+                                              "background-color: #ffff99;"
+                                              "color: #000000;"
+                                              "border: 1px solid #000000;"
+                                              "padding: 2px;}")
 
-        # Загружаем базовый HTML с картой
-        self.load_base_map()
+        self.recogn_widgets = {}
+        self.recogn_settings_widgets = {}
+        self.sound_states = {}
+        self.sound_classes_states = {}
+        for name in self.map_list:
+            self.sound_classes_states[name] = self.config['settings_sound']['classes_sound'][name]
 
-        # Тестовые данные
-        self.markers = {}
-        self.paths = {}
-        self.trajectory_points = []  # Для хранения точек пути
-
-        # Ждем загрузки страницы перед добавлением маркера
-        self.web_view.loadFinished.connect(self.on_load_finished)
-
-        # Тестовое перемещение
-        self.setup_test_movement()
-
-    def on_load_finished(self, ok):
-        """Вызывается после загрузки страницы"""
-        if ok:
-            logger.debug("Page loaded successfully")
-            icon_path = f"file:///{os.path.abspath('assets/icons/map/drone_black.png')}".replace('\\', '/')
-            # Добавляем тестовый маркер после загрузки страницы
-            self.add_marker("drone1", 53.9312229, 27.6358432, "Test Drone", icon_path, 100)
-            # Добавляем путь
-            self.add_path("drone1", [[53.9312229, 27.6358432]], "green")
+        if self.welcome_window_state:
+            self.welcomeWindow = WelcomeWindow(server_addr=self.server_ip, server_port=self.grpc_port)
+            self.welcomeWindow.signal_connect_to_server.connect(self.connect_to_server)
+            self.welcomeWindow.finished.connect(self.welcome_window_closed)
+            self.welcomeWindow.show()
         else:
-            logger.error("Failed to load page")
+            self.connect_to_server(server_ip=self.server_ip[0], grpc_port=self.grpc_port)
 
-    def load_base_map(self):
-        """Загружает базовую карту OpenStreetMap"""
-        # Абсолютные пути к файлам
-        tiles_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "map", "tiles"))
-        tiles_path = f"file:///{tiles_folder}/{{z}}/{{x}}/{{y}}.png".replace('\\', '/')
-        leaflet_css = f"file:///{os.path.abspath('assets/leaflet/leaflet.css')}".replace('\\', '/')
-        leaflet_js = f"file:///{os.path.abspath('assets/leaflet/leaflet.js')}".replace('\\', '/')
+    def connect_to_server(self, server_ip: str, grpc_port: str):
+        self.server_ip = server_ip
+        try:
+            self.gRPC_channel = connect_to_gRPC_server(ip=server_ip, port=grpc_port)
+            self.logger_.success(f'Successfully connected to {server_ip}:{grpc_port}!')
+            if self.welcome_window_state:
+                self.welcomeWindow.close()
+            else:
+                self.welcome_window_closed()
+        except Exception as e:
+            self.logger_.critical(f'Error with connecting to {server_ip}:{grpc_port}! \n{e}')
 
-        logger.debug(f"Tiles path: {tiles_path}")
-        logger.debug(f"Leaflet CSS: {leaflet_css}")
-        logger.debug(f"Leaflet JS: {leaflet_js}")
+    def welcome_window_closed(self):
+        self.gRPCThread = gRPCThread(channel=self.gRPC_channel,
+                                     map_list=self.map_list,
+                                     detected_img_status=self.show_img_status,
+                                     clear_img_status=self.clear_img_status,
+                                     spectrum_status=self.show_spectrum_status,
+                                     watchdog=self.watchdog,
+                                     logger_=self.logger_)
+        self.gRPCErrorTread = gRPCServerErrorThread(self.gRPC_channel, self.logger_)
+        self.available_channels, self.channels_info = self.gRPCThread.getAvailableChannelsRequest()
+        self.connectWindow = ConnectWindow(ip=self.config['server_addr'],
+                                           available_channels=self.available_channels,
+                                           channels_info=self.channels_info)
+        self.connectWindow.show()
+        self.connectWindow.finished.connect(self.connect_window_closed)
 
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>OSM Map</title>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <link rel="stylesheet" href="{leaflet_css}" />
-            <script src="{leaflet_js}"></script>
-            <style>
-                body {{ margin: 0; padding: 0; }}
-                #map {{ height: 100vh; width: 100%; }}
-            </style>
-        </head>
-        <body>
-            <div id="map"></div>
-            <script>
-                console.log('Initializing map...');
-                var map = L.map('map').setView([53.9312229, 27.6358432], 15);
-                L.tileLayer('{tiles_path}', {{
-                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    minZoom: 10,
-                    maxZoom: 17
-                }}).addTo(map);
+        self.processor = Processor(logger_=self.logger_)
 
-                // Глобальные переменные для хранения объектов
-                window.markers = {{}};
-                window.paths = {{}};
+        self.link_events()
+        self.adjustSize()
 
-                // Функция для добавления маркера
-                function addMarker(id, lat, lng, popup, icon_path, altitude) {{
-                    console.log('Adding marker:', id, lat, lng, popup, altitude, icon_path);
-                    var markerOptions = {{}};
-                    markerOptions.icon = L.icon({{
-                            iconUrl: icon_path,
-                            iconSize: [28, 28],
-                            iconAnchor: [14, 28],
-                            popupAnchor: [0, -28]
-                        }});
-                    var marker = L.marker([lat, lng], markerOptions).addTo(map);
-                    if (popup) {{
-                        marker.bindPopup(popup + (altitude ? ' (H=' + altitude + 'm)' : ''));
-                    }}
-                    window.markers[id] = marker;
-                    return marker;
-                }}
+    def connect_window_closed(self):
+        self.enabled_channels = self.connectWindow.enabled_channels
+        self.enabled_channels_info = self.connectWindow.enabled_channels_info
 
-                // Функция для перемещения маркера
-                function moveMarker(id, lat, lng, altitude) {{
-                    console.log('Moving marker:', id, lat, lng, altitude);
-                    if (window.markers[id]) {{
-                        window.markers[id].setLatLng([lat, lng]);
-                        if (altitude !== undefined) {{
-                            window.markers[id].setPopupContent(
-                                window.markers[id].getPopup().getContent().split('(H=')[0] + 
-                                '(H=' + altitude + 'm)'
-                            );
-                        }}
-                    }}
-                }}
+        self.gRPCThread.init_enabled_channels(enabled_channels=self.enabled_channels)
+        self.signal_settings = self.gRPCThread.signalSettings(enabled_channels=self.enabled_channels)
+        for channel in self.enabled_channels:
+            self.sound_states[channel] = self.config['settings_sound']['sound_status']
 
-                // Функция для добавления пути
-                function addPath(id, points, color) {{
-                    console.log('Adding path:', id, points, color);
-                    var path = L.polyline(points, {{color: color, dashArray: '7, 10'}}).addTo(map);
-                    window.paths[id] = path;
-                    return path;
-                }}
+        self.create_menu()
+        self.create_toolbar()
+        self.settingsWidget = SettingsWidget(enabled_channels=self.enabled_channels,
+                                             config=self.config,
+                                             enabled_channels_info=self.enabled_channels_info,
+                                             logger_=self.logger_)
+        self.settingsWidget.mainTab.chb_accumulation.stateChanged.connect(self.gRPCThread.onOffAccumulationRequest)
+        self.settingsWidget.mainTab.chb_watchdog.stateChanged.connect(self.gRPCThread.change_watchdog_status)
+        self.settingsWidget.mainTab.chb_spectrogram_show.stateChanged.connect(self.change_img_status)
+        self.settingsWidget.mainTab.chb_histogram_show.stateChanged.connect(self.change_histogram_status)
+        self.settingsWidget.mainTab.chb_spectrum_show.stateChanged.connect(self.change_spectrum_status)
+        self.settingsWidget.mainTab.cb_themes.currentIndexChanged.connect(self.apply_theme)
+        self.settingsWidget.mainTab.cb_theme_type.currentIndexChanged.connect(self.apply_theme)
+        self.settingsWidget.btn_save_client_config.clicked.connect(self.save_config)
+        self.settingsWidget.btn_save_server_config.clicked.connect(
+            lambda: self.gRPCThread.saveConfigRequest('kgbradar'))
+        self.settingsWidget.saveTab.btn_save.clicked.connect(self.change_save_status)
+        self.soundThread = SoundThread(sound_name=self.settingsWidget.soundTab.cb_sound.currentText(),
+                                       logger_=self.logger_)
+        self.settingsWidget.soundTab.cb_sound.currentTextChanged.connect(self.soundThread.sound_file_changed)
+        self.settingsWidget.soundTab.btn_play_sound.clicked.connect(self.soundThread.play_sound)
+        self.settingsWidget.soundTab.signal_sound_states.connect(self.processor.init_sound_states)
+        self.settingsWidget.soundTab.signal_sound_classes_states.connect(self.processor.init_sound_classes_states)
+        self.settingsWidget.alinxTab.btn_get_soft_ver.clicked.connect(self.gRPCThread.getAlinxSoftVer)
+        self.settingsWidget.alinxTab.btn_get_load_detect.clicked.connect(self.gRPCThread.getLoadDetectState)
+        self.settingsWidget.alinxTab.spb_gain_24.valueChanged.connect(
+            lambda: self.gRPCThread.setGain(channel_name='2G4', gain=self.settingsWidget.alinxTab.spb_gain_24.value()))
+        self.settingsWidget.alinxTab.spb_gain_58.valueChanged.connect(
+            lambda: self.gRPCThread.setGain(channel_name='5G8', gain=self.settingsWidget.alinxTab.spb_gain_58.value()))
+        self.settingsWidget.alinxTab.signal_autoscan_state.connect(self.gRPCThread.setAutoscanState)
+        self.settingsWidget.alinxTab.signal_set_central_freq.connect(self.gRPCThread.setFrequency)
+        self.settingsWidget.nnTab.btn_get_nn_info.clicked.connect(lambda: self.gRPCThread.nnInfo(self.enabled_channels))
+        self.settingsWidget.usrpTab.signal_central_freq_changed.connect(self.gRPCThread.setUSRPFrequency)
+        self.settingsWidget.usrpTab.signal_autoscan_state.connect(self.gRPCThread.setAutoscanState)
+        self.gRPCThread.signal_alinx_soft_ver.connect(self.settingsWidget.alinxTab.update_soft_ver)
+        self.gRPCThread.signal_alinx_load_detect_state.connect(self.settingsWidget.alinxTab.update_load_detect_state)
+        self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
+        self.init_recognition_widgets()
+        self.init_map_widget()
+        self.init_aeroscope_widget()
+        self.init_remote_id_widget()
+        self.init_wifi_widget()
+        self.processor.init_sound_states(sound_states=self.sound_states)
+        self.processor.init_sound_classes_states(sound_classes_states=self.sound_classes_states)
+        self.processor.signal_play_sound.connect(self.soundThread.start_stop_sound_thread)
+        self.processor.signal_channel_central_freq.connect(self.settingsWidget.usrpTab.update_channel_freq)
+        self.processor.signal_channel_central_freq.connect(lambda freq_dict:
+                                                           self.settingsWidget.alinxTab.update_cb_central_freq(
+                                                               freq_dict['central_freq']))
 
-                // Функция для обновления пути
-                function updatePath(id, points) {{
-                    console.log('Updating path:', id, points);
-                    if (window.paths[id]) {{
-                        window.paths[id].setLatLngs(points);
-                    }}
-                }}
-            </script>
-        </body>
-        </html>
-        """
+        self.settingsWidget.mainTab.cb_spectrogram_resolution.currentTextChanged.connect(lambda a:
+                                                                                         self.set_spectrogram_resolution(
+                                                                                             self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
 
-        # Сохраняем во временный файл и загружаем
-        temp_file = os.path.abspath("temp_map.html")
-        logger.debug(f"Saving HTML to: {temp_file}")
-        with open(temp_file, "w", encoding="utf-8") as f:
-            f.write(html)
+        self.telemetryWidget = TelemetryWidget(theme_type=self.theme_type)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.telemetryWidget)
+        self.telemetryWidget.hide()
 
-        self.web_view.setUrl(QUrl.fromLocalFile(temp_file))
+        self.gRPCErrorTread.signal_telemetry.connect(self.telemetryWidget.udpate_widgets_states)
 
-    def add_marker(self, marker_id, lat, lng, name, icon_path, altitude=None):
-        """Добавляет новый маркер на карту"""
-        logger.debug(f"Adding marker: {marker_id} at {lat}, {lng}")
-        js_code = f"addMarker('{marker_id}', {lat}, {lng}, '{name}', '{icon_path}', {altitude});"
-        self.web_view.page().runJavaScript(js_code)
-        self.markers[marker_id] = {'lat': lat, 'lng': lng}
+        self.show()
+        self.move_window_to_center()
 
-    def add_path(self, path_id, points, color):
-        """Добавляет новый путь на карту"""
-        logger.debug(f"Adding path: {path_id} with points {points}")
-        js_code = f"addPath('{path_id}', {json.dumps(points)}, '{color}');"
-        self.web_view.page().runJavaScript(js_code)
-        self.paths[path_id] = points
+    def create_menu(self):
+        self.act_start = QAction()
+        self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
+        self.act_start.setText('Start')
+        self.act_start.setCheckable(True)
+        self.act_start.triggered.connect(self.change_connection_state)
 
-    def update_path(self, path_id, points):
-        """Обновляет существующий путь"""
-        logger.debug(f"Updating path: {path_id} with points {points}")
-        js_code = f"updatePath('{path_id}', {json.dumps(points)});"
-        self.web_view.page().runJavaScript(js_code)
-        self.paths[path_id] = points
+        self.act_settings = QAction('Settings', self)
+        self.act_settings.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_settings.png'))
+        self.act_settings.triggered.connect(self.open_settings)
 
-    def move_marker(self, marker_id, lat, lng, altitude=None):
-        """Перемещает существующий маркер"""
-        if marker_id in self.markers:
-            logger.debug(f"Moving marker: {marker_id} to {lat}, {lng}")
-            js_code = f"moveMarker('{marker_id}', {lat}, {lng}, {altitude});"
-            self.web_view.page().runJavaScript(js_code)
-            self.markers[marker_id] = {'lat': lat, 'lng': lng}
-            # Обновляем путь
-            self.trajectory_points.append([lat, lng])
-            self.update_path(marker_id, self.trajectory_points)
+        self.act_channels = QAction('Channels', self)
+        self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye_on.png'))
+        self.act_channels.triggered.connect(self.open_channels)
 
-    def setup_test_movement(self):
-        """Настраивает тестовое перемещение маркера"""
-        self.trajectory = [
-            {"lat": 53.9325706, "lng": 27.6451251},
-            {"lat": 53.9332896, "lng": 27.6479315},
-            {"lat": 53.9308304, "lng": 27.6468779},
-            {"lat": 53.9305065, "lng": 27.6437918},
-            {"lat": 53.9311214, "lng": 27.6398022},
-            {"lat": 53.9332896, "lng": 27.6479315},
-            {"lat": 53.9308304, "lng": 27.6468749},
-            {"lat": 53.9305065, "lng": 27.6437918},
-            {"lat": 53.9311214, "lng": 27.6398052},
-            {"lat": 53.9332896, "lng": 27.6479315},
-            {"lat": 53.9308304, "lng": 27.6468479},
-            {"lat": 53.9305065, "lng": 27.6437918},
-            {"lat": 53.9311214, "lng": 27.6398072},
-            {"lat": 53.9332896, "lng": 27.6479815},
-            {"lat": 53.9308304, "lng": 27.6468779},
-            {"lat": 53.9305765, "lng": 27.6434918},
-            {"lat": 53.9311214, "lng": 27.6398012},
-            {"lat": 53.9332296, "lng": 27.6479315},
-            {"lat": 53.9308304, "lng": 27.6468779},
-            {"lat": 53.9305365, "lng": 27.6437918},
-            {"lat": 53.9311214, "lng": 27.6398042}
-        ]
+        self.act_telemetry = QAction('Telemetry', self)
+        self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
+        self.act_telemetry.triggered.connect(self.open_telemetry)
 
-        self.current_point = 0
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.move_to_next_point)
-        self.timer.start(1000)  # Обновление каждую секунду
+        self.act_map = QAction('Map', self)
+        self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
+        self.act_map.triggered.connect(self.open_map)
 
-    def move_to_next_point(self):
-        """Перемещает маркер к следующей точке траектории"""
-        if self.current_point < len(self.trajectory):
-            point = self.trajectory[self.current_point]
-            altitude = 100 + self.current_point * 10
-            logger.debug(f"Moving to point {self.current_point}: {point}")
-            self.move_marker("drone1", point["lat"], point["lng"], altitude)
-            self.current_point += 1
+        self.act_aeroscope = QAction('Aeroscope', self)
+        self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope.png'))
+        self.act_aeroscope.triggered.connect(self.open_aeroscope)
+
+        self.act_remote_id = QAction('Remote ID', self)
+        self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
+        self.act_remote_id.triggered.connect(self.open_remote_id)
+
+        self.act_wifi = QAction('WiFi', self)
+        self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi.png'))
+        self.act_wifi.triggered.connect(self.open_wifi)
+
+    def create_toolbar(self):
+        self.toolBar = QToolBar('Toolbar')
+        self.toolBar.addAction(self.act_start)
+        self.toolBar.addAction(self.act_settings)
+        self.toolBar.addAction(self.act_channels)
+        self.toolBar.addAction(self.act_telemetry)
+        self.toolBar.addAction(self.act_map)
+        self.toolBar.addAction(self.act_aeroscope)
+        self.toolBar.addAction(self.act_remote_id)
+        self.toolBar.addAction(self.act_wifi)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
+
+    def init_recognition_widgets(self):
+        current_zscale_settings_dict = self.gRPCThread.getCurrentZScaleRequest()
+        recogn_settings = self.gRPCThread.gerCurrentRecognitionSettings()
+        for channel_info in self.channels_info:
+            if channel_info.name in self.enabled_channels:
+                recogn_widget = RecognitionWidget(window_name=channel_info.name,
+                                                  map_list=self.map_list,
+                                                  img_show_status=self.show_img_status,
+                                                  zscale_settings=current_zscale_settings_dict[channel_info.name],
+                                                  recogn_options=recogn_settings[channel_info.name],
+                                                  signal_settings=self.signal_settings[channel_info.name],
+                                                  show_recogn_options=bool(
+                                                      self.config['settings_main']['show_recogn_options']),
+                                                  show_freq=bool(self.config['settings_main']['show_frequencies']),
+                                                  show_images=self.show_img_status,
+                                                  show_histogram=self.show_histogram_status,
+                                                  show_spectrum=self.show_spectrum_status,
+                                                  channel_info=channel_info,
+                                                  theme_type=self.theme_type, )
+                recogn_widget.recognOptions.signal_zscale_changed.connect(self.gRPCThread.changeZScaleRequest)
+                recogn_widget.recognOptions.signal_recogn_settings.connect(self.gRPCThread.sendRecognitionSettings)
+                # recogn_widget.recognOptions.signal_freq_changed.connect(self.gRPCThread.setFrequency)
+                # recogn_widget.recognOptions.signal_gain_changed.connect(self.gRPCThread.setGain)
+                self.settingsWidget.mainTab.chb_show_recogn_options.stateChanged.connect(
+                    recogn_widget.add_remove_recogn_options)
+                self.settingsWidget.mainTab.chb_show_frequencies.stateChanged.connect(recogn_widget.show_frequencies)
+                recogn_widget.processOptions.signal_process_name.connect(self.gRPCThread.getProcessStatusRequest)
+                recogn_widget.processOptions.signal_restart_process_name.connect(self.gRPCThread.restartProcess)
+                self.gRPCThread.signal_process_status.connect(recogn_widget.processOptions.update_process_status)
+
+                self.recogn_widgets[channel_info.name] = recogn_widget
+
+        self.channelsWidget = ChannelsWidget(widgets=list(self.recogn_widgets.values()))
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.channelsWidget)
+
+        self.processor.init_recogn_widgets(recogn_widgets=self.recogn_widgets)
+
+    def init_map_widget(self):
+        self.mapWidget = MapWidget(map_settings=self.config['map'])
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.mapWidget)
+        self.mapWidget.hide()
+
+    def init_aeroscope_widget(self):
+        self.aeroscopeWidget = AeroscopeWidget(theme_type=self.theme_type, logger_=self.logger_)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.aeroscopeWidget)
+        self.aeroscopeWidget.hide()
+
+    def init_remote_id_widget(self):
+        self.remoteIdWidget = RemoteIdWidget(theme_type=self.theme_type, logger_=self.logger_)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.remoteIdWidget)
+        self.remoteIdWidget.hide()
+
+    def init_wifi_widget(self):
+        self.wifiWidget = WiFiWidget(theme_type=self.theme_type, logger_=self.logger_)
+        self.wifiWidget.setWindowIcon(QIcon("./assets/icons/wifi.png"))
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.wifiWidget)
+        self.wifiWidget.hide()
+
+    def set_spectrogram_resolution(self, new_resolution: tuple[int, int]):
+        for recogn_widget in self.recogn_widgets.values():
+            recogn_widget.resize_img(new_resolution)
+
+    def change_connection_state(self, status: bool):
+        if status:
+            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
+            self.mapWidget.map_emulation()
+            self.aeroscope_emulation()
+            self.remote_id_emulation()
+            self.wifi_emulation()
+            for channel in self.enabled_channels:
+                try:
+                    self.gRPCThread.startChannelRequest(channel_name=channel)
+                except:
+                    self.logger_.warning(f'Error with starting gRPC channel {channel} or channel is already started.')
+
+            self.gRPCThread.start()
+            self.gRPCErrorTread.start()
         else:
-            logger.debug("Stopping timer: reached end of trajectory")
-            self.timer.stop()
+            self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
+
+            # Stop gRPC main thread
+            if self.gRPCThread.isRunning():
+                self.gRPCThread.requestInterruption()
+                self.logger_.info('gRPCThread is requested to stop.')
+            else:
+                self.logger_.warning('gRPCThread is not running.')
+
+            # Stop gRPC Error thread
+            if self.gRPCErrorTread.isRunning():
+                self.gRPCErrorTread.requestInterruption()
+                self.logger_.info('gRPCErrorTread is requested to stop.')
+            else:
+                self.logger_.warning('gRPCErrorTread is not running.')
+
+    def aeroscope_emulation(self):
+        self.aeroscope_timer = QTimer(self)
+        self.aeroscope_timer.timeout.connect(self.aeroscopeWidget.emulate)
+        self.aeroscope_timer.start(3000)  # каждые 3 секунды
+
+    def remote_id_emulation(self):
+        self.rid_timer = QTimer(self)
+        self.rid_timer.timeout.connect(self.remoteIdWidget.emulate)
+        self.rid_timer.start(3000)  # каждые 3 секунды
+
+    def wifi_emulation(self):
+        self.wifi_timer = QTimer(self)
+        self.wifi_timer.timeout.connect(self.wifiWidget.emulate)
+        self.wifi_timer.start(3000)  # каждые 3 секунды
+
+    def open_settings(self):
+        self.settingsWidget.show()
+
+    def open_channels(self):
+        if self.channelsWidget.isVisible():
+            self.channelsWidget.hide()
+            self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye.png'))
+        else:
+            self.channelsWidget.show()
+            self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye_on.png'))
+
+    def open_telemetry(self):
+        if self.telemetryWidget.isVisible():
+            self.telemetryWidget.hide()
+            self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
+        else:
+            self.telemetryWidget.show()
+            self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry_on.png'))
+
+    def open_map(self):
+        if self.mapWidget.isVisible():
+            self.mapWidget.hide()
+            self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
+        else:
+            self.mapWidget.show()
+            self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map_on.png'))
+
+    def open_aeroscope(self):
+        if self.aeroscopeWidget.isVisible():
+            self.aeroscopeWidget.hide()
+            self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope.png'))
+        else:
+            self.aeroscopeWidget.show()
+            self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope_on.png'))
+
+    def open_remote_id(self):
+        if self.remoteIdWidget.isVisible():
+            self.remoteIdWidget.hide()
+            self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
+        else:
+            self.remoteIdWidget.show()
+            self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id_on.png'))
+
+    def open_wifi(self):
+        if self.wifiWidget.isVisible():
+            self.wifiWidget.hide()
+            self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi.png'))
+        else:
+            self.wifiWidget.show()
+            self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi_on.png'))
+
+    def link_events(self):
+        self.gRPCThread.signal_dataStream_response.connect(
+            lambda info: self.processor.parsing_data(info,
+                                                     self.settingsWidget.saveTab.chb_save_detected.isChecked(),
+                                                     ))
+
+    def change_save_status(self):
+        if self.clear_img_status:
+            self.clear_img_status = False
+            self.gRPCThread.clear_img_status = False
+            self.change_connection_state(status=False)  # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Saving images stopped.')
+        else:
+            self.clear_img_status = True
+            self.gRPCThread.clear_img_status = True
+            self.change_connection_state(status=False)  # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Saving images started.')
+
+    def change_img_status(self):
+        if self.show_img_status:
+            self.show_img_status = False
+            self.gRPCThread.show_img_status = False
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.disable_spectrogram()
+            self.change_connection_state(status=False)  # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Spectrogram showing stopped.')
+        else:
+            self.show_img_status = True
+            self.gRPCThread.show_img_status = True
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.enable_spectrogram()
+            self.change_connection_state(status=False)  # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Spectrogram showing started.')
+
+    def change_histogram_status(self):
+        if self.show_histogram_status:
+            self.show_histogram_status = False
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.disable_histogram()
+            self.logger_.info('Histogram showing stopped.')
+        else:
+            self.show_histogram_status = True
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.enable_histogram()
+            self.logger_.info('Histogram showing started.')
+
+    def change_spectrum_status(self):
+        if self.show_spectrum_status:
+            self.show_spectrum_status = False
+            self.gRPCThread.show_spectrum_status = False
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.disable_spectrum()
+            self.change_connection_state(status=False)  # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Spectrum showing stopped.')
+        else:
+            self.show_spectrum_status = True
+            self.gRPCThread.show_spectrum_status = True
+            for recogn_widget in self.recogn_widgets.values():
+                recogn_widget.enable_spectrum()
+            self.change_connection_state(status=False)  # restart gRPC stream
+            self.gRPCThread.msleep(500)
+            self.change_connection_state(status=True)
+            self.logger_.info('Spectrum showing started.')
+
+    def save_config(self):
+        try:
+            config = {}
+            self.config.update(self.settingsWidget.mainTab.collect_config())
+            self.config.update(self.settingsWidget.soundTab.collect_config())
+            self.config.update(self.settingsWidget.alinxTab.collect_config())
+            self.config.update(config)
+
+            with open('client_conf.yaml', 'w') as f:
+                yaml.dump(self.config, f, sort_keys=False)
+            self.logger_.success(f'Client config saved successfully!')
+        except Exception as e:
+            self.logger_.error(f'Error with saving client config! \n{e}')
+
+    def load_config(self):
+        try:
+            with open('client_conf.yaml', encoding='utf-8') as f:
+                config = dict(yaml.load(f, Loader=yaml.SafeLoader))
+                self.logger_.success(f'Config loaded successfully!')
+                return config
+        except Exception as e:
+            self.logger_.error(f'Error with loading config: {e}')
+
+    def move_window_to_center(self):
+        # Получаем размеры экрана
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.geometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+
+        # Получаем размеры окна
+        window_width = self.width()
+        window_height = self.height()
+
+        # Вычисляем координаты для центра экрана
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+
+        # Перемещаем окно в центр экрана
+        self.move(x, y)
+
+    def apply_theme(self):
+        theme_name = self.settingsWidget.mainTab.cb_themes.currentText()
+        self.theme_type = self.settingsWidget.mainTab.cb_theme_type.currentText()
+        qdarktheme.setup_theme(theme=self.theme_type,
+                               custom_colors=self.themes[theme_name],
+                               additional_qss="QToolTip { "
+                                              "background-color: #ffff99;"
+                                              "color: #000000;"
+                                              "border: 1px solid #000000;"
+                                              "padding: 2px;}")
+
+        channels_state = '_on' if self.channelsWidget.isVisible() else ''
+        telemetry_state = '_on' if self.telemetryWidget.isVisible() else ''
+        map_state = '_on' if self.mapWidget.isVisible() else ''
+        aeroscope_state = '_on' if self.aeroscopeWidget.isVisible() else ''
+        rid_state = '_on' if self.remoteIdWidget.isVisible() else ''
+        wifi_state = '_on' if self.wifiWidget.isVisible() else ''
+
+        self.act_settings.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_settings.png'))
+        self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye{channels_state}.png'))
+        self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry{telemetry_state}.png'))
+        self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map{map_state}.png'))
+        self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope{aeroscope_state}.png'))
+        self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id{rid_state}.png'))
+        self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi{wifi_state}.png'))
+
+        self.settingsWidget.soundTab.btn_play_sound.setIcon(QIcon(f'./assets/icons/{self.theme_type}/play_sound.png'))
+        for widget in self.recogn_widgets.values():
+            widget.theme_changed(theme=self.theme_type)
+        if self.act_start.isChecked():
+            self.act_start.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_stop.png'))
+        else:
+            self.act_start.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_start.png'))
+        self.telemetryWidget.theme_changed(type=self.theme_type)
+        self.remoteIdWidget.theme_changed(type=self.theme_type)
+        self.wifiWidget.theme_changed(type=self.theme_type)
+
+    # def closeEvent(self, a0):
+    #     self.gRPCThread.gRPC_channel.close()
 
 
-def main():
-    # Инициализация приложения
-    if not QApplication.instance():
-        app = QApplication(sys.argv)
-    else:
-        app = QApplication.instance()
-
-    # Создаем главное окно
-    main_window = QMainWindow()
-    main_window.setWindowTitle("Drone Map Viewer")
-    main_window.resize(800, 600)
-
-    # Добавляем карту
-    map_widget = MapWidget()
-    main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, map_widget)
-
-    # Показываем окно
-    main_window.show()
-
-    # Запускаем приложение
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    qdarktheme.setup_theme(theme='dark')
+    main_window = MainWindow()
+    # main_window.welcomeWindow.show()
     sys.exit(app.exec())
 
-if __name__ == "__main__":
-    main()
+
+

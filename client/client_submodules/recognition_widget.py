@@ -15,7 +15,7 @@ from .process_options import ProcessOptions
 from .gRPC_thread import ChannelInfo
 
 
-class RecognitionWidget(QDockWidget, QWidget):
+class RecognitionWidget(QWidget):
 
     def __init__(self, window_name,
                  map_list: list,
@@ -42,10 +42,9 @@ class RecognitionWidget(QDockWidget, QWidget):
         self.show_spectrum_status = widgets_statuses.get('show_spectrum', False)
 
         self.setWindowTitle(self.name)
-        self.setWidget(QWidget(self))
         self.main_layout = QVBoxLayout()
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.widget().setLayout(self.main_layout)
+        self.setLayout(self.main_layout)
         # self.setFixedSize(600, 600)
         # self.setMinimumSize(200, 200)  # Минимальный размер окна
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)  # Позволяет растягиваться
@@ -419,7 +418,7 @@ class RecognitionWidget(QDockWidget, QWidget):
         # self.setMaximumWidth(self.img_width + 40)
         # self.setMaximumHeight(self.img_height + 150)
 
-        self.parent().adjustSize()
+        # self.parent().adjustSize()
 
     def convert_cv_qt(self, cv_img, fps: str):
         """Convert from an opencv image to QPixmap"""

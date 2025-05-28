@@ -1,11 +1,7 @@
 import os
 import sys
 import time
-
-# from PyQt6.QtWidgets import QMainWindow, QApplication, QToolBar
-# from PyQt6.QtGui import QIcon, QAction
-# from PyQt6.QtCore import Qt
-from PySide6.QtWidgets import QMainWindow, QApplication, QToolBar
+from PySide6.QtWidgets import QMainWindow, QApplication, QToolBar, QGridLayout, QTabWidget, QSizePolicy, QWidget
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, QTimer
 import qdarktheme
@@ -13,14 +9,16 @@ from client_submodules.gRPC_thread import gRPCThread, connect_to_gRPC_server, gR
 from client_submodules.welcome_window import WelcomeWindow
 from client_submodules.connection_window import ConnectWindow
 from client_submodules.recognition_widget import RecognitionWidget
+from client_submodules.channels_widget import ChannelsWidget
 from client_submodules.settings import SettingsWidget
 from client_submodules.processing import Processor
 from client_submodules.sound_thread import SoundThread
-from client_submodules.telemetry import TelemetryWidget
+from client_submodules.telemetry_widget import TelemetryWidget
 from client_submodules.map_widget import MapWidget
 from client_submodules.map_widget import UAVObject
 from client_submodules.remote_id_widget import RemoteIdWidget
-
+from client_submodules.wifi_widget import WiFiWidget
+from client_submodules.aeroscope_widget import AeroscopeWidget
 
 
 import yaml
@@ -41,9 +39,9 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.logger_ = logger
-
-        # central_widget = QWidget(self)
-        # self.setCentralWidget(central_widget)
+        central_widget = QWidget(self)
+        self.grid = QGridLayout(central_widget)
+        self.setCentralWidget(central_widget)
 
         self.setWindowTitle('NN Recognition v25.18')
         self.setWindowIcon(QIcon('./assets/icons/nn1.ico'))
@@ -112,8 +110,6 @@ class MainWindow(QMainWindow):
         self.connectWindow.show()
         self.connectWindow.finished.connect(self.connect_window_closed)
 
-        self.create_actions()
-
         self.processor = Processor(logger_=self.logger_)
 
         self.link_events()
@@ -163,9 +159,15 @@ class MainWindow(QMainWindow):
         self.gRPCThread.signal_alinx_soft_ver.connect(self.settingsWidget.alinxTab.update_soft_ver)
         self.gRPCThread.signal_alinx_load_detect_state.connect(self.settingsWidget.alinxTab.update_load_detect_state)
         self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
+
         self.init_recognition_widgets()
         self.init_map_widget()
+        self.init_telemetry_widget()
+        self.init_aeroscope_widget()
         self.init_remote_id_widget()
+        self.init_wifi_widget()
+        self.add_widgets_to_grid()
+
         self.processor.init_sound_states(sound_states=self.sound_states)
         self.processor.init_sound_classes_states(sound_classes_states=self.sound_classes_states)
         self.processor.signal_play_sound.connect(self.soundThread.start_stop_sound_thread)
@@ -176,20 +178,27 @@ class MainWindow(QMainWindow):
         self.settingsWidget.mainTab.cb_spectrogram_resolution.currentTextChanged.connect(lambda a:
         self.set_spectrogram_resolution(self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
 
-        self.telemetryWidget = TelemetryWidget(theme_type=self.theme_type)
+
+
         self.gRPCErrorTread.signal_telemetry.connect(self.telemetryWidget.udpate_widgets_states)
 
         self.show()
         self.move_window_to_center()
 
-    def set_spectrogram_resolution(self, new_resolution: tuple[int, int]):
-        for recogn_widget in self.recogn_widgets.values():
-            recogn_widget.resize_img(new_resolution)
-
     def create_menu(self):
+        self.act_start = QAction()
+        self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
+        self.act_start.setText('Start')
+        self.act_start.setCheckable(True)
+        self.act_start.triggered.connect(self.change_connection_state)
+
         self.act_settings = QAction('Settings', self)
         self.act_settings.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_settings.png'))
         self.act_settings.triggered.connect(self.open_settings)
+
+        self.act_channels = QAction('Channels', self)
+        self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye_on.png'))
+        self.act_channels.triggered.connect(self.open_channels)
 
         self.act_telemetry = QAction('Telemetry', self)
         self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
@@ -199,24 +208,28 @@ class MainWindow(QMainWindow):
         self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
         self.act_map.triggered.connect(self.open_map)
 
+        self.act_aeroscope = QAction('Aeroscope', self)
+        self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope.png'))
+        self.act_aeroscope.triggered.connect(self.open_aeroscope)
+
         self.act_remote_id = QAction('Remote ID', self)
         self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
         self.act_remote_id.triggered.connect(self.open_remote_id)
 
-    def create_actions(self):
-        self.act_start = QAction()
-        self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_start.png'))
-        self.act_start.setText('Start')
-        self.act_start.setCheckable(True)
-        self.act_start.triggered.connect(self.change_connection_state)
+        self.act_wifi = QAction('WiFi', self)
+        self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi.png'))
+        self.act_wifi.triggered.connect(self.open_wifi)
 
     def create_toolbar(self):
         self.toolBar = QToolBar('Toolbar')
         self.toolBar.addAction(self.act_start)
         self.toolBar.addAction(self.act_settings)
+        self.toolBar.addAction(self.act_channels)
         self.toolBar.addAction(self.act_telemetry)
         self.toolBar.addAction(self.act_map)
+        self.toolBar.addAction(self.act_aeroscope)
         self.toolBar.addAction(self.act_remote_id)
+        self.toolBar.addAction(self.act_wifi)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
     def init_recognition_widgets(self):
@@ -248,52 +261,54 @@ class MainWindow(QMainWindow):
                 self.gRPCThread.signal_process_status.connect(recogn_widget.processOptions.update_process_status)
 
                 self.recogn_widgets[channel_info.name] = recogn_widget
-        self.add_recogn_widgets(type_of_adding='left')
+
+        self.channelsWidget = ChannelsWidget(widgets=list(self.recogn_widgets.values()))
+
         self.processor.init_recogn_widgets(recogn_widgets=self.recogn_widgets)
-
-    def add_recogn_widgets(self, type_of_adding: str):
-        if type_of_adding == 'default':
-            i = 1
-            for widget in self.recogn_widgets.values():
-                if i % 2 == 1:
-                    self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, widget)
-                else:
-                    self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, widget)
-                i += 1
-                widget.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-
-        elif type_of_adding == 'tabs':
-            i = 0
-            for widget in self.recogn_widgets.values():
-                self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, widget)
-
-            # табуляция между соседними виджетами
-            while i < len(self.recogn_widgets) - 1:
-                try:
-                    self.tabifyDockWidget(self.recogn_widgets[list(self.recogn_widgets.keys())[i]],
-                                          self.recogn_widgets[list(self.recogn_widgets.keys())[i + 1]])
-                    i += 2
-                except: pass
-
-        elif type_of_adding == 'left':
-            for widget in self.recogn_widgets.values():
-                self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, widget)
 
     def init_map_widget(self):
         self.mapWidget = MapWidget(map_settings=self.config['map'])
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.mapWidget)
-        self.mapWidget.hide()
+
+    def init_telemetry_widget(self):
+        self.telemetryWidget = TelemetryWidget(theme_type=self.theme_type)
+
+
+    def init_aeroscope_widget(self):
+        self.aeroscopeWidget = AeroscopeWidget(theme_type=self.theme_type, logger_=self.logger_)
 
     def init_remote_id_widget(self):
-        self.remoteIdWidget = RemoteIdWidget(theme_type=self.theme_type)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.remoteIdWidget)
-        self.remoteIdWidget.hide()
+        self.remoteIdWidget = RemoteIdWidget(theme_type=self.theme_type, logger_=self.logger_)
+
+    def init_wifi_widget(self):
+        self.wifiWidget = WiFiWidget(theme_type=self.theme_type, logger_=self.logger_)
+
+    def add_widgets_to_grid(self):
+        self.tab_bottom = QTabWidget()
+        self.tab_bottom.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.tab_bottom.addTab(self.mapWidget, 'Map')
+        self.tab_bottom.addTab(self.telemetryWidget, 'Telemetry')
+
+        self.tab_right = QTabWidget()
+        self.tab_right.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.tab_right.addTab(self.aeroscopeWidget, 'Aeroscope')
+        self.tab_right.addTab(self.wifiWidget, 'WiFi')
+        self.tab_right.addTab(self.remoteIdWidget, 'Remote ID')
+
+        self.grid.addWidget(self.channelsWidget, 0, 0)
+        self.grid.addWidget(self.tab_bottom, 1, 0, 1, 1)
+        self.grid.addWidget(self.tab_right, 0, 1, 2, 1)
+
+    def set_spectrogram_resolution(self, new_resolution: tuple[int, int]):
+        for recogn_widget in self.recogn_widgets.values():
+            recogn_widget.resize_img(new_resolution)
 
     def change_connection_state(self, status: bool):
         if status:
             self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
             self.mapWidget.map_emulation()
+            self.aeroscope_emulation()
             self.remote_id_emulation()
+            self.wifi_emulation()
             for channel in self.enabled_channels:
                 try:
                     self.gRPCThread.startChannelRequest(channel_name=channel)
@@ -319,56 +334,71 @@ class MainWindow(QMainWindow):
             else:
                 self.logger_.warning('gRPCErrorTread is not running.')
 
-    def init_drone_emulation(self):
-
-        self.obj = UAVObject(id='asalam',
-                                             name='DJI Phantom',
-                                             position_history=[
-                                                                [53.9329706, 27.6456251],
-                                                                [53.9331896, 27.6478315],],
-                                             altitude=127,
-                                             pilot_position=[53.9308304, 27.6468779],
-                                             serial_number='534645yfgsd5')
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.drone_emulate)
-        self.timer.start(2000)
-
-    def drone_emulate(self):
-        print("Add new location")
-        self.obj.position_history.append([i + 0.0005 for i in self.obj.position_history[-1]])
-        position_history = [
-            [53.9325706, 27.6451251],
-            [53.9332896, 27.6479315],
-            [53.9308304, 27.6468779],
-            [53.9305065, 27.6437918],
-            [53.9311214, 27.6398012]]
-        self.mapWidget.add_object(self.obj)
+    def aeroscope_emulation(self):
+        self.aeroscope_timer = QTimer(self)
+        self.aeroscope_timer.timeout.connect(self.aeroscopeWidget.emulate)
+        self.aeroscope_timer.start(3000)  # каждые 3 секунды
 
     def remote_id_emulation(self):
         self.rid_timer = QTimer(self)
         self.rid_timer.timeout.connect(self.remoteIdWidget.emulate)
         self.rid_timer.start(3000)  # каждые 3 секунды
 
-    def open_recognition_settings(self, channel):
-        self.recogn_settings_widgets[channel].show()
+    def wifi_emulation(self):
+        self.wifi_timer = QTimer(self)
+        self.wifi_timer.timeout.connect(self.wifiWidget.emulate)
+        self.wifi_timer.start(3000)  # каждые 3 секунды
 
     def open_settings(self):
         self.settingsWidget.show()
 
+    def open_channels(self):
+        if self.channelsWidget.isVisible():
+            self.channelsWidget.hide()
+            self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye.png'))
+        else:
+            self.channelsWidget.show()
+            self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye_on.png'))
+
     def open_telemetry(self):
-        self.telemetryWidget.show()
+        if self.telemetryWidget.isVisible():
+            self.telemetryWidget.hide()
+            self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
+        else:
+            self.telemetryWidget.show()
+            self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry_on.png'))
 
     def open_map(self):
         if self.mapWidget.isVisible():
             self.mapWidget.hide()
+            self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
         else:
             self.mapWidget.show()
+            self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map_on.png'))
+
+    def open_aeroscope(self):
+        if self.aeroscopeWidget.isVisible():
+            self.aeroscopeWidget.hide()
+            self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope.png'))
+        else:
+            self.aeroscopeWidget.show()
+            self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope_on.png'))
 
     def open_remote_id(self):
-        if self. remoteIdWidget.isVisible():
+        if self.remoteIdWidget.isVisible():
             self.remoteIdWidget.hide()
+            self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
         else:
             self.remoteIdWidget.show()
+            self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id_on.png'))
+
+    def open_wifi(self):
+        if self.wifiWidget.isVisible():
+            self.wifiWidget.hide()
+            self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi.png'))
+        else:
+            self.wifiWidget.show()
+            self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi_on.png'))
 
     def link_events(self):
         self.gRPCThread.signal_dataStream_response.connect(
@@ -444,9 +474,6 @@ class MainWindow(QMainWindow):
             self.change_connection_state(status=True)
             self.logger_.info('Spectrum showing started.')
 
-    def change_sound_states(self):
-        pass
-
     def save_config(self):
         try:
             config = {}
@@ -498,10 +525,21 @@ class MainWindow(QMainWindow):
                                               "color: #000000;"
                                               "border: 1px solid #000000;"
                                               "padding: 2px;}")
+
+        channels_state = '_on' if self.channelsWidget.isVisible() else ''
+        telemetry_state = '_on' if self.telemetryWidget.isVisible() else ''
+        map_state = '_on' if self.mapWidget.isVisible() else ''
+        aeroscope_state = '_on' if self.aeroscopeWidget.isVisible() else ''
+        rid_state = '_on' if self.remoteIdWidget.isVisible() else ''
+        wifi_state = '_on' if self.wifiWidget.isVisible() else ''
+
         self.act_settings.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_settings.png'))
-        self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
-        self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
-        self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
+        self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye{channels_state}.png'))
+        self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry{telemetry_state}.png'))
+        self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map{map_state}.png'))
+        self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope{aeroscope_state}.png'))
+        self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id{rid_state}.png'))
+        self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi{wifi_state}.png'))
 
         self.settingsWidget.soundTab.btn_play_sound.setIcon(QIcon(f'./assets/icons/{self.theme_type}/play_sound.png'))
         for widget in self.recogn_widgets.values():
@@ -511,6 +549,9 @@ class MainWindow(QMainWindow):
         else:
             self.act_start.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_start.png'))
         self.telemetryWidget.theme_changed(type=self.theme_type)
+        self.remoteIdWidget.theme_changed(type=self.theme_type)
+        self.wifiWidget.theme_changed(type=self.theme_type)
+
     # def closeEvent(self, a0):
     #     self.gRPCThread.gRPC_channel.close()
 

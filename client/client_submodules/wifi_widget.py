@@ -7,20 +7,20 @@ from datetime import datetime
 import random
 
 
-RemoteIdObject = namedtuple('RemoteId', ['mac_address', 'distance', 'azimuth'])
+WiFiObject = namedtuple('WiFi', ['name', 'mac_address', 'rssi'])
 
 
-class RemoteIdWidget(QDockWidget):
+class WiFiWidget(QDockWidget):
     def __init__(self, theme_type: str, logger_, history_size: int = 20):
         super().__init__()
         self.setMaximumWidth(400)
         self.setMinimumWidth(300)
 
-        self.setWindowTitle('Remote ID')
+        self.setWindowTitle('WiFi')
         self.theme_type = theme_type
         self.logger = logger_
         self.history_size = history_size
-        self.pixmap = QPixmap(f"./assets/icons/{self.theme_type}/remote_id.png").scaled(
+        self.pixmap = QPixmap(f"./assets/icons/{self.theme_type}/wifi.png").scaled(
             50, 50, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
 
         self.container = QWidget()
@@ -47,17 +47,26 @@ class RemoteIdWidget(QDockWidget):
 
         self.mac_counter = 0
 
-    def add_remote_id(self, new_object: RemoteIdObject):
-        self.logger.debug(f'Adding remote id object..')
+        # self.setStyleSheet("""
+        # QDockWidget::title {
+        #     background: #2e3a4e;
+        #     color: white;
+        #     padding: 5px;
+        #     font-weight: bold;
+        # }
+        # """)
 
-        box_object = QGroupBox(f'MAC:  {new_object.mac_address}')
+    def add_wifi(self, new_object: WiFiObject):
+        self.logger.debug(f'Adding wifi object..')
+
+        box_object = QGroupBox(f'{new_object.name}')
 
         icon_label = QLabel()
         icon_label.setPixmap(self.pixmap)
 
         l_time = QLabel(f'Updated: {datetime.now().strftime("%H:%M:%S")}')
-        l_distance = QLabel(f'Distance: {new_object.distance}')
-        l_azimith = QLabel(f'Azimuth: {new_object.azimuth}')
+        l_mac = QLabel(f'MAC: {new_object.mac_address}')
+        l_rssi = QLabel(f'RSSI: {new_object.rssi}')
 
         remove_button = QPushButton("Remove item")
         remove_button.setStyleSheet("color: red; font-weight: bold;")
@@ -70,8 +79,8 @@ class RemoteIdWidget(QDockWidget):
         left_layout.addWidget(icon_label)
         right_layout = QVBoxLayout()
         right_layout.addWidget(l_time)
-        right_layout.addWidget(l_distance)
-        right_layout.addWidget(l_azimith)
+        right_layout.addWidget(l_mac)
+        right_layout.addWidget(l_rssi)
         box_main_layout = QHBoxLayout()
         box_main_layout.addLayout(left_layout)
         box_main_layout.addLayout(right_layout)
@@ -92,7 +101,7 @@ class RemoteIdWidget(QDockWidget):
         item.deleteLater()
 
     def clear_all_items(self):
-        confirm = QMessageBox.question(self, "Clear all", "Delete all elements Remote ID?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm = QMessageBox.question(self, "Clear all", "Delete all elements WiFi?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
             while self.list_layout.count():
                 widget = self.list_layout.itemAt(0).widget()
@@ -102,11 +111,11 @@ class RemoteIdWidget(QDockWidget):
     def emulate(self):
         self.logger.debug(f'Emulating remote id object..')
 
-        obj = RemoteIdObject(mac_address=f"DE:AD:BE:EF:{self.mac_counter:02X}:{random.randint(0, 255):02X}",
-                             distance=round(random.uniform(10, 3000), 1),
-                             azimuth=round(random.uniform(0, 360), 1))
+        obj = WiFiObject(name='dji_wifi_marker',
+                         mac_address=f"DE:AD:BE:EF:{self.mac_counter:02X}:{random.randint(0, 255):02X}",
+                         rssi=round(random.uniform(-150, -10), 1))
 
-        self.add_remote_id(new_object=obj)
+        self.add_wifi(new_object=obj)
         self.mac_counter += 1
 
     def theme_changed(self, type: str):

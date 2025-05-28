@@ -1,7 +1,7 @@
 import loguru
 from PySide6.QtWidgets import (QWidget, QListWidget, QApplication, QSpacerItem, QSizePolicy,
                              QStackedWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton,
-                             QLabel, QSlider, QTabWidget, QComboBox, QGroupBox, QSpinBox, QDoubleSpinBox)
+                             QLabel, QSlider, QTabWidget, QComboBox, QGroupBox, QSpinBox, QDockWidget)
 from PySide6.QtGui import QPixmap, QImage, QFont, QIcon, QColor, QPainter, QPen
 from PySide6.QtCore import Qt, QRect
 import qdarktheme
@@ -9,7 +9,7 @@ from os import walk
 import yaml
 
 
-class TelemetryWidget(QWidget):
+class TelemetryWidget(QDockWidget):
     def __init__(self, theme_type: str):
         super().__init__()
         self.theme_type = theme_type
@@ -17,11 +17,13 @@ class TelemetryWidget(QWidget):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         self.setWindowTitle('Server`s Telemetry')
         self.setWindowIcon(QIcon(f'assets/icons/light/telemetry.png'))
-        self.setFixedSize(550, 480)
+
+        self.container = QWidget()
+        self.setWidget(self.container)
 
         self.main_layout = QVBoxLayout()
-        self.main_layout.setSpacing(15)
-        self.setLayout(self.main_layout)
+        self.main_layout.setSpacing(5)
+        self.container.setLayout(self.main_layout)
         self.create_widgets()
         self.add_widgets_to_layout()
 
@@ -31,34 +33,34 @@ class TelemetryWidget(QWidget):
         else:
             text_color = 'white'
 
-        self.box_cpu = QGroupBox('CPU')
-        self.cpu_load_circle = CircularProgress(label='LOAD', text_color=text_color)
+        self.box_sys_usage = QGroupBox('System usage')
+        self.box_sys_usage.setStyleSheet("QGroupBox {margin-top: 2px; padding: 2px; }")
+        self.cpu_load_circle = CircularProgress(label='CPU', text_color=text_color)
         self.cpu_temp_label = QLabel('TEMP: --°C')
-        self.cpu_temp_label.setFont(QFont("Arial", 14, QFont.Weight.Normal))
+        self.cpu_temp_label.setFont(QFont("Arial", 12, QFont.Weight.Normal))
+        self.ram_memory_circle = CircularProgress(label='RAM', text_color=text_color)
+        self.ram_progress_label = ProgressLabel(postfix='GB')
 
         self.box_gpu = QGroupBox('GPU')
+        self.box_gpu.setStyleSheet("QGroupBox {margin-top: 2px; padding: 2px; }")
         self.gpu_load_circle = CircularProgress(label='LOAD', text_color=text_color)
         self.gpu_memory_circle = CircularProgress(label='MEM', text_color=text_color)
         self.gpu_progress_label = ProgressLabel(postfix='GB')
         self.gpu_temp_label = QLabel('TEMP: --°C')
-        self.gpu_temp_label.setFont(QFont("Arial", 14, QFont.Weight.Medium))
-
-
-        self.box_ram = QGroupBox('RAM')
-        self.ram_memory_circle = CircularProgress(label='MEM', text_color=text_color)
-        self.ram_progress_label = ProgressLabel(postfix='GB')
+        self.gpu_temp_label.setFont(QFont("Arial", 12, QFont.Weight.Medium))
 
         self.box_network = QGroupBox('Network')
+        self.box_network.setStyleSheet("QGroupBox {margin-top: 2px; padding: 2px; }")
         self.network_up_icon = QLabel()
         pixmap = QPixmap(f'./assets/icons/{self.theme_type}/upload.png')
         self.network_up_icon.setPixmap(pixmap.scaled(25, 25))
         self.network_up_label = QLabel('Up: -- Mb/s')
-        self.network_up_label.setFont(QFont("Arial", 14, QFont.Weight.Medium))
+        self.network_up_label.setFont(QFont("Arial", 12, QFont.Weight.Medium))
         self.network_down_icon = QLabel()
         pixmap = QPixmap(f'./assets/icons/{self.theme_type}/download.png')
         self.network_down_icon.setPixmap(pixmap.scaled(25, 25))
         self.network_down_label = QLabel('Down: -- Mb/s')
-        self.network_down_label.setFont(QFont("Arial", 14, QFont.Weight.Medium))
+        self.network_down_label.setFont(QFont("Arial", 12, QFont.Weight.Medium))
 
         self.cpu_load_circle.setFixedSize(120, 120)
         self.gpu_load_circle.setFixedSize(120, 120)
@@ -66,14 +68,22 @@ class TelemetryWidget(QWidget):
         self.ram_memory_circle.setFixedSize(120, 120)
 
     def add_widgets_to_layout(self):
-        cpu_layout = QHBoxLayout()
-        cpu_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        cpu_layout.addWidget(self.cpu_load_circle)
-        cpu_layout.addWidget(self.cpu_temp_label)
-        self.box_cpu.setLayout(cpu_layout)
+        sys_layout = QVBoxLayout()
+        sys_layout.setContentsMargins(0, 0, 0, 0)
+        sys_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        first_line_layout = QHBoxLayout()
+        first_line_layout.addWidget(self.cpu_load_circle)
+        first_line_layout.addWidget(self.cpu_temp_label)
+        second_line_layout = QHBoxLayout()
+        second_line_layout.addWidget(self.ram_memory_circle)
+        second_line_layout.addWidget(self.ram_progress_label)
+        sys_layout.addLayout(first_line_layout)
+        sys_layout.addLayout(second_line_layout)
+        self.box_sys_usage.setLayout(sys_layout)
 
         gpu_layout = QVBoxLayout()
-        gpu_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        gpu_layout.setContentsMargins(0, 0, 0, 0)
+        gpu_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         first_line_layout = QHBoxLayout()
         first_line_layout.addWidget(self.gpu_load_circle)
         first_line_layout.addWidget(self.gpu_temp_label)
@@ -84,20 +94,15 @@ class TelemetryWidget(QWidget):
         gpu_layout.addLayout(second_line_layout)
         self.box_gpu.setLayout(gpu_layout)
 
-        ram_layout = QHBoxLayout()
-        ram_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        ram_layout.addWidget(self.ram_memory_circle)
-        ram_layout.addWidget(self.ram_progress_label)
-        self.box_ram.setLayout(ram_layout)
-
-        network_layout = QVBoxLayout()
+        network_layout = QHBoxLayout()
+        network_layout.setContentsMargins(0, 15, 0, 5)
         network_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         network_up_layout = QHBoxLayout()
         network_up_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         network_up_layout.addWidget(self.network_up_icon)
         network_up_layout.addWidget(self.network_up_label)
         network_down_layout = QHBoxLayout()
-        #network_down_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        # network_down_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         network_down_layout.addWidget(self.network_down_icon)
         network_down_layout.addWidget(self.network_down_label)
         network_layout.addLayout(network_up_layout)
@@ -105,11 +110,10 @@ class TelemetryWidget(QWidget):
         self.box_network.setLayout(network_layout)
 
         first_line_main_layout = QHBoxLayout()
-        first_line_main_layout.addWidget(self.box_cpu)
+        first_line_main_layout.addWidget(self.box_sys_usage)
         first_line_main_layout.addWidget(self.box_gpu)
 
         second_line_main_layout = QHBoxLayout()
-        second_line_main_layout.addWidget(self.box_ram)
         second_line_main_layout.addWidget(self.box_network)
 
         self.main_layout.addLayout(first_line_main_layout)
@@ -150,6 +154,7 @@ class TelemetryWidget(QWidget):
             self.ram_memory_circle.text_color = 'black'
             self.gpu_memory_circle.text_color = 'black'
 
+
 class CircularProgress(QWidget):
     def __init__(self, label, color=QColor("#00ffff"), text_color='white'):
         super().__init__()
@@ -168,8 +173,9 @@ class CircularProgress(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         rect = self.rect()
-        pen_width = 8
-        radius = int(min(rect.width(), rect.height()) / 2 - pen_width)
+        pen_width = 5
+        padding = 15            # уменьшает диаметр окружности
+        radius = int(min(rect.width(), rect.height()) / 2 - pen_width - padding)
 
         center = rect.center()
         painter.translate(center)
@@ -191,7 +197,7 @@ class CircularProgress(QWidget):
         # Draw text
         painter.resetTransform()
         painter.setPen(QColor(self.text_color))
-        font = QFont("Arial", 14, QFont.Weight.Medium)
+        font = QFont("Arial", 12, QFont.Weight.Medium)
         painter.setFont(font)
         text = f"{self.label}\n{self.value:.0f}%"
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
@@ -201,13 +207,21 @@ class ProgressLabel(QLabel):
     def __init__(self, postfix='GB'):
         super().__init__()
         self.postfix = postfix
-        self.setFont(QFont("Arial", 14, QFont.Weight.Normal))
+        self.setFont(QFont("Arial", 12, QFont.Weight.Normal))
         # self.setStyleSheet("color: #00ff99; background-color: #222; padding: 6px; border-radius: 6px;")
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setText(f'-- / --  {self.postfix}')
 
     def update_value(self, min: float, max: float):
         self.setText(f'{min:.1f} / {max:.1f}  {self.postfix}')
+
+
+if __name__ == '__main__':
+    app = QApplication([])
+    qdarktheme.setup_theme()
+    window = TelemetryWidget(theme_type='dark')
+    window.show()
+    app.exec()
 
 
 # class MemoryProgress2(QWidget):

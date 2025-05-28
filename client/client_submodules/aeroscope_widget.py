@@ -7,21 +7,21 @@ from datetime import datetime
 import random
 
 
-RemoteIdObject = namedtuple('RemoteId', ['mac_address', 'distance', 'azimuth'])
+AeroscopeObject = namedtuple('Aeroscope', ['name', 'serial_number', 'distance', 'altitude'])
 
 
-class RemoteIdWidget(QDockWidget):
+class AeroscopeWidget(QDockWidget):
     def __init__(self, theme_type: str, logger_, history_size: int = 20):
         super().__init__()
         self.setMaximumWidth(400)
         self.setMinimumWidth(300)
 
-        self.setWindowTitle('Remote ID')
+        self.setWindowTitle('Aeroscope')
         self.theme_type = theme_type
         self.logger = logger_
         self.history_size = history_size
-        self.pixmap = QPixmap(f"./assets/icons/{self.theme_type}/remote_id.png").scaled(
-            50, 50, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self.pixmap = QPixmap(f"./assets/icons/drones/dji_drone.png").scaled(
+            100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
 
         self.container = QWidget()
         self.setWidget(self.container)
@@ -47,17 +47,18 @@ class RemoteIdWidget(QDockWidget):
 
         self.mac_counter = 0
 
-    def add_remote_id(self, new_object: RemoteIdObject):
-        self.logger.debug(f'Adding remote id object..')
+    def add_drone(self, new_object: AeroscopeObject):
+        self.logger.debug(f'Adding drone object..')
 
-        box_object = QGroupBox(f'MAC:  {new_object.mac_address}')
+        box_object = QGroupBox(f'{new_object.name}')
 
         icon_label = QLabel()
         icon_label.setPixmap(self.pixmap)
 
         l_time = QLabel(f'Updated: {datetime.now().strftime("%H:%M:%S")}')
         l_distance = QLabel(f'Distance: {new_object.distance}')
-        l_azimith = QLabel(f'Azimuth: {new_object.azimuth}')
+        l_altitude = QLabel(f'Altitude: {new_object.altitude}')
+        l_serial_numb = QLabel(f'S/N: {new_object.serial_number}')
 
         remove_button = QPushButton("Remove item")
         remove_button.setStyleSheet("color: red; font-weight: bold;")
@@ -71,7 +72,8 @@ class RemoteIdWidget(QDockWidget):
         right_layout = QVBoxLayout()
         right_layout.addWidget(l_time)
         right_layout.addWidget(l_distance)
-        right_layout.addWidget(l_azimith)
+        right_layout.addWidget(l_altitude)
+        right_layout.addWidget(l_serial_numb)
         box_main_layout = QHBoxLayout()
         box_main_layout.addLayout(left_layout)
         box_main_layout.addLayout(right_layout)
@@ -102,11 +104,12 @@ class RemoteIdWidget(QDockWidget):
     def emulate(self):
         self.logger.debug(f'Emulating remote id object..')
 
-        obj = RemoteIdObject(mac_address=f"DE:AD:BE:EF:{self.mac_counter:02X}:{random.randint(0, 255):02X}",
-                             distance=round(random.uniform(10, 3000), 1),
-                             azimuth=round(random.uniform(0, 360), 1))
+        obj = AeroscopeObject(name='DJI Mavic 3',
+                              distance=round(random.uniform(10, 3000), 1),
+                              altitude=round(random.uniform(0, 300), 1),
+                              serial_number='HFDJH4HJ8934FDF3')
 
-        self.add_remote_id(new_object=obj)
+        self.add_drone(new_object=obj)
         self.mac_counter += 1
 
     def theme_changed(self, type: str):
