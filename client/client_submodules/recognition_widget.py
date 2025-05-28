@@ -536,7 +536,8 @@ if __name__ == '__main__':
                                                              central_freq=[5_000_000_000, 6_000_000_000]),
                                     show_images=False,
                                     show_histogram=False,
-                                    show_spectrum=False
+                                    show_spectrum=False,
+                                    theme_type='dark'
                                     )
 
     main_window.show()

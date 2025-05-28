@@ -272,7 +272,6 @@ class MainWindow(QMainWindow):
     def init_telemetry_widget(self):
         self.telemetryWidget = TelemetryWidget(theme_type=self.theme_type)
 
-
     def init_aeroscope_widget(self):
         self.aeroscopeWidget = AeroscopeWidget(theme_type=self.theme_type, logger_=self.logger_)
 
@@ -294,9 +293,17 @@ class MainWindow(QMainWindow):
         self.tab_right.addTab(self.wifiWidget, 'WiFi')
         self.tab_right.addTab(self.remoteIdWidget, 'Remote ID')
 
-        self.grid.addWidget(self.channelsWidget, 0, 0)
-        self.grid.addWidget(self.tab_bottom, 1, 0, 1, 1)
-        self.grid.addWidget(self.tab_right, 0, 1, 2, 1)
+        i = 0
+        for widg in self.recogn_widgets.values():
+            self.grid.addWidget(widg, 0, i)
+            i += 1
+        self.grid.addWidget(self.tab_bottom, 1, 0, 1, len(self.enabled_channels))
+        self.grid.addWidget(self.tab_right, 0, len(self.enabled_channels), 2, 1)
+
+
+        # self.grid.addWidget(self.channelsWidget, 0, 0)
+        # self.grid.addWidget(self.tab_bottom, 1, 0, 1, 1)
+        # self.grid.addWidget(self.tab_right, 0, 1, 2, 1)
 
     def set_spectrogram_resolution(self, new_resolution: tuple[int, int]):
         for recogn_widget in self.recogn_widgets.values():
