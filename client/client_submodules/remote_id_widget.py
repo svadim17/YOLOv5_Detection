@@ -13,10 +13,11 @@ RemoteIdObject = namedtuple('RemoteId', ['mac_address', 'distance', 'azimuth'])
 class RemoteIdWidget(QDockWidget):
     def __init__(self, theme_type: str, logger_, history_size: int = 20):
         super().__init__()
-        self.setMaximumWidth(400)
+        # self.setMaximumWidth(400)
         self.setMinimumWidth(300)
 
-        self.setWindowTitle('Remote ID')
+        self.setTitleBarWidget(QWidget())
+        # self.setWindowTitle('Remote ID')
         self.theme_type = theme_type
         self.logger = logger_
         self.history_size = history_size

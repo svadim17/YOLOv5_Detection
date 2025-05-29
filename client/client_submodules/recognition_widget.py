@@ -271,7 +271,6 @@ class RecognitionWidget(QWidget):
             self.btn_all_freq.setIcon(QIcon(f'./assets/icons/{self.theme_type}/arrow_down.png'))
             self.all_drons_btns_widget.show()
 
-
     def create_buttons_old(self):
         for freq in self.channel_info.central_freq:
             drons_btns = {}

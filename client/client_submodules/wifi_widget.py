@@ -13,10 +13,11 @@ WiFiObject = namedtuple('WiFi', ['name', 'mac_address', 'rssi'])
 class WiFiWidget(QDockWidget):
     def __init__(self, theme_type: str, logger_, history_size: int = 20):
         super().__init__()
-        self.setMaximumWidth(400)
+        # self.setMaximumWidth(400)
         self.setMinimumWidth(300)
 
-        self.setWindowTitle('WiFi')
+        self.setTitleBarWidget(QWidget())
+        # self.setWindowTitle('WiFi')
         self.theme_type = theme_type
         self.logger = logger_
         self.history_size = history_size

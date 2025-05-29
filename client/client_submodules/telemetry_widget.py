@@ -15,7 +15,8 @@ class TelemetryWidget(QDockWidget):
         self.theme_type = theme_type
 
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
-        self.setWindowTitle('Server`s Telemetry')
+        self.setTitleBarWidget(QWidget())
+        # self.setWindowTitle('Server`s Telemetry')
         self.setWindowIcon(QIcon(f'assets/icons/light/telemetry.png'))
 
         self.container = QWidget()

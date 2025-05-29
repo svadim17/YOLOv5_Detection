@@ -54,6 +54,8 @@ class MainWindow(QMainWindow):
         self.show_spectrum_status = bool(self.config['settings_main']['show_spectrum'])
         self.watchdog = bool(self.config['settings_main']['watchdog'])
         self.welcome_window_state = bool(self.config['show_welcome_window'])
+        self.init_widgets_status()
+
         self.clear_img_status = False
 
         self.theme_type = self.config['settings_main']['theme']['type']
@@ -81,6 +83,21 @@ class MainWindow(QMainWindow):
             self.welcomeWindow.show()
         else:
             self.connect_to_server(server_ip=self.server_ip[0], grpc_port=self.grpc_port)
+
+    def init_widgets_status(self):
+        self.channels_status = True
+        self.map_status = bool(self.config['widgets']['map_status'])
+        self.telemetry_status = bool(self.config['widgets']['telemetry_status'])
+        self.aeroscope_status = bool(self.config['widgets']['aeroscope_status'])
+        self.wifi_status = bool(self.config['widgets']['wifi_status'])
+        self.remote_id_status = bool(self.config['widgets']['remote_id_status'])
+
+        self.channels_show_status = True
+        self.map_show_status = bool(self.config['widgets_show']['map_show_status']) if self.map_status else False
+        self.telemetry_show_status = bool(self.config['widgets_show']['telemetry_show_status']) if self.telemetry_status else False
+        self.aeroscope_show_status = bool(self.config['widgets_show']['aeroscope_show_status']) if self.aeroscope_status else False
+        self.wifi_show_status = bool(self.config['widgets_show']['wifi_show_status']) if self.wifi_status else False
+        self.remote_id_show_status = bool(self.config['widgets_show']['remote_id_show_status']) if self.remote_id_status else False
 
     def connect_to_server(self, server_ip: str, grpc_port: str):
         self.server_ip = server_ip
@@ -161,11 +178,16 @@ class MainWindow(QMainWindow):
         self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
 
         self.init_recognition_widgets()
-        self.init_map_widget()
-        self.init_telemetry_widget()
-        self.init_aeroscope_widget()
-        self.init_remote_id_widget()
-        self.init_wifi_widget()
+        if self.map_status:
+            self.init_map_widget()
+        if self.telemetry_status:
+            self.init_telemetry_widget()
+        if self.aeroscope_status:
+            self.init_aeroscope_widget()
+        if self.remote_id_status:
+            self.init_remote_id_widget()
+        if self.wifi_status:
+            self.init_wifi_widget()
         self.add_widgets_to_grid()
 
         self.processor.init_sound_states(sound_states=self.sound_states)
@@ -177,8 +199,6 @@ class MainWindow(QMainWindow):
 
         self.settingsWidget.mainTab.cb_spectrogram_resolution.currentTextChanged.connect(lambda a:
         self.set_spectrogram_resolution(self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
-
-
 
         self.gRPCErrorTread.signal_telemetry.connect(self.telemetryWidget.udpate_widgets_states)
 
@@ -200,36 +220,51 @@ class MainWindow(QMainWindow):
         self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye_on.png'))
         self.act_channels.triggered.connect(self.open_channels)
 
-        self.act_telemetry = QAction('Telemetry', self)
-        self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
-        self.act_telemetry.triggered.connect(self.open_telemetry)
+        if self.telemetry_status:
+            telemetry_icon_state = '_on' if self.telemetry_show_status else ''
+            self.act_telemetry = QAction('Telemetry', self)
+            self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry{telemetry_icon_state}.png'))
+            self.act_telemetry.triggered.connect(self.open_telemetry)
 
-        self.act_map = QAction('Map', self)
-        self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
-        self.act_map.triggered.connect(self.open_map)
+        if self.map_status:
+            map_icon_state = '_on' if self.map_show_status else ''
+            self.act_map = QAction('Map', self)
+            self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map{map_icon_state}.png'))
+            self.act_map.triggered.connect(self.open_map)
 
-        self.act_aeroscope = QAction('Aeroscope', self)
-        self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope.png'))
-        self.act_aeroscope.triggered.connect(self.open_aeroscope)
+        if self.aeroscope_status:
+            aeroscope_icon_state = '_on' if self.aeroscope_show_status else ''
+            self.act_aeroscope = QAction('Aeroscope', self)
+            self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope{aeroscope_icon_state}.png'))
+            self.act_aeroscope.triggered.connect(self.open_aeroscope)
 
-        self.act_remote_id = QAction('Remote ID', self)
-        self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
-        self.act_remote_id.triggered.connect(self.open_remote_id)
+        if self.remote_id_status:
+            remote_id_icon_state = '_on' if self.remote_id_show_status else ''
+            self.act_remote_id = QAction('Remote ID', self)
+            self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id{remote_id_icon_state}.png'))
+            self.act_remote_id.triggered.connect(self.open_remote_id)
 
-        self.act_wifi = QAction('WiFi', self)
-        self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi.png'))
-        self.act_wifi.triggered.connect(self.open_wifi)
+        if self.wifi_status:
+            wifi_icon_state = '_on' if self.wifi_show_status else ''
+            self.act_wifi = QAction('WiFi', self)
+            self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi{wifi_icon_state}.png'))
+            self.act_wifi.triggered.connect(self.open_wifi)
 
     def create_toolbar(self):
         self.toolBar = QToolBar('Toolbar')
         self.toolBar.addAction(self.act_start)
         self.toolBar.addAction(self.act_settings)
         self.toolBar.addAction(self.act_channels)
-        self.toolBar.addAction(self.act_telemetry)
-        self.toolBar.addAction(self.act_map)
-        self.toolBar.addAction(self.act_aeroscope)
-        self.toolBar.addAction(self.act_remote_id)
-        self.toolBar.addAction(self.act_wifi)
+        if self.telemetry_status:
+            self.toolBar.addAction(self.act_telemetry)
+        if self.map_status:
+            self.toolBar.addAction(self.act_map)
+        if self.aeroscope_status:
+            self.toolBar.addAction(self.act_aeroscope)
+        if self.remote_id_status:
+            self.toolBar.addAction(self.act_remote_id)
+        if self.wifi_status:
+            self.toolBar.addAction(self.act_wifi)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
     def init_recognition_widgets(self):
@@ -262,8 +297,6 @@ class MainWindow(QMainWindow):
 
                 self.recogn_widgets[channel_info.name] = recogn_widget
 
-        self.channelsWidget = ChannelsWidget(widgets=list(self.recogn_widgets.values()))
-
         self.processor.init_recogn_widgets(recogn_widgets=self.recogn_widgets)
 
     def init_map_widget(self):
@@ -284,26 +317,46 @@ class MainWindow(QMainWindow):
     def add_widgets_to_grid(self):
         self.tab_bottom = QTabWidget()
         self.tab_bottom.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        self.tab_bottom.addTab(self.mapWidget, 'Map')
-        self.tab_bottom.addTab(self.telemetryWidget, 'Telemetry')
+        if self.map_status:
+            self.tab_bottom.insertTab(0, self.mapWidget, 'Map')
+        if self.telemetry_status:
+            self.tab_bottom.insertTab(1, self.telemetryWidget, "Server's Telemetry")
+        if not self.map_show_status:
+            self.tab_bottom.widget(0).hide()
+            self.tab_bottom.setTabText(0, "")
+        if not self.telemetry_show_status:
+            self.tab_bottom.widget(1).hide()
+            self.tab_bottom.setTabText(1, "")
+        self.grid.addWidget(self.tab_bottom, 1, 0, 1, len(self.enabled_channels))
 
         self.tab_right = QTabWidget()
         self.tab_right.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        self.tab_right.addTab(self.aeroscopeWidget, 'Aeroscope')
-        self.tab_right.addTab(self.wifiWidget, 'WiFi')
-        self.tab_right.addTab(self.remoteIdWidget, 'Remote ID')
+        if self.aeroscope_status:
+            self.tab_right.insertTab(0, self.aeroscopeWidget, 'Aeroscope')
+        if self.remote_id_status:
+            self.tab_right.insertTab(1, self.remoteIdWidget, 'Remote ID')
+        if self.wifi_status:
+            self.tab_right.insertTab(2, self.wifiWidget, 'WiFi')
+        if not self.aeroscope_show_status:
+            self.tab_right.widget(0).hide()
+            self.tab_right.setTabText(0, "")
+        if not self.remote_id_show_status:
+            self.tab_right.widget(1).hide()
+            self.tab_right.setTabText(1, "")
+        if not self.wifi_show_status:
+            self.tab_right.widget(2).hide()
+            self.tab_right.setTabText(2, "")
+        self.grid.addWidget(self.tab_right, 0, len(self.enabled_channels), 2, 1)
 
         i = 0
         for widg in self.recogn_widgets.values():
             self.grid.addWidget(widg, 0, i)
             i += 1
-        self.grid.addWidget(self.tab_bottom, 1, 0, 1, len(self.enabled_channels))
-        self.grid.addWidget(self.tab_right, 0, len(self.enabled_channels), 2, 1)
 
-
-        # self.grid.addWidget(self.channelsWidget, 0, 0)
-        # self.grid.addWidget(self.tab_bottom, 1, 0, 1, 1)
-        # self.grid.addWidget(self.tab_right, 0, 1, 2, 1)
+        if not self.map_show_status and not self.telemetry_show_status:
+            self.tab_bottom.hide()
+        if not self.aeroscope_show_status and not self.wifi_show_status and not self.remote_id_show_status:
+            self.tab_right.hide()
 
     def set_spectrogram_resolution(self, new_resolution: tuple[int, int]):
         for recogn_widget in self.recogn_widgets.values():
@@ -312,10 +365,11 @@ class MainWindow(QMainWindow):
     def change_connection_state(self, status: bool):
         if status:
             self.act_start.setIcon(QIcon(f'assets/icons/{self.theme_type}/btn_stop.png'))
-            self.mapWidget.map_emulation()
-            self.aeroscope_emulation()
-            self.remote_id_emulation()
-            self.wifi_emulation()
+            self.mapWidget.map_emulation() if self.map_status else None
+            self.aeroscope_emulation() if self.aeroscope_status else None
+            self.remote_id_emulation() if self.remote_id_status else None
+            self.wifi_emulation() if self.wifi_status else None
+
             for channel in self.enabled_channels:
                 try:
                     self.gRPCThread.startChannelRequest(channel_name=channel)
@@ -360,52 +414,113 @@ class MainWindow(QMainWindow):
         self.settingsWidget.show()
 
     def open_channels(self):
-        if self.channelsWidget.isVisible():
-            self.channelsWidget.hide()
+        if self.channels_show_status:
+            for widg in self.recogn_widgets.values():
+                self.grid.removeWidget(widg)
+                widg.setParent(None)  # Отключает от layout, но не удаляет объект
             self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye.png'))
+            self.channels_show_status = False
         else:
-            self.channelsWidget.show()
+            i = 0
+            for widg in self.recogn_widgets.values():
+                self.grid.addWidget(widg, 0, i)
+                i += 1
             self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye_on.png'))
-
-    def open_telemetry(self):
-        if self.telemetryWidget.isVisible():
-            self.telemetryWidget.hide()
-            self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
-        else:
-            self.telemetryWidget.show()
-            self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry_on.png'))
+            self.channels_show_status = True
 
     def open_map(self):
         if self.mapWidget.isVisible():
-            self.mapWidget.hide()
+            self.tab_bottom.widget(0).hide()
+            self.tab_bottom.setTabEnabled(0, False)
+            self.tab_bottom.setTabText(0, "")  # Или "Скрыто"
             self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
+            self.map_show_status = False
+            if not self.map_show_status and not self.telemetry_show_status:
+                self.tab_bottom.hide()
         else:
-            self.mapWidget.show()
+            self.tab_bottom.widget(0).show()
+            self.tab_bottom.setTabEnabled(0, True)
+            self.tab_bottom.setTabText(0, "Map")
             self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map_on.png'))
+            self.map_show_status = True
+            if self.tab_bottom.isHidden():
+                self.tab_bottom.show()
+
+    def open_telemetry(self):
+        if self.telemetryWidget.isVisible():
+            self.tab_bottom.widget(1).hide()
+            self.tab_bottom.setTabEnabled(1, False)
+            self.tab_bottom.setTabText(1, "")  # Или "Скрыто"
+            self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
+            self.telemetry_show_status = False
+            if not self.map_show_status and not self.telemetry_show_status:
+                self.tab_bottom.hide()
+        else:
+            self.tab_bottom.widget(1).show()
+            self.tab_bottom.setTabEnabled(1, True)
+            self.tab_bottom.setTabText(1, "Server's Telemetry")
+            self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry_on.png'))
+            self.telemetry_show_status = True
+            if self.tab_bottom.isHidden():
+                self.tab_bottom.show()
 
     def open_aeroscope(self):
         if self.aeroscopeWidget.isVisible():
-            self.aeroscopeWidget.hide()
+            self.tab_right.widget(0).hide()
+            self.tab_right.setTabEnabled(0, False)
+            self.tab_right.setTabText(0, "")  # Или "Скрыто"
             self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope.png'))
+            self.aeroscope_show_status = False
+            if not self.aeroscope_show_status and not self.remote_id_show_status and not self.wifi_show_status:
+                self.tab_right.hide()
         else:
-            self.aeroscopeWidget.show()
+            self.tab_right.widget(0).show()
+            self.tab_right.setTabEnabled(0, True)
+            self.tab_right.setTabText(0, "Aeroscope")
             self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope_on.png'))
+            self.aeroscope_show_status = True
+            if self.tab_right.isHidden():
+                self.tab_right.show()
 
     def open_remote_id(self):
         if self.remoteIdWidget.isVisible():
-            self.remoteIdWidget.hide()
+            # self.tab_right.removeTab(1)
+            self.tab_right.widget(1).hide()
+            self.tab_right.setTabEnabled(1, False)
+            self.tab_right.setTabText(1, "")  # Или "Скрыто"
             self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
+            self.remote_id_show_status = False
+            if not self.aeroscope_show_status and not self.remote_id_show_status and not self.wifi_show_status:
+                self.tab_right.hide()
         else:
-            self.remoteIdWidget.show()
+            # self.tab_right.insertTab(1, self.remoteIdWidget, "Remote ID")
+            self.tab_right.widget(1).show()
+            self.tab_right.setTabEnabled(1, True)
+            self.tab_right.setTabText(1, "Remote ID")
             self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id_on.png'))
+            self.remote_id_show_status = True
+            if self.tab_right.isHidden():
+                self.tab_right.show()
 
     def open_wifi(self):
         if self.wifiWidget.isVisible():
-            self.wifiWidget.hide()
+            # self.tab_right.removeTab(2)
+            self.tab_right.widget(2).hide()
+            self.tab_right.setTabEnabled(2, False)
+            self.tab_right.setTabText(2, "")  # Или "Скрыто"
             self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi.png'))
+            self.wifi_show_status = False
+            if not self.aeroscope_show_status and not self.remote_id_show_status and not self.wifi_show_status:
+                self.tab_right.hide()
         else:
-            self.wifiWidget.show()
+            # self.tab_right.insertTab(2, self.wifiWidget, "WiFi")
+            self.tab_right.widget(2).show()
+            self.tab_right.setTabEnabled(2, True)
+            self.tab_right.setTabText(2, "WiFi")
             self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi_on.png'))
+            self.wifi_show_status = True
+            if self.tab_right.isHidden():
+                self.tab_right.show()
 
     def link_events(self):
         self.gRPCThread.signal_dataStream_response.connect(
@@ -533,12 +648,12 @@ class MainWindow(QMainWindow):
                                               "border: 1px solid #000000;"
                                               "padding: 2px;}")
 
-        channels_state = '_on' if self.channelsWidget.isVisible() else ''
-        telemetry_state = '_on' if self.telemetryWidget.isVisible() else ''
-        map_state = '_on' if self.mapWidget.isVisible() else ''
-        aeroscope_state = '_on' if self.aeroscopeWidget.isVisible() else ''
-        rid_state = '_on' if self.remoteIdWidget.isVisible() else ''
-        wifi_state = '_on' if self.wifiWidget.isVisible() else ''
+        channels_state = '_on' if self.channels_show_status else ''
+        telemetry_state = '_on' if self.telemetry_show_status else ''
+        map_state = '_on' if self.map_show_status else ''
+        aeroscope_state = '_on' if self.aeroscope_show_status else ''
+        rid_state = '_on' if self.remote_id_show_status else ''
+        wifi_state = '_on' if self.wifi_show_status else ''
 
         self.act_settings.setIcon(QIcon(f'./assets/icons/{self.theme_type}/btn_settings.png'))
         self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye{channels_state}.png'))

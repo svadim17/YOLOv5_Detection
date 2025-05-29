@@ -13,10 +13,11 @@ AeroscopeObject = namedtuple('Aeroscope', ['name', 'serial_number', 'distance', 
 class AeroscopeWidget(QDockWidget):
     def __init__(self, theme_type: str, logger_, history_size: int = 20):
         super().__init__()
-        self.setMaximumWidth(400)
+        # self.setMaximumWidth(400)
         self.setMinimumWidth(300)
 
-        self.setWindowTitle('Aeroscope')
+        self.setTitleBarWidget(QWidget())
+        # self.setWindowTitle('Aeroscope')
         self.theme_type = theme_type
         self.logger = logger_
         self.history_size = history_size

@@ -21,7 +21,8 @@ class MapWidget(QDockWidget, QWidget):
     def __init__(self, map_settings: dict):
         super().__init__()
         self.map_settings = map_settings
-        self.setWindowTitle("Map")
+        self.setTitleBarWidget(QWidget())
+        # self.setWindowTitle("Map")
         # self.resize(800, 600)
         self.setMinimumSize(300, 300)
 

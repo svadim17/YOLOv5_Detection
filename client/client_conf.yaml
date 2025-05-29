@@ -36,3 +36,15 @@ map:
   zoom_start: 15
   min_zoom: 10
   max_zoom: 17
+widgets:
+  map_status: true
+  telemetry_status: true
+  aeroscope_status: true
+  wifi_status: true
+  remote_id_status: true
+widgets_show:
+  map_show_status: true
+  telemetry_show_status: true
+  aeroscope_show_status: false
+  wifi_show_status: false
+  remote_id_show_status: false
