@@ -1,9 +1,10 @@
 import os
 import sys
 import time
-from PySide6.QtWidgets import QMainWindow, QApplication, QToolBar, QGridLayout, QTabWidget, QSizePolicy, QWidget
+from PySide6.QtWidgets import QMainWindow, QApplication, QToolBar, QGridLayout, QTabWidget, QSizePolicy, QWidget, QLabel
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, QTimer
+from datetime import datetime
 import qdarktheme
 from client_submodules.gRPC_thread import gRPCThread, connect_to_gRPC_server, gRPCServerErrorThread
 from client_submodules.welcome_window import WelcomeWindow
@@ -98,6 +99,8 @@ class MainWindow(QMainWindow):
         self.aeroscope_show_status = bool(self.config['widgets_show']['aeroscope_show_status']) if self.aeroscope_status else False
         self.wifi_show_status = bool(self.config['widgets_show']['wifi_show_status']) if self.wifi_status else False
         self.remote_id_show_status = bool(self.config['widgets_show']['remote_id_show_status']) if self.remote_id_status else False
+
+        self.map_ind, self.telemetry_ind, self.aeroscope_ind, self.wifi_ind, self.rid_ind = None, None, None, None, None
 
     def connect_to_server(self, server_ip: str, grpc_port: str):
         self.server_ip = server_ip
@@ -200,7 +203,6 @@ class MainWindow(QMainWindow):
         self.settingsWidget.mainTab.cb_spectrogram_resolution.currentTextChanged.connect(lambda a:
         self.set_spectrogram_resolution(self.settingsWidget.mainTab.cb_spectrogram_resolution.currentData()))
 
-        self.gRPCErrorTread.signal_telemetry.connect(self.telemetryWidget.udpate_widgets_states)
 
         self.show()
         self.move_window_to_center()
@@ -219,6 +221,10 @@ class MainWindow(QMainWindow):
         self.act_channels = QAction('Channels', self)
         self.act_channels.setIcon(QIcon(f'assets/icons/{self.theme_type}/eye_on.png'))
         self.act_channels.triggered.connect(self.open_channels)
+
+        self.act_screenshot = QAction('Make screenshot', self)
+        self.act_screenshot.setIcon(QIcon(f'assets/icons/{self.theme_type}/screenshot.png'))
+        self.act_screenshot.triggered.connect(self.make_screenshot)
 
         if self.telemetry_status:
             telemetry_icon_state = '_on' if self.telemetry_show_status else ''
@@ -267,6 +273,11 @@ class MainWindow(QMainWindow):
             self.toolBar.addAction(self.act_wifi)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.toolBar.addWidget(spacer)
+        self.toolBar.addAction(self.act_screenshot)
+
     def init_recognition_widgets(self):
         current_zscale_settings_dict = self.gRPCThread.getCurrentZScaleRequest()
         recogn_settings = self.gRPCThread.gerCurrentRecognitionSettings()
@@ -304,6 +315,7 @@ class MainWindow(QMainWindow):
 
     def init_telemetry_widget(self):
         self.telemetryWidget = TelemetryWidget(theme_type=self.theme_type)
+        self.gRPCErrorTread.signal_telemetry.connect(self.telemetryWidget.udpate_widgets_states)
 
     def init_aeroscope_widget(self):
         self.aeroscopeWidget = AeroscopeWidget(theme_type=self.theme_type, logger_=self.logger_)
@@ -318,34 +330,34 @@ class MainWindow(QMainWindow):
         self.tab_bottom = QTabWidget()
         self.tab_bottom.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         if self.map_status:
-            self.tab_bottom.insertTab(0, self.mapWidget, 'Map')
+            self.map_ind = self.tab_bottom.addTab(self.mapWidget, 'Map')
         if self.telemetry_status:
-            self.tab_bottom.insertTab(1, self.telemetryWidget, "Server's Telemetry")
-        if not self.map_show_status:
-            self.tab_bottom.widget(0).hide()
-            self.tab_bottom.setTabText(0, "")
-        if not self.telemetry_show_status:
-            self.tab_bottom.widget(1).hide()
-            self.tab_bottom.setTabText(1, "")
+            self.telemetry_ind = self.tab_bottom.addTab(self.telemetryWidget, "Server's Telemetry")
+        if self.map_ind is not None and not self.map_show_status:
+            self.tab_bottom.widget(self.map_ind).hide()
+            self.tab_bottom.setTabText(self.map_ind, "")
+        if self.telemetry_ind is not None and not self.telemetry_show_status:
+            self.tab_bottom.widget(self.telemetry_ind).hide()
+            self.tab_bottom.setTabText(self.telemetry_ind, "")
         self.grid.addWidget(self.tab_bottom, 1, 0, 1, len(self.enabled_channels))
 
         self.tab_right = QTabWidget()
         self.tab_right.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         if self.aeroscope_status:
-            self.tab_right.insertTab(0, self.aeroscopeWidget, 'Aeroscope')
+            self.aeroscope_ind = self.tab_right.addTab(self.aeroscopeWidget, 'Aeroscope')
         if self.remote_id_status:
-            self.tab_right.insertTab(1, self.remoteIdWidget, 'Remote ID')
+            self.rid_ind = self.tab_right.addTab(self.remoteIdWidget, 'Remote ID')
         if self.wifi_status:
-            self.tab_right.insertTab(2, self.wifiWidget, 'WiFi')
-        if not self.aeroscope_show_status:
-            self.tab_right.widget(0).hide()
-            self.tab_right.setTabText(0, "")
-        if not self.remote_id_show_status:
-            self.tab_right.widget(1).hide()
-            self.tab_right.setTabText(1, "")
-        if not self.wifi_show_status:
-            self.tab_right.widget(2).hide()
-            self.tab_right.setTabText(2, "")
+            self.wifi_ind = self.tab_right.addTab(self.wifiWidget, 'WiFi')
+        if self.aeroscope_ind is not None and not self.aeroscope_show_status:
+            self.tab_right.widget(self.aeroscope_ind).hide()
+            self.tab_right.setTabText(self.aeroscope_ind, "")
+        if self.rid_ind is not None and not self.remote_id_show_status:
+            self.tab_right.widget(self.rid_ind).hide()
+            self.tab_right.setTabText(self.rid_ind, "")
+        if self.wifi_ind is not None and not self.wifi_show_status:
+            self.tab_right.widget(self.wifi_ind).hide()
+            self.tab_right.setTabText(self.wifi_ind, "")
         self.grid.addWidget(self.tab_right, 0, len(self.enabled_channels), 2, 1)
 
         i = 0
@@ -430,17 +442,17 @@ class MainWindow(QMainWindow):
 
     def open_map(self):
         if self.mapWidget.isVisible():
-            self.tab_bottom.widget(0).hide()
-            self.tab_bottom.setTabEnabled(0, False)
-            self.tab_bottom.setTabText(0, "")  # Или "Скрыто"
+            self.tab_bottom.widget(self.map_ind).hide()
+            self.tab_bottom.setTabEnabled(self.map_ind, False)
+            self.tab_bottom.setTabText(self.map_ind, "")  # Или "Скрыто"
             self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map.png'))
             self.map_show_status = False
             if not self.map_show_status and not self.telemetry_show_status:
                 self.tab_bottom.hide()
         else:
-            self.tab_bottom.widget(0).show()
-            self.tab_bottom.setTabEnabled(0, True)
-            self.tab_bottom.setTabText(0, "Map")
+            self.tab_bottom.widget(self.map_ind).show()
+            self.tab_bottom.setTabEnabled(self.map_ind, True)
+            self.tab_bottom.setTabText(self.map_ind, "Map")
             self.act_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/map_on.png'))
             self.map_show_status = True
             if self.tab_bottom.isHidden():
@@ -448,17 +460,17 @@ class MainWindow(QMainWindow):
 
     def open_telemetry(self):
         if self.telemetryWidget.isVisible():
-            self.tab_bottom.widget(1).hide()
-            self.tab_bottom.setTabEnabled(1, False)
-            self.tab_bottom.setTabText(1, "")  # Или "Скрыто"
+            self.tab_bottom.widget(self.telemetry_ind).hide()
+            self.tab_bottom.setTabEnabled(self.telemetry_ind, False)
+            self.tab_bottom.setTabText(self.telemetry_ind, "")  # Или "Скрыто"
             self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry.png'))
             self.telemetry_show_status = False
             if not self.map_show_status and not self.telemetry_show_status:
                 self.tab_bottom.hide()
         else:
-            self.tab_bottom.widget(1).show()
-            self.tab_bottom.setTabEnabled(1, True)
-            self.tab_bottom.setTabText(1, "Server's Telemetry")
+            self.tab_bottom.widget(self.telemetry_ind).show()
+            self.tab_bottom.setTabEnabled(self.telemetry_ind, True)
+            self.tab_bottom.setTabText(self.telemetry_ind, "Server's Telemetry")
             self.act_telemetry.setIcon(QIcon(f'assets/icons/{self.theme_type}/telemetry_on.png'))
             self.telemetry_show_status = True
             if self.tab_bottom.isHidden():
@@ -466,17 +478,17 @@ class MainWindow(QMainWindow):
 
     def open_aeroscope(self):
         if self.aeroscopeWidget.isVisible():
-            self.tab_right.widget(0).hide()
-            self.tab_right.setTabEnabled(0, False)
-            self.tab_right.setTabText(0, "")  # Или "Скрыто"
+            self.tab_right.widget(self.aeroscope_ind).hide()
+            self.tab_right.setTabEnabled(self.aeroscope_ind, False)
+            self.tab_right.setTabText(self.aeroscope_ind, "")  # Или "Скрыто"
             self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope.png'))
             self.aeroscope_show_status = False
             if not self.aeroscope_show_status and not self.remote_id_show_status and not self.wifi_show_status:
                 self.tab_right.hide()
         else:
-            self.tab_right.widget(0).show()
-            self.tab_right.setTabEnabled(0, True)
-            self.tab_right.setTabText(0, "Aeroscope")
+            self.tab_right.widget(self.aeroscope_ind).show()
+            self.tab_right.setTabEnabled(self.aeroscope_ind, True)
+            self.tab_right.setTabText(self.aeroscope_ind, "Aeroscope")
             self.act_aeroscope.setIcon(QIcon(f'assets/icons/{self.theme_type}/aeroscope_on.png'))
             self.aeroscope_show_status = True
             if self.tab_right.isHidden():
@@ -485,18 +497,18 @@ class MainWindow(QMainWindow):
     def open_remote_id(self):
         if self.remoteIdWidget.isVisible():
             # self.tab_right.removeTab(1)
-            self.tab_right.widget(1).hide()
-            self.tab_right.setTabEnabled(1, False)
-            self.tab_right.setTabText(1, "")  # Или "Скрыто"
+            self.tab_right.widget(self.rid_ind).hide()
+            self.tab_right.setTabEnabled(self.rid_ind, False)
+            self.tab_right.setTabText(self.rid_ind, "")  # Или "Скрыто"
             self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id.png'))
             self.remote_id_show_status = False
             if not self.aeroscope_show_status and not self.remote_id_show_status and not self.wifi_show_status:
                 self.tab_right.hide()
         else:
             # self.tab_right.insertTab(1, self.remoteIdWidget, "Remote ID")
-            self.tab_right.widget(1).show()
-            self.tab_right.setTabEnabled(1, True)
-            self.tab_right.setTabText(1, "Remote ID")
+            self.tab_right.widget(self.rid_ind).show()
+            self.tab_right.setTabEnabled(self.rid_ind, True)
+            self.tab_right.setTabText(self.rid_ind, "Remote ID")
             self.act_remote_id.setIcon(QIcon(f'assets/icons/{self.theme_type}/remote_id_on.png'))
             self.remote_id_show_status = True
             if self.tab_right.isHidden():
@@ -505,18 +517,18 @@ class MainWindow(QMainWindow):
     def open_wifi(self):
         if self.wifiWidget.isVisible():
             # self.tab_right.removeTab(2)
-            self.tab_right.widget(2).hide()
-            self.tab_right.setTabEnabled(2, False)
-            self.tab_right.setTabText(2, "")  # Или "Скрыто"
+            self.tab_right.widget(self.wifi_ind).hide()
+            self.tab_right.setTabEnabled(self.wifi_ind, False)
+            self.tab_right.setTabText(self.wifi_ind, "")  # Или "Скрыто"
             self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi.png'))
             self.wifi_show_status = False
             if not self.aeroscope_show_status and not self.remote_id_show_status and not self.wifi_show_status:
                 self.tab_right.hide()
         else:
             # self.tab_right.insertTab(2, self.wifiWidget, "WiFi")
-            self.tab_right.widget(2).show()
-            self.tab_right.setTabEnabled(2, True)
-            self.tab_right.setTabText(2, "WiFi")
+            self.tab_right.widget(self.wifi_ind).show()
+            self.tab_right.setTabEnabled(self.wifi_ind, True)
+            self.tab_right.setTabText(self.wifi_ind, "WiFi")
             self.act_wifi.setIcon(QIcon(f'assets/icons/{self.theme_type}/wifi_on.png'))
             self.wifi_show_status = True
             if self.tab_right.isHidden():
@@ -602,6 +614,7 @@ class MainWindow(QMainWindow):
             self.config.update(self.settingsWidget.mainTab.collect_config())
             self.config.update(self.settingsWidget.soundTab.collect_config())
             self.config.update(self.settingsWidget.alinxTab.collect_config())
+            self.config.update(self.collect_ui_config())
             self.config.update(config)
 
             with open('client_conf.yaml', 'w') as f:
@@ -619,23 +632,64 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger_.error(f'Error with loading config: {e}')
 
+    def collect_ui_config(self):
+        config = {'widgets_show': {'map_show_status': self.map_show_status,
+                                   'telemetry_show_status': self.telemetry_show_status,
+                                   'aeroscope_show_status': self.aeroscope_show_status,
+                                   'wifi_show_status': self.wifi_show_status,
+                                   'remote_id_show_status': self.remote_id_show_status,
+                                   }
+                  }
+        return config
+
+    def make_screenshot(self):
+        if not os.path.isdir('Screenshots'):
+            os.mkdir('Screenshots')
+        try:
+            pixmap = self.grab()
+            name = f'{datetime.now().strftime("%H-%M-%S")}.png'
+            filepath = os.path.join('Screenshots', name)
+            pixmap.save(filepath, 'PNG')
+            self.show_screenshot_notice()
+            logger.info(f'Screenshot saved as {filepath}')
+        except Exception as e:
+            logger.warning(f"Error with saving screenshot!")
+
+    def show_screenshot_notice(self):
+        notice = QLabel("📸 Screenshot saved", self)
+        notice.setStyleSheet("""
+            background-color: rgba(0, 0, 0, 160);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+        """)
+        notice.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        notice.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        notice.resize(190, 40)
+
+        # locate on center position
+        center_x = (self.width() - notice.width()) // 2
+        center_y = (self.height() - notice.height()) // 2
+        notice.move(center_x, center_y)
+        notice.show()
+
+        QTimer.singleShot(1000, notice.deleteLater)     # hide
+
     def move_window_to_center(self):
-        # Получаем размеры экрана
+        # get screen size
         screen = QApplication.primaryScreen()
         screen_geometry = screen.geometry()
         screen_width = screen_geometry.width()
         screen_height = screen_geometry.height()
 
-        # Получаем размеры окна
-        window_width = self.width()
-        window_height = self.height()
+        window_width = self.width()             # get window width
+        window_height = self.height()           # get window height
 
-        # Вычисляем координаты для центра экрана
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
+        x = (screen_width - window_width) // 2              # calculate x for screen center
+        y = (screen_height - window_height) // 2            # calculate y for screen center
 
-        # Перемещаем окно в центр экрана
-        self.move(x, y)
+        self.move(x, y)     # move window to center
 
     def apply_theme(self):
         theme_name = self.settingsWidget.mainTab.cb_themes.currentText()
@@ -673,9 +727,6 @@ class MainWindow(QMainWindow):
         self.telemetryWidget.theme_changed(type=self.theme_type)
         self.remoteIdWidget.theme_changed(type=self.theme_type)
         self.wifiWidget.theme_changed(type=self.theme_type)
-
-    # def closeEvent(self, a0):
-    #     self.gRPCThread.gRPC_channel.close()
 
 
 if __name__ == '__main__':

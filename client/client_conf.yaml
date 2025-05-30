@@ -5,7 +5,6 @@ map_list:
 - WiFi
 server_port: '51234'
 server_addr:
-#- 192.168.1.230
 - localhost
 - 192.168.1.241
 - 192.168.150.189
@@ -32,7 +31,9 @@ show_welcome_window: true
 fcm:
   autoscan_frequency: false
 map:
-  base_position: [53.9312229, 27.6358432]
+  base_position:
+  - 53.9312229
+  - 27.6358432
   zoom_start: 15
   min_zoom: 10
   max_zoom: 17
@@ -45,6 +46,6 @@ widgets:
 widgets_show:
   map_show_status: true
   telemetry_show_status: true
-  aeroscope_show_status: false
-  wifi_show_status: false
-  remote_id_show_status: false
+  aeroscope_show_status: true
+  wifi_show_status: true
+  remote_id_show_status: true
