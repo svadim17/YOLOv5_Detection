@@ -1,13 +1,14 @@
 import sys
 import folium
 import os
-from PySide6.QtWidgets import QApplication, QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
+from PySide6.QtWidgets import QApplication, QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QToolBar, QMessageBox
+from PySide6.QtGui import QIcon, QAction
 import PySide6.QtWebEngineWidgets as QtWebEngineWidgets
-from PySide6.QtCore import QUrl, Qt, QTimer
+from PySide6.QtCore import QUrl, Qt, QTimer, QSize
 from collections import namedtuple
 from loguru import logger
 import json
-
+from client.client_submodules.set_base_point_dialog import CoordinateInputDialog
 
 
 UAVObject = namedtuple('UAV',
@@ -18,9 +19,11 @@ os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-web-security
 
 
 class MapWidget(QDockWidget, QWidget):
-    def __init__(self, map_settings: dict):
+    def __init__(self, map_settings: dict, theme_type: str):
         super().__init__()
         self.map_settings = map_settings
+        self.theme_type = theme_type
+        self.base_point = map_settings['base_point']
         self.setTitleBarWidget(QWidget())
         # self.setWindowTitle("Map")
         # self.resize(800, 600)
@@ -31,9 +34,10 @@ class MapWidget(QDockWidget, QWidget):
         self.leaflet_css = f"file:///{os.path.abspath('assets/leaflet/leaflet.css')}".replace('\\', '/')
         self.leaflet_js = f"file:///{os.path.abspath('assets/leaflet/leaflet.js')}".replace('\\', '/')
 
-        # Создаем веб-просмотрщик
-        self.web_view = QtWebEngineWidgets.QWebEngineView()
-        self.setWidget(self.web_view)
+        self.create_toolbar()
+        self.web_view = QtWebEngineWidgets.QWebEngineView()         # Создаем веб-просмотрщик
+        self.add_widgets_to_layout()
+        # self.setWidget(self.web_view)
 
         # Настраиваем разрешения для локальных файлов
         settings = self.web_view.page().settings()
@@ -50,6 +54,43 @@ class MapWidget(QDockWidget, QWidget):
 
         # Ждем загрузки страницы перед добавлением маркера
         self.web_view.loadFinished.connect(self.on_load_finished)
+
+    def create_toolbar(self):
+        self.toolbar = QToolBar()
+        self.toolbar.setStyleSheet("""
+            QToolBar {
+                background: transparent;
+                border: none;
+                padding: 0px;
+                spacing: 0px;
+                margin: 0px;
+            }
+            QToolButton {
+                margin: 0px;
+                padding: 0px;
+                border: none;
+            }
+        """)
+        self.toolbar.setIconSize(QSize(20, 20))
+
+        self.act_reload_map = QAction('Reload map', self)
+        self.act_reload_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/reload.png'))
+        self.act_reload_map.triggered.connect(self.load_base_map)
+
+        self.act_edit_base_point = QAction('Edit base point', self)
+        self.act_edit_base_point.setIcon(QIcon(f'assets/icons/{self.theme_type}/edit_base_point.png'))
+        self.act_edit_base_point.triggered.connect(self.get_base_point_via_dialog)
+
+        self.toolbar.addAction(self.act_reload_map)
+        self.toolbar.addAction(self.act_edit_base_point)
+
+    def add_widgets_to_layout(self):
+        self.central_widget = QWidget()
+        layout = QVBoxLayout(self.central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.toolbar)
+        layout.addWidget(self.web_view)
+        self.setWidget(self.central_widget)
 
     def load_base_map(self):
         """Загружает базовую карту OpenStreetMap"""
@@ -70,6 +111,14 @@ class MapWidget(QDockWidget, QWidget):
             <style>
                 body {{ margin: 0; padding: 0; }}
                 #map {{ height: 100vh; width: 100%; }}
+                .leaflet-control-attribution {{
+                    background: none !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    color: black; 
+                    font-size: 12px;
+                    padding: 0 5px;
+                }}
             </style>
         </head>
         <body>
@@ -77,8 +126,9 @@ class MapWidget(QDockWidget, QWidget):
             <script>
                 console.log('Initializing map...');
                 var map = L.map('map').setView([53.9312229, 27.6358432], 15);
+                map.attributionControl.setPrefix('');
                 L.tileLayer('{self.tiles_path}', {{
-                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    attribution: '© KB Radar',
                     minZoom: 10,
                     maxZoom: 17
                 }}).addTo(map);
@@ -86,6 +136,25 @@ class MapWidget(QDockWidget, QWidget):
                 // Глобальные переменные для хранения объектов
                 window.markers = {{}};
                 window.trajectories = {{}};
+                window.basePoint = null;
+
+                // Установка или обновление базовой точки
+                function setBasePoint(lat, lng, icon_path) {{
+                    console.log('Setting base point:', lat, lng);
+                    var baseIcon = L.icon({{
+                        iconUrl: icon_path,
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 32],
+                        popupAnchor: [0, -32],
+                    }});
+                    if (window.basePoint) {{
+                        window.basePoint.setLatLng([lat, lng]);
+                    }} else {{
+                        window.basePoint = L.marker([lat, lng], {{ icon: baseIcon }}).addTo(map).bindPopup("Base Point");
+                    }}
+                    // Центрировать карту
+                    map.setView([lat, lng], map.getZoom());
+                }}
 
                 // Функция для добавления маркера
                 function addMarker(id, lat, lng, popup, icon_path, altitude) {{
@@ -169,18 +238,35 @@ class MapWidget(QDockWidget, QWidget):
         """Вызывается после загрузки страницы"""
         if status:
             logger.debug("Page loaded successfully")
-            icon_path = f"file:///{os.path.abspath('assets/icons/map/drone_black.png')}".replace('\\', '/')
-            # Добавляем тестовый маркер после загрузки страницы
-            self.add_marker(marker_id="drone1",
-                            lat=53.9312229,
-                            lng=27.6358432,
-                            name="Test Drone",
-                            icon_path=icon_path,
-                            altitude=100)
-            # Добавляем путь
-            self.add_trajectory(trajectory_id="drone1", points=[[53.9312229, 27.6358432]], color="green")
+            self.set_base_point(lat=self.base_point[0], lng=self.base_point[1])
+            # icon_path = f"file:///{os.path.abspath('assets/icons/map/drone_black.png')}".replace('\\', '/')
+            # # Добавляем тестовый маркер после загрузки страницы
+            # self.add_marker(marker_id="drone1",
+            #                 lat=53.9312229,
+            #                 lng=27.6358432,
+            #                 name="Test Drone",
+            #                 icon_path=icon_path,
+            #                 altitude=100)
+            # # Добавляем путь
+            # self.add_trajectory(trajectory_id="drone1", points=[[53.9312229, 27.6358432]], color="green")
         else:
             logger.error("Failed to load page")
+
+    def get_base_point_via_dialog(self):
+        dialog = CoordinateInputDialog()
+        if dialog.exec():
+            lat, lng = dialog.get_coordinates()
+            if lat is None or lng is None:
+                QMessageBox.critical(self, "Invalid Input", "Latitude and longitude must be valid numbers.")
+                return
+            else:
+                self.set_base_point(lat, lng)
+                self.base_point[0], self.base_point[1] = lat, lng
+
+    def set_base_point(self, lat, lng):
+        icon_path = f"file:///{os.path.abspath('assets/icons/map/base_point.png')}".replace('\\', '/')
+        js_code = f"setBasePoint({lat}, {lng}, '{icon_path}');"
+        self.web_view.page().runJavaScript(js_code)
 
     def add_marker(self, marker_id, lat, lng, name, icon_path, altitude=None):
         """Добавляет новый маркер на карту"""
@@ -248,13 +334,22 @@ class MapWidget(QDockWidget, QWidget):
             logger.debug("Stopping timer: reached end of trajectory")
             self.timer.stop()
 
+    def collect_config(self):
+        config = {'map': {'base_point': self.base_point}}
+        return config
+
+    def theme_changed(self, type: str):
+        self.theme_type = type
+        self.act_reload_map.setIcon(QIcon(f'assets/icons/{self.theme_type}/reload.png'))
+        self.act_edit_base_point.setIcon(QIcon(f'assets/icons/{self.theme_type}/edit_base_point.png'))
+
 
 def main():
     app = QApplication(sys.argv)
     window = MapWidget(map_settings={'base_position': [53.9312229, 27.6358432],
-  'zoom_start': 15,
-  'min_zoom': 10,
-  'max_zoom': 17})
+   'zoom_start': 15,
+   'min_zoom': 10,
+   'max_zoom': 17})
     window.show()
     sys.exit(app.exec())
 

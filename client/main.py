@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
         self.processor.init_recogn_widgets(recogn_widgets=self.recogn_widgets)
 
     def init_map_widget(self):
-        self.mapWidget = MapWidget(map_settings=self.config['map'])
+        self.mapWidget = MapWidget(map_settings=self.config['map'], theme_type=self.theme_type)
 
     def init_telemetry_widget(self):
         self.telemetryWidget = TelemetryWidget(theme_type=self.theme_type)
@@ -614,6 +614,7 @@ class MainWindow(QMainWindow):
             self.config.update(self.settingsWidget.mainTab.collect_config())
             self.config.update(self.settingsWidget.soundTab.collect_config())
             self.config.update(self.settingsWidget.alinxTab.collect_config())
+            self.config.update(self.mapWidget.collect_config())
             self.config.update(self.collect_ui_config())
             self.config.update(config)
 
@@ -727,6 +728,7 @@ class MainWindow(QMainWindow):
         self.telemetryWidget.theme_changed(type=self.theme_type)
         self.remoteIdWidget.theme_changed(type=self.theme_type)
         self.wifiWidget.theme_changed(type=self.theme_type)
+        self.mapWidget.theme_changed(type=self.theme_type)
 
 
 if __name__ == '__main__':

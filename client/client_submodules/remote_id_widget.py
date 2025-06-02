@@ -93,7 +93,8 @@ class RemoteIdWidget(QDockWidget):
         item.deleteLater()
 
     def clear_all_items(self):
-        confirm = QMessageBox.question(self, "Clear all", "Delete all elements Remote ID?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm = QMessageBox.question(self, "Clear all", "Delete all Remote ID elements?",
+                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
             while self.list_layout.count():
                 widget = self.list_layout.itemAt(0).widget()
