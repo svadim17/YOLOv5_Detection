@@ -44,8 +44,8 @@ widgets:
   wifi_status: true
   remote_id_status: true
 widgets_show:
-  map_show_status: true
-  telemetry_show_status: true
-  aeroscope_show_status: true
-  wifi_show_status: true
-  remote_id_show_status: true
+  map_show_status: false
+  telemetry_show_status: false
+  aeroscope_show_status: false
+  wifi_show_status: false
+  remote_id_show_status: false
