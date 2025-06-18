@@ -1,7 +1,8 @@
 import loguru
 from PySide6.QtWidgets import (QWidget, QListWidget, QApplication, QSpacerItem, QSizePolicy,
-                             QStackedWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton,
-                             QLabel, QSlider, QTabWidget, QComboBox, QGroupBox, QSpinBox, QDoubleSpinBox)
+                               QStackedWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QPushButton,
+                               QLabel, QSlider, QTabWidget, QComboBox, QGroupBox, QSpinBox, QDoubleSpinBox, QLineEdit,
+                               QFormLayout)
 from PySide6.QtGui import QPixmap, QImage, QFont, QIcon
 from PySide6.QtCore import Qt, Signal
 import qdarktheme
@@ -39,6 +40,7 @@ class SettingsWidget(QWidget):
                                  autoscan=bool(config['fcm']['autoscan_frequency']),
                                  logger_=self.logger)
         self.usrpTab = USRPTab(enabled_channels=enabled_channels, logger_=self.logger)
+        self.testGetFreqTab = TestGetFrequency(config=config, logger_=self.logger)
 
         self.tab = QTabWidget()
         self.tab.addTab(self.mainTab, 'Main')
@@ -49,6 +51,8 @@ class SettingsWidget(QWidget):
             self.tab.addTab(self.alinxTab, 'Alinx')
         if usrp_hardware_status:
             self.tab.addTab(self.usrpTab, 'USRP')
+        self.tab.addTab(self.testGetFreqTab, 'Test getting frequency')
+
 
         self.btn_save_client_config = QPushButton('Save client config')
         self.btn_save_server_config = QPushButton('Save server config')
@@ -730,6 +734,68 @@ class USRPTab(QWidget):
 
     def central_freq_changed(self, channel: str, value: float):
         self.signal_central_freq_changed.emit(channel, value)       # send frequency in MHz
+
+
+class TestGetFrequency(QWidget):
+
+    def __init__(self, config: dict, logger_):
+        super().__init__()
+        self.config = config
+        self.logger = logger_
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setSpacing(15)
+        # self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignCenter)
+        self.setLayout(self.main_layout)
+        self.create_widgets()
+        self.add_widgets_to_layout()
+
+    def create_widgets(self):
+        self.cb_drones = QComboBox()
+        self.cb_drones.addItems(self.config['map_list'])
+
+        self.btn_get_freq = QPushButton('Get frequency')
+
+        self.l_signal_freq = QLabel('Central frequency')
+        self.le_signal_freq = QLineEdit()
+        self.le_signal_freq.setReadOnly(True)
+
+        self.l_signal_width = QLabel('Signal width')
+        self.le_signal_width = QLineEdit()
+        self.le_signal_width.setReadOnly(True)
+
+    def add_widgets_to_layout(self):
+        # Левая часть
+        left_layout = QVBoxLayout()
+        left_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        left_layout.setSpacing(10)
+        left_layout.addWidget(self.cb_drones)
+        left_layout.addWidget(self.btn_get_freq)
+        left_layout.addStretch()                        # Чтобы элементы прижались к верху
+
+        # Правая часть — пара метка + поле, аккуратно
+        right_form = QFormLayout()
+        right_form.setSpacing(10)
+        right_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        right_form.setFormAlignment(Qt.AlignmentFlag.AlignTop)
+        right_form.addRow(self.l_signal_freq, self.le_signal_freq)
+        right_form.addRow(self.l_signal_width, self.le_signal_width)
+
+        right_layout = QVBoxLayout()
+        right_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        right_layout.addLayout(right_form)
+        right_layout.addStretch()
+
+        # Горизонтальный блок: левый и правый
+        first_line_layout = QHBoxLayout()
+        first_line_layout.setSpacing(40)  # Между левой и правой колонкой
+        first_line_layout.addLayout(left_layout, stretch=1)
+        first_line_layout.addLayout(right_layout, stretch=2)
+
+        self.main_layout.addLayout(first_line_layout)
+
+    def update_drone_info(self, info: dict):
+        self.le_signal_freq.setText(str(info['central_freq']))
+        self.le_signal_width.setText(str(info['signal_width']))
 
 
 if __name__ == '__main__':

@@ -54,6 +54,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.processes = {}
         self.data_queues = {}
         self.error_queues = {'gRPC': Queue(maxsize=40)}
+        self.last_detections_queues = {}
 
         self.connections = self.config['connections']
         self.last_update_times = {}
@@ -187,6 +188,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         connection = self.connections[conn_name]
         data_queue = Queue(maxsize=5)
         error_queue = Queue(maxsize=40)
+        last_detections_queue = Queue(maxsize=1)
 
         cl = Client(name=conn_name,
                     address=(str(connection['ip']), int(connection['port'])),
@@ -211,6 +213,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
                     exceedance=float(connection['detection_settings']['exceedance']),
                     data_queue=data_queue,
                     error_queue=error_queue,
+                    last_detections_queue=last_detections_queue,
                     FCM_control_queue=self.task_queue,
                     task_done_event=self.events[conn_name],
                     logger_=self.custom_logger.bind(process=str(conn_name)))
@@ -219,6 +222,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
         self.processes[conn_name] = cl
         self.data_queues[conn_name] = data_queue
         self.error_queues[conn_name] = error_queue
+        self.last_detections_queues[conn_name] = last_detections_queue
         self.custom_logger.success(f'Connected successfully to {str(connection["ip"])}:{str(connection["port"])}')
 
     def init_Alinx_FCM_control(self):
@@ -341,6 +345,7 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             self.processes[channel_name].terminate()
             del self.processes[channel_name]
             del self.data_queues[channel_name]
+            del self.last_detections_queues[channel_name]
             self.custom_logger.info(f'Process {channel_name} was terminated.')
         except Exception as e:
             self.custom_logger.error(f'Error with terminate process {channel_name}\n{e}')
@@ -411,6 +416,20 @@ class DataProcessingService(API_pb2_grpc.DataProcessingServiceServicer):
             fs.append(self.connections[conn_name]['signal_settings']['sample_rate'])
 
         return API_pb2.SignalSettingsResponse(band_name=chan_names, width=width, height=height, fs=fs)
+
+    def DetectedSignalInfo(self, request, context):
+        print(f'Request for central freq of {request.type}')
+        for channel_name, queue in self.last_detections_queues.items():
+            if not queue.empty():
+                res = queue.get()
+                try:
+                    if res is not None:
+                        drone_info = list(res.values())[request.type]
+                        return API_pb2.DetectedSignalInfoResponse(central_freq=drone_info[0], signal_width=drone_info[1])
+                except Exception as e:
+                    error_txt = f'An error occurred while unpacking last detections data to the client: {e}'
+                    self.custom_logger.error(error_txt)
+                    self.error_queues['gRPC'].put({'status': 1, 'msg': error_txt})
 
 
 def serve():

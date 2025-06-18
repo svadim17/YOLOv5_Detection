@@ -2,7 +2,7 @@ map_list:
 - Autel
 - Fpv
 - Dji
-- WiFi
+- Wifi
 server_port: '51234'
 server_addr:
 - localhost
@@ -25,7 +25,7 @@ settings_sound:
     Autel: true
     Fpv: true
     Dji: true
-    WiFi: false
+    Wifi: false
   sound_name: Rus Man Object detected.mp3
 show_welcome_window: true
 fcm:

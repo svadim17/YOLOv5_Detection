@@ -44,6 +44,7 @@ class Client(Process):
                  exceedance: float,
                  data_queue=None,
                  error_queue=None,
+                 last_detections_queue=None,
                  FCM_control_queue=None,
                  task_done_event=None,
                  logger_=None):
@@ -60,6 +61,7 @@ class Client(Process):
         self.weights_path = weights_path
         self.project_path = project_path
         self.sample_rate = sample_rate
+        print(self.sample_rate)
         self.signal_width = signal_width
         self.signal_height = signal_height
         self.img_size = img_size
@@ -80,6 +82,7 @@ class Client(Process):
         self.config_q = Queue()
         self.data_q = data_queue
         self.error_queue = error_queue
+        self.last_detections_queue = last_detections_queue
         self.FCM_control_queue = FCM_control_queue
         self.task_done_event = task_done_event
 
@@ -137,6 +140,7 @@ class Client(Process):
     def accumulate_and_make_decision(self, result_dict: dict, central_freq: int):
         accumed_results = []
         frequencies = []
+        frequincies_width = []
 
         for key, key_dict in result_dict.items():
             if self.accum_status:
@@ -151,15 +155,19 @@ class Client(Process):
             accumed_results.append(state)
             if state:
                 try:
-                    freq_shift = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
-                    freq = int((freq_shift + self.central_freq) / 1_000_000)
+                    freq_shift, freq_width = self.calculate_frequency(ymin=key_dict['ymin'], ymax=key_dict['ymax'])
+                    freq = int((freq_shift + self.central_freq) / 1_000_000)        # convert to MHz
+                    freq_width = int(freq_width / 1_000_000)        # convert to MHz
                 except Exception as e:
                     freq = 0
+                    freq_width = 0
                     self.logger.trace(f"Can\'t calculate frequency for {self.name}! \n{e}")
                 frequencies.append(freq)
+                frequincies_width.append(freq_width)
             else:
                 frequencies.append(0)
-        return accumed_results, frequencies
+                frequincies_width.append(0)
+        return accumed_results, frequencies, frequincies_width
 
     def calculate_frequency(self, ymin, ymax):
         """ Функция считает частоту сигнала относительно центральной частоты (нулевой) и возвращает смещение """
@@ -168,7 +176,7 @@ class Client(Process):
         freq_width = freq_max - freq_min
         f = freq_width / 2 + freq_min
         f_center = (self.sample_rate / 2 - f) * (-1)
-        return f_center
+        return f_center, freq_width
 
     def change_record_images_status(self, status: bool):
         self.record_images_status = status
@@ -324,7 +332,7 @@ class Client(Process):
                             clear_img, df_result, detected_img = self.nn.processing_for_grpc(img_arr)
                             self.current_accum_index += 1
                             if self.data_q is not None:
-                                res, freq = self.accumulate_and_make_decision(
+                                res, freq, freq_width = self.accumulate_and_make_decision(
                                     self.nn.grpc_convert_result(df_result, return_data_type='dict_with_freq'),
                                     central_freq=self.central_freq)
 
@@ -340,6 +348,12 @@ class Client(Process):
                                                      'spectrum': spectrum,
                                                      'channel_freq': self.central_freq},
                                                     timeout=10)
+
+                                    if not self.last_detections_queue.full():
+                                        last_detections = {}
+                                        for i in range((len(self.map_list))):
+                                            last_detections[self.map_list[i]] = [freq[i], freq_width[i]]
+                                        self.last_detections_queue.put(last_detections)
                                 except queue.Full as e:
                                     self.logger.error(f'data_queue is full. {e}')
 

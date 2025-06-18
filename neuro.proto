@@ -216,6 +216,17 @@ message USRPSetFrequencyResponse {
     string status = 1;
 }
 
+message DetectedSignalInfoRequest {             // Запрос на получение центральной частоты обнаруживаемого сигнала
+    DroneType type = 1;
+}
+
+message DetectedSignalInfoResponse {            // Ответ на запрос о получении центральной частоты обнаруживаемого сигнала
+    int32 central_freq = 2;
+    int32 signal_width = 3;
+}
+
+
+
 
 // Сервисы обработки данных
 service DataProcessingService {
@@ -239,4 +250,5 @@ service DataProcessingService {
     rpc SignalSettings (SignalSettingsRequest) returns (SignalSettingsResponse);
     rpc AutoscanFrequency (SetAutoscanFreqRequest) returns (SetAutoscanFreqResponse);
     rpc USRPSetFrequency (USRPSetFrequencyRequest) returns (USRPSetFrequencyResponse);
+    rpc DetectedSignalInfo (DetectedSignalInfoRequest) returns (DetectedSignalInfoResponse);
 }

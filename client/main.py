@@ -176,9 +176,12 @@ class MainWindow(QMainWindow):
         self.settingsWidget.nnTab.btn_get_nn_info.clicked.connect(lambda: self.gRPCThread.nnInfo(self.enabled_channels))
         self.settingsWidget.usrpTab.signal_central_freq_changed.connect(self.gRPCThread.setUSRPFrequency)
         self.settingsWidget.usrpTab.signal_autoscan_state.connect(self.gRPCThread.setAutoscanState)
+        self.settingsWidget.testGetFreqTab.btn_get_freq.clicked.connect(lambda: self.gRPCThread.getDetectedSignalInfo(
+            self.settingsWidget.testGetFreqTab.cb_drones.currentText()))
         self.gRPCThread.signal_alinx_soft_ver.connect(self.settingsWidget.alinxTab.update_soft_ver)
         self.gRPCThread.signal_alinx_load_detect_state.connect(self.settingsWidget.alinxTab.update_load_detect_state)
         self.gRPCThread.signal_nn_info.connect(self.settingsWidget.nnTab.update_models_info)
+        self.gRPCThread.signal_detected_signal_info.connect(self.settingsWidget.testGetFreqTab.update_drone_info)
 
         self.init_recognition_widgets()
         if self.map_status:

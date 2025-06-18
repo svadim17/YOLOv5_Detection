@@ -140,6 +140,11 @@ class DataProcessingServiceStub(object):
                 request_serializer=neuro__pb2.USRPSetFrequencyRequest.SerializeToString,
                 response_deserializer=neuro__pb2.USRPSetFrequencyResponse.FromString,
                 _registered_method=True)
+        self.DetectedSignalInfo = channel.unary_unary(
+                '/NeuroDataProcessing.DataProcessingService/DetectedSignalInfo',
+                request_serializer=neuro__pb2.DetectedSignalInfoRequest.SerializeToString,
+                response_deserializer=neuro__pb2.DetectedSignalInfoResponse.FromString,
+                _registered_method=True)
 
 
 class DataProcessingServiceServicer(object):
@@ -269,6 +274,12 @@ class DataProcessingServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def DetectedSignalInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataProcessingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -371,6 +382,11 @@ def add_DataProcessingServiceServicer_to_server(servicer, server):
                     servicer.USRPSetFrequency,
                     request_deserializer=neuro__pb2.USRPSetFrequencyRequest.FromString,
                     response_serializer=neuro__pb2.USRPSetFrequencyResponse.SerializeToString,
+            ),
+            'DetectedSignalInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.DetectedSignalInfo,
+                    request_deserializer=neuro__pb2.DetectedSignalInfoRequest.FromString,
+                    response_serializer=neuro__pb2.DetectedSignalInfoResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -914,6 +930,33 @@ class DataProcessingService(object):
             '/NeuroDataProcessing.DataProcessingService/USRPSetFrequency',
             neuro__pb2.USRPSetFrequencyRequest.SerializeToString,
             neuro__pb2.USRPSetFrequencyResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DetectedSignalInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NeuroDataProcessing.DataProcessingService/DetectedSignalInfo',
+            neuro__pb2.DetectedSignalInfoRequest.SerializeToString,
+            neuro__pb2.DetectedSignalInfoResponse.FromString,
             options,
             channel_credentials,
             insecure,

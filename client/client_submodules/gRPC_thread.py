@@ -79,6 +79,7 @@ class gRPCThread(QtCore.QThread):
     signal_alinx_soft_ver = Signal(str)
     signal_alinx_load_detect_state = Signal(str)
     signal_nn_info = Signal(dict)
+    signal_detected_signal_info = Signal(dict)
 
     def __init__(self, channel: int,
                  map_list: list,
@@ -335,6 +336,21 @@ class gRPCThread(QtCore.QThread):
 
     def change_watchdog_status(self, status: int):
         self.watchdog = bool(status)
+
+    def getDetectedSignalInfo(self, drone_name: str):
+        try:
+            # Преобразуем строковое имя в enum DroneType
+            drone_type_enum = getattr(API_pb2.DroneType, drone_name, None)
+            if drone_type_enum is None:
+                self.logger_.error(f"Unknown drone name: {drone_name}")
+                return
+
+            stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)
+            response = stub.DetectedSignalInfo(API_pb2.DetectedSignalInfoRequest(type=drone_type_enum))
+            central_freq, signal_width = response.central_freq, response.signal_width
+            self.signal_detected_signal_info.emit({'central_freq': central_freq, 'signal_width': signal_width})
+        except Exception as e:
+            self.logger_.error(f'Error with getting  {drone_name} frequency! \n{e}')
 
     def run(self):
         stub = API_pb2_grpc.DataProcessingServiceStub(self.gRPC_channel)

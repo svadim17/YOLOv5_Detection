@@ -1,82 +1,82 @@
 connections:
-  2G437_v5:
-    ip: 192.168.1.3
-    port: 16024
-    hardware:
-      type: Alinx
-      autoscan: false
-      central_freq:
-      - 2437000000
-      receive_freq: true
-    signal_settings:
-      signal_width: 1024
-      signal_height: 3072
-      sample_rate: 122880000
-      calculate_log: false
-    neural_network_settings:
-      version: v5
-      project_path: yolov5
-      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
-      img_size:
-      - 640
-      - 640
-      z_min: -65
-      z_max: 55
-    detection_settings:
-      all_classes:
-      - dji
-      - wifi
-      - autel_lite
-      - autel_max_4n(t)
-      - autel_tag
-      - fpv
-      map_list:
-      - autel
-      - fpv
-      - dji
-      - wifi
-      accumulation_size: 10
-      threshold: 0.4
-      exceedance: 0.5
-  5G7865_v5:
-    ip: 192.168.1.3
-    port: 16058
-    hardware:
-      type: Alinx
-      autoscan: false
-      central_freq:
-      - 5786500000
-      receive_freq: true
-    signal_settings:
-      signal_width: 1024
-      signal_height: 3072
-      sample_rate: 122880000
-      calculate_log: false
-    neural_network_settings:
-      version: v5
-      project_path: yolov5
-      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
-      img_size:
-      - 640
-      - 640
-      z_min: -76
-      z_max: 48
-    detection_settings:
-      all_classes:
-      - dji
-      - wifi
-      - autel_lite
-      - autel_max_4n(t)
-      - autel_tag
-      - fpv
-      map_list:
-      - autel
-      - fpv
-      - dji
-      - wifi
-      accumulation_size: 10
-      threshold: 0.4
-      exceedance: 0.5
+#  2G437_v5:
+#    ip: 192.168.1.3
+#    port: 16024
+#    hardware:
+#      type: Alinx
+#      autoscan: false
+#      central_freq:
+#      - 2437000000
+#      receive_freq: true
+#    signal_settings:
+#      signal_width: 1024
+#      signal_height: 3072
+#      sample_rate: 122880000
+#      calculate_log: false
+#    neural_network_settings:
+#      version: v5
+#      project_path: yolov5
+#      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
+#      img_size:
+#      - 640
+#      - 640
+#      z_min: -65
+#      z_max: 55
+#    detection_settings:
+#      all_classes:
+#      - dji
+#      - wifi
+#      - autel_lite
+#      - autel_max_4n(t)
+#      - autel_tag
+#      - fpv
+#      map_list:
+#      - autel
+#      - fpv
+#      - dji
+#      - wifi
+#      accumulation_size: 10
+#      threshold: 0.4
+#      exceedance: 0.5
+#  5G7865_v5:
+#    ip: 192.168.1.3
+#    port: 16058
+#    hardware:
+#      type: Alinx
+#      autoscan: false
+#      central_freq:
+#      - 5786500000
+#      receive_freq: true
+#    signal_settings:
+#      signal_width: 1024
+#      signal_height: 3072
+#      sample_rate: 122880000
+#      calculate_log: false
+#    neural_network_settings:
+#      version: v5
+#      project_path: yolov5
+#      weights_path: yolov5m_6classes_BIG_AUGMENTATED_ver6.pt
+#      img_size:
+#      - 640
+#      - 640
+#      z_min: -76
+#      z_max: 48
+#    detection_settings:
+#      all_classes:
+#      - dji
+#      - wifi
+#      - autel_lite
+#      - autel_max_4n(t)
+#      - autel_tag
+#      - fpv
+#      map_list:
+#      - autel
+#      - fpv
+#      - dji
+#      - wifi
+#      accumulation_size: 10
+#      threshold: 0.4
+#      exceedance: 0.5
   ch0:
     ip: 127.0.0.1
     port: 10091
